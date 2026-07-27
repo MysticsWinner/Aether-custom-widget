@@ -99,7 +99,7 @@ impl SharedTelemetryCache {
 
     /// Returns total cache update count.
     pub fn update_count(&self) -> u64 {
-        *self.update_count.read().unwrap_or(&0)
+        self.update_count.read().map(|g| *g).unwrap_or(0)
     }
 }
 
