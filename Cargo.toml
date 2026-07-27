@@ -17,11 +17,6 @@ members = [
     "crates/production_engine",
 ]
 
-
-
-
-
-
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
@@ -31,7 +26,7 @@ repository = "https://github.com/MysticsWinner/Aether-custom-widget"
 
 [workspace.dependencies]
 # Windows API Bindings
-windows = { version = "0.58.0", features = [
+windows = { version = "0.58", features = [
     "Data_Xml_Dom",
     "Win32_Foundation",
     "Win32_Graphics_Direct2D",
