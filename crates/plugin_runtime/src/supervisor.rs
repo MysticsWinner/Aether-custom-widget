@@ -156,7 +156,7 @@ mod tests {
         let mut supervisor = PluginSupervisor::new();
         let manifest = PermissionManifest::new("test.crash_widget");
 
-        let pid = supervisor
+        let _pid = supervisor
             .launch_plugin("test.crash_widget", ApiVersion::new(1, 0, 0), manifest)
             .unwrap();
 

@@ -34,3 +34,16 @@ jobs:
       - name: Run Unit Tests
         if: matrix.target == 'x86_64-pc-windows-msvc'
         run: cargo test --workspace
+
+      - name: Build Workspace Release Binaries
+        run: cargo build --workspace --release --target ${{ matrix.target }}
+
+      - name: Upload Workspace Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether-runtime-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/*.exe
+            target/${{ matrix.target }}/release/*.dll
+            target/${{ matrix.target }}/release/*.lib
+          if-no-files-found: ignore

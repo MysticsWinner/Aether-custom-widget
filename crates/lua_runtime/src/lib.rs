@@ -16,13 +16,14 @@ impl EmbeddedLuaPluginHost {
         let lua = Lua::new();
 
         // Register restricted safe APIs for widget scripts
-        let globals = lua.globals();
-        
-        let print_fn = lua.create_function(|_, msg: String| {
-            tracing::info!(target: "lua_plugin", "{}", msg);
-            Ok(())
-        })?;
-        globals.set("log_info", print_fn)?;
+        {
+            let globals = lua.globals();
+            let print_fn = lua.create_function(|_, msg: String| {
+                tracing::info!(target: "lua_plugin", "{}", msg);
+                Ok(())
+            })?;
+            globals.set("log_info", print_fn)?;
+        }
 
         Ok(Self { lua })
     }

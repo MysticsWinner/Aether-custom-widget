@@ -1,0 +1,56 @@
+name: Aether Desktop Platform Release Workflow
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish_release:
+    name: Build & Publish Release Packages
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy, rustfmt
+
+      - name: Build Workspace Release Binaries
+        run: cargo build --workspace --release --target ${{ matrix.target }}
+
+      - name: Package Release Binaries
+        shell: pwsh
+        run: |
+          $TargetName = "${{ matrix.target }}"
+          $OutDir = "aether-v1.0.0-$TargetName"
+          New-Item -ItemType Directory -Path $OutDir -Force
+          Copy-Item -Path "README.md" -Destination $OutDir
+          Copy-Item -Path "DETAILS.md" -Destination $OutDir
+          if (Test-Path "target/$TargetName/release/*.exe") {
+            Copy-Item -Path "target/$TargetName/release/*.exe" -Destination $OutDir
+          }
+          if (Test-Path "target/$TargetName/release/*.dll") {
+            Copy-Item -Path "target/$TargetName/release/*.dll" -Destination $OutDir
+          }
+          Compress-Archive -Path "$OutDir\*" -DestinationPath "$OutDir.zip" -Force
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            aether-v1.0.0-${{ matrix.target }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
