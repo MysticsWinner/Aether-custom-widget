@@ -1,5 +1,5 @@
 use crate::crdt::{CrdtItem, CrdtResolver, VectorClock};
-use crate::entities::{LayoutEntity, SyncEntity};
+use crate::entities::SyncEntity;
 use crate::offline_queue::{OfflineSyncQueue, SyncOperation};
 use std::collections::HashMap;
 use tracing::info;

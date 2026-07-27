@@ -23,9 +23,9 @@ pub struct InMemoryResourceManager {
 impl InMemoryResourceManager {
     pub fn new() -> Self {
         let mut tokens = HashMap::new();
-        tokens.insert("theme.accent", Color::rgba(0.0, 0.47, 0.84, 1.0));
-        tokens.insert("theme.text_primary", Color::rgba(1.0, 1.0, 1.0, 1.0));
-        tokens.insert("theme.background", Color::rgba(0.1, 0.1, 0.1, 0.8));
+        tokens.insert("theme.accent".to_string(), Color::rgba(0.0, 0.47, 0.84, 1.0));
+        tokens.insert("theme.text_primary".to_string(), Color::rgba(1.0, 1.0, 1.0, 1.0));
+        tokens.insert("theme.background".to_string(), Color::rgba(0.1, 0.1, 0.1, 0.8));
 
         Self {
             tokens,

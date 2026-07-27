@@ -2,7 +2,7 @@ use crate::resolver::{DynamicThemeStore, ThemeResolver};
 use crate::schema::ThemeSchema;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info};
+use tracing::info;
 
 /// File watcher and dynamic reloader for `theme.json` files.
 /// Enables real-time hot reloading without restarting the host daemon process.
