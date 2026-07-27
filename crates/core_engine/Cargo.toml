@@ -1,0 +1,35 @@
+[package]
+name = "core_engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+windows = { workspace = true }
+ipc_protocol = { path = "../ipc_protocol" }
+widget_parser = { path = "../widget_parser" }
+layout_engine = { path = "../layout_engine" }
+theme_engine = { path = "../theme_engine" }
+animation_engine = { path = "../animation_engine" }
+system_providers = { path = "../system_providers" }
+lua_runtime = { path = "../lua_runtime" }
+plugin_runtime = { path = "../plugin_runtime" }
+widget_sdk = { path = "../widget_sdk" }
+package_manager = { path = "../package_manager" }
+cloud_sync = { path = "../cloud_sync" }
+ai_engine = { path = "../ai_engine" }
+production_engine = { path = "../production_engine" }
+
+
+
+
+
+
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+async-trait = "0.1"
+

@@ -1,0 +1,87 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core_engine",
+    "crates/plugin_runtime",
+    "crates/lua_runtime",
+    "crates/ipc_protocol",
+    "crates/layout_engine",
+    "crates/theme_engine",
+    "crates/animation_engine",
+    "crates/system_providers",
+    "crates/widget_parser",
+    "crates/widget_sdk",
+    "crates/package_manager",
+    "crates/cloud_sync",
+    "crates/ai_engine",
+    "crates/production_engine",
+]
+
+
+
+
+
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Next-Gen Desktop Customization Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/custom-widget/desktop-platform"
+
+[workspace.dependencies]
+# Windows API Bindings
+windows = { version = "0.58.0", features = [
+    "Data_Xml_Dom",
+    "Documentation",
+    "Win32_Foundation",
+    "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_DirectComposition",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
+    "Win32_Security_AppContainer",
+    "Win32_System_Com",
+    "Win32_System_Diagnostics_PerformanceData",
+    "Win32_System_JobObjects",
+    "Win32_System_Memory",
+    "Win32_System_Pipes",
+    "Win32_System_Services",
+    "Win32_System_Threading",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Controls",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# Async & Networking
+tokio = { version = "1.38", features = ["full"] }
+futures = "0.3"
+
+# Layout Engine
+taffy = "0.4"
+
+# Embedded Lua Engine
+mlua = { version = "0.9", features = ["lua54", "vendored"] }
+
+# Serialization & Parsing
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+serde_json = "1.0"
+
+# Storage & Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1.0"
+anyhow = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

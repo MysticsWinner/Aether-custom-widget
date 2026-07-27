@@ -1,0 +1,12 @@
+[package]
+name = "layout_engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+taffy.workspace = true
+widget_parser = { path = "../widget_parser" }
+thiserror.workspace = true
+tracing.workspace = true

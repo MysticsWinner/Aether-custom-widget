@@ -1,0 +1,17 @@
+[package]
+name = "ai_engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+widget_parser = { path = "../widget_parser" }
+theme_engine = { path = "../theme_engine" }
+ipc_protocol = { path = "../ipc_protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }

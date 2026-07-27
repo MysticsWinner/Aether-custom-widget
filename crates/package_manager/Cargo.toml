@@ -1,0 +1,15 @@
+[package]
+name = "package_manager"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+widget_parser = { path = "../widget_parser" }
+plugin_runtime = { path = "../plugin_runtime" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true

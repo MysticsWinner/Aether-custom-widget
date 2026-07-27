@@ -1,0 +1,30 @@
+# Rust Target & Artifacts
+/target/
+**/*.rs.bk
+*.rmeta
+
+# IDE & OS Files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# C# & Visual Studio
+bin/
+obj/
+*.user
+*.suo
+.vs/
+packages/
+
+# Native CMake Builds
+build/
+CMakeFiles/
+CMakeCache.txt
+
+# Artifact Scratch & Logs
+*.log
+*.dump
+*.dmp

@@ -1,0 +1,14 @@
+[package]
+name = "widget_sdk"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ipc_protocol = { path = "../ipc_protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true

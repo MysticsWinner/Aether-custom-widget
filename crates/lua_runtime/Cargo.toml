@@ -1,0 +1,12 @@
+[package]
+name = "lua_runtime"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+mlua.workspace = true
+ipc_protocol = { path = "../ipc_protocol" }
+thiserror.workspace = true
+tracing.workspace = true

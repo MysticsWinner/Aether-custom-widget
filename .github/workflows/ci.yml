@@ -1,0 +1,35 @@
+name: Continuous Integration Architecture Verification
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate_workspace:
+    name: Build & Audit Rust Core Workspace
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy, rustfmt
+
+      - name: Cargo Format Check
+        run: cargo fmt --check
+
+      - name: Cargo Check Workspace
+        run: cargo check --workspace --target ${{ matrix.target }}
+
+      - name: Run Unit Tests
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        run: cargo test --workspace

@@ -1,0 +1,15 @@
+[package]
+name = "system_providers"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ipc_protocol = { path = "../ipc_protocol" }
+tracing.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+serde = { workspace = true }
+
