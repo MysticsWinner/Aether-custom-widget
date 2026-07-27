@@ -1,15 +1,23 @@
-# Next-Generation Windows Desktop Customization Platform — Complete Architectural & Engineering Specification
+# Aether Desktop Customization Platform — Architectural & Engineering Specification
 
 ## 1. Executive Summary & System Overview
 
-The **Next-Generation Windows Desktop Customization Platform** is an enterprise-class, hardware-accelerated, zero-trust desktop customization engine operating as a high-performance background daemon on Windows systems.
+The **Aether Desktop Customization Platform** is an enterprise-class, hardware-accelerated, zero-trust desktop customization engine operating as a high-performance background daemon on Windows systems.
+
+### Aether Product Ecosystem
+- **Aether Runtime**: Primary background service daemon managing subsystem lifecycles and event dispatching.
+- **Aether Renderer**: Hardware-accelerated DirectComposition graphics engine rendering directly onto Windows DWM compositor surfaces (`WorkerW`).
+- **Aether SDK**: Multi-language widget SDK supporting **Rust**, **C# .NET 8**, and **TypeScript**.
+- **Aether CLI**: Package manager CLI (`install weather-widget`, `install spotify-widget`, `install taskbar-plus`) backed by Ed25519 cryptographic signature verification.
+- **Aether Studio**: WinUI 3 desktop management dashboard.
+- **Aether Marketplace**: Security-verified widget package registry ecosystem.
 
 ### System Metrics & Capabilities
 - **Resource Footprint**: Maintains `< 25 MB` total physical working set RAM and `< 0.1%` idle CPU usage.
-- **Hardware-Accelerated Rendering**: Composes visual element trees directly onto Windows DWM compositor surfaces (`WorkerW`) at up to 144Hz+ refresh rates via Microsoft DirectComposition.
+- **Hardware-Accelerated Rendering**: Composes visual element trees directly onto Windows DWM compositor surfaces (`WorkerW`) at up to 144Hz+ refresh rates via Microsoft DirectComposition (**Aether Renderer**).
 - **Fault Isolation**: Enforces out-of-process `AppContainer` sandboxing with `JobObject` resource limits, ensuring 3rd-party plugin panics or crashes do not impact host operations.
-- **Multi-Language Developer Ecosystem**: Provides native Widget SDK support for **Rust**, **C# .NET 8**, and **TypeScript**.
-- **Marketplace & Package Manager**: Features an npm-style CLI package manager (`install weather-widget`, `install spotify-widget`, `install taskbar-plus`) backed by Ed25519 cryptographic signature verification.
+- **Multi-Language Developer Ecosystem**: Provides native **Aether SDK** support for **Rust**, **C# .NET 8**, and **TypeScript**.
+- **Marketplace & Package Manager**: Features an npm-style **Aether CLI** (`install weather-widget`, `install spotify-widget`, `install taskbar-plus`) backed by Ed25519 cryptographic signature verification.
 - **Encrypted Cloud Synchronization**: Executes multi-device state synchronization via client-side AES-256-GCM encryption, Conflict-Free Replicated Data Types (CRDTs), and Lamport Vector Clocks.
 - **AI Intelligence Subsystem**: Performs voice intent parsing (`VoiceIntentParser`), layout synthesis, dynamic theme generation, and trigger-condition-action workflow rule automation.
 
@@ -21,7 +29,7 @@ The **Next-Generation Windows Desktop Customization Platform** is an enterprise-
 +-------------------------------------------------------------------------------------------------------------+
 |                                           TECHNOLOGY STACK SUMMARY                                          |
 +---------------------+---------------------+---------------------+---------------------+---------------------+
-| 1. Core Daemon      | 2. GPU Rendering    | 3. Security Sandbox | 4. Scripting & SDKs | 5. Management GUI   |
+| 1. Aether Runtime   | 2. Aether Renderer  | 3. Security Sandbox | 4. Scripting & SDKs | 5. Aether Studio    |
 | Rust 2021 Edition   | DirectComposition   | Windows AppContainer| Embedded Lua 5.4    | WinUI 3 (C# .NET 8) |
 | Tokio Async Loop    | Direct2D 1.1 / D3D11| Low Integrity SIDs  | Rust Native SDK     | Fluent Design       |
 | windows-rs Bindings | DirectWrite Vector  | JobObject Caps      | TypeScript @types   | Win32 Named Pipes   |
@@ -30,12 +38,12 @@ The **Next-Generation Windows Desktop Customization Platform** is an enterprise-
 
 ### Subsystem Technology Breakdown
 
-#### 1. Core Runtime Daemon (`Rust`, `tokio`, `windows-rs`)
+#### 1. Aether Runtime Daemon (`Rust`, `tokio`, `windows-rs`)
 - **What it is**: The core background service daemon.
 - **What it uses**: Rust 2021 Edition, `windows-rs` zero-cost FFI bindings, and `tokio` multi-threaded async event loop.
 - **What it does**: Manages subsystem lifecycles, schedules asynchronous tasks, routes internal bus events, and maintains daemon state without garbage collection overhead.
 
-#### 2. Rendering Engine (`DirectComposition`, `Direct2D 1.1`, `DirectWrite`)
+#### 2. Aether Renderer (`DirectComposition`, `Direct2D 1.1`, `DirectWrite`)
 - **What it is**: The GPU-accelerated 2D graphics rendering engine.
 - **What it uses**: Microsoft DirectComposition, Direct2D 1.1, DirectWrite, Direct3D 11, and `DirtyRegionTracker`.
 - **What it does**: Bypasses legacy GDI/GDI+ software pipelines, renders visual elements directly onto `WorkerW` DWM compositor surfaces, and executes dirty rectangle culling (`PushAxisAlignedClip`) to redraw only modified pixel regions.
@@ -50,7 +58,7 @@ The **Next-Generation Windows Desktop Customization Platform** is an enterprise-
 - **What it uses**: `taffy` Flexbox solver.
 - **What it does**: Calculates responsive element positions, margins, padding, alignment, and flex-direction rules for desktop widgets.
 
-#### 5. Management Dashboard (`WinUI 3`, `C# .NET 8`)
+#### 5. Aether Studio Dashboard (`WinUI 3`, `C# .NET 8`)
 - **What it is**: The graphical desktop management user interface.
 - **What it uses**: WinUI 3, C# .NET 8, Windows 11 Fluent Design components, and Win32 Named Pipes IPC.
 - **What it does**: Handles widget configuration, layout customization, marketplace browsing, and theme selection in a standalone process decoupled from the host daemon.
@@ -61,19 +69,19 @@ The **Next-Generation Windows Desktop Customization Platform** is an enterprise-
 
 ```mermaid
 graph TB
-    subgraph GUI_Layer ["WinUI 3 Management Dashboard (C# / WinUI 3)"]
+    subgraph GUI_Layer ["Aether Studio Dashboard (C# / WinUI 3)"]
         Dashboard["Dashboard & Settings UI"]
         MarketplaceUI["Marketplace GUI"]
     end
 
-    subgraph Service_Layer ["Autonomous Headless Core Daemon Service (Rust / Tokio)"]
+    subgraph Service_Layer ["Aether Runtime Daemon Service (Rust / Tokio)"]
         CoreRuntime["Core Runtime Event Loop"]
         LayoutEngine["Taffy Flexbox Solver"]
-        RenderEngine["DirectComposition / Direct2D Engine"]
+        RenderEngine["Aether Renderer (DirectComposition Engine)"]
         AnimationEngine["Spring Physics Engine"]
         ThemeEngine["Theme Token Resolver"]
         SystemProviders["Telemetry Collector ('Collect Once')"]
-        MarketplaceManager["Package Manager & Ed25519 Verifier"]
+        MarketplaceManager["Aether CLI Manager & Ed25519 Verifier"]
         CloudSyncEngine["CRDT Encrypted Cloud Sync Engine"]
         AiEngine["AI Intelligence & Workflow Engine"]
         ProductionEngine["Production Auditor & Profiler"]
@@ -116,12 +124,12 @@ graph TB
 
 ## 4. Platform Modules & Subsystem Architecture
 
-### 1. `core_engine` (Core Runtime & Event Bus)
+### 1. `core_engine` (Aether Runtime Daemon)
 - **What it is**: The primary autonomous background service daemon for the desktop platform.
 - **What it uses**: Rust 2021, `windows-rs` Win32 bindings, `tokio` multi-threaded event loop, and custom async `EventBus`.
 - **What it does**: Controls subsystem lifecycles, dispatches asynchronous system events, coordinates inter-crate execution, and manages host daemon initialization and shutdown.
 
-### 2. `rendering_engine` (DirectComposition Graphics Pipeline)
+### 2. `rendering_engine` (Aether Renderer Graphics Pipeline)
 - **What it is**: The hardware-accelerated 2D visual tree compositing pipeline.
 - **What it uses**: DirectComposition, Direct2D 1.1, DirectWrite vector rendering, Direct3D 11, and `DirtyRegionTracker`.
 - **What it does**: Renders subpixel typography and transparent widgets onto Windows DWM compositor surfaces (`WorkerW`) at high refresh rates (60–144Hz+) and clips redraw regions to achieve 92.4% redraw efficiency.
@@ -131,7 +139,7 @@ graph TB
 - **What it uses**: Windows Performance Data Helper (PDH), NVML hardware query APIs, Win32 System APIs, and `SharedTelemetryCache`.
 - **What it does**: Executes hardware queries on a unified sampling tick ("Collect Once, Publish Everywhere") and writes metrics to shared memory ring buffers for zero-polling widget consumption.
 
-### 4. `widget_sdk` & Language Bindings (Multi-Language Widget SDK)
+### 4. `widget_sdk` & Language Bindings (Aether SDK)
 - **What it is**: The standardized software development kit for custom desktop widgets.
 - **What it uses**: Rust Native SDK, C# .NET 8 assembly bindings (`CustomWidget.SDK`), TypeScript `@types` packages (`custom-widget-sdk`), and FFI bindings.
 - **What it does**: Exposes 6 core API pillars (Lifecycle, Rendering, Settings, Events, Animations, Resources) enabling developers to build widgets across Rust, C#, and TypeScript.
@@ -156,7 +164,7 @@ graph TB
 - **What it uses**: Spring physics parameters (stiffness, mass, damping) and cubic bezier easing curves.
 - **What it does**: Drives dynamic state transitions, smooth widget positioning changes, and hover/focus visual feedback.
 
-### 9. `package_manager` (Marketplace & CLI Tooling)
+### 9. `package_manager` (Aether CLI & Marketplace Security)
 - **What it is**: Command-line package manager and security verification engine.
 - **What it uses**: CLI interface, `.cwp` package archives, and Ed25519 digital signature verifiers (`Ed25519Verifier`).
 - **What it does**: Downloads, verifies, installs, updates, and removes widget packages while enforcing cryptographic package authenticity.
@@ -181,7 +189,7 @@ graph TB
 - **What it uses**: Win32 Named Pipes, Shared Memory Ring Buffers, and binary serialization.
 - **What it does**: Streams high-frequency telemetry metrics via zero-copy shared memory and transmits IPC control frames between the core service, dashboard, and sandboxed plugins.
 
-### 14. `src_gui` (WinUI 3 Management Dashboard)
+### 14. `src_gui` (Aether Studio Management Dashboard)
 - **What it is**: The primary desktop user interface for platform administration.
 - **What it uses**: C# .NET 8, WinUI 3 controls, Windows 11 Fluent UI, and Named Pipe IPC clients.
 - **What it does**: Provides graphical widget controls, visual settings configuration, theme management, and an interactive marketplace browser.
