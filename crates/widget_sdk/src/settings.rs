@@ -51,8 +51,12 @@ mod tests {
     #[test]
     fn test_settings_store() {
         let mut settings = InMemorySettingsStore::new();
-        settings.set("theme.mode", SettingValue::String("dark".to_string())).unwrap();
-        settings.set("widget.opacity", SettingValue::Float(0.95)).unwrap();
+        settings
+            .set("theme.mode", SettingValue::String("dark".to_string()))
+            .unwrap();
+        settings
+            .set("widget.opacity", SettingValue::Float(0.95))
+            .unwrap();
 
         assert_eq!(
             settings.get("theme.mode"),
