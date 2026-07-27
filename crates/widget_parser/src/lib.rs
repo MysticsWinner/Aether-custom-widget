@@ -104,8 +104,12 @@ mod tests {
             [layout]
             width = 100.0
             height = 100.0
+            flex_direction = "column"
+            padding = 10.0
 
-            elements = []
+            [[elements]]
+            id = "elem1"
+            element_type = "text"
         "#;
 
         let err = WidgetManifest::parse_toml(toml_str).unwrap_err();
