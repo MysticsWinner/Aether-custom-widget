@@ -30,7 +30,7 @@ jobs:
       - name: Build Workspace Release Binaries
         run: cargo build --workspace --release --target ${{ matrix.target }}
 
-      - name: Package Release Binaries
+      - name: Package Release Binaries & Installer
         shell: pwsh
         run: |
           $TargetName = "${{ matrix.target }}"
@@ -44,6 +44,9 @@ jobs:
           if (Test-Path "target/$TargetName/release/*.dll") {
             Copy-Item -Path "target/$TargetName/release/*.dll" -Destination $OutDir
           }
+          if (Test-Path "target/$TargetName/release/AetherSetup.exe") {
+            Copy-Item -Path "target/$TargetName/release/AetherSetup.exe" -Destination "AetherSetup-$TargetName.exe"
+          }
           Compress-Archive -Path "$OutDir\*" -DestinationPath "$OutDir.zip" -Force
 
       - name: Upload Release Assets
@@ -52,5 +55,6 @@ jobs:
         with:
           files: |
             aether-v1.0.0-${{ matrix.target }}.zip
+            AetherSetup-${{ matrix.target }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

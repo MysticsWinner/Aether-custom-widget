@@ -184,12 +184,17 @@ graph TB
 - **What it uses**: 13-metric continuous profiler, `SecurityAuditor`, stress testing harness, and minidump telemetry (`CrashAnalytics`).
 - **What it does**: Audits resource usage against NFR targets (<25 MB RAM, <0.1% CPU), conducts high-load stress testing, and collects diagnostic minidumps.
 
-### 13. `ipc_protocol` (Dual-Channel IPC Transport)
+### 13. `aether_installer` (`AetherSetup.exe` Windows Setup & Uninstaller Wizard)
+- **What it is**: Windows Setup Installer and Uninstaller application for deployment and lifecycle management.
+- **What it uses**: Windows Registry APIs (`HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall`), `%LocalAppData%\Aether\bin` installation target directories, and CLI flags (`--install`, `--uninstall`, `--status`).
+- **What it does**: Installs Aether Platform binaries, registers Windows Control Panel Add/Remove Programs registry entries, creates Start Menu shortcuts, and cleanly uninstalls all platform files upon request.
+
+### 14. `ipc_protocol` (Dual-Channel IPC Transport)
 - **What it is**: High-throughput inter-process communications subsystem.
 - **What it uses**: Win32 Named Pipes, Shared Memory Ring Buffers, and binary serialization.
 - **What it does**: Streams high-frequency telemetry metrics via zero-copy shared memory and transmits IPC control frames between the core service, dashboard, and sandboxed plugins.
 
-### 14. `src_gui` (Aether Studio Management Dashboard)
+### 15. `src_gui` (Aether Studio Management Dashboard)
 - **What it is**: The primary desktop user interface for platform administration.
 - **What it uses**: C# .NET 8, WinUI 3 controls, Windows 11 Fluent UI, and Named Pipe IPC clients.
 - **What it does**: Provides graphical widget controls, visual settings configuration, theme management, and an interactive marketplace browser.

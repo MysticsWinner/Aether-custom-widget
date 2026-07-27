@@ -15,6 +15,7 @@ members = [
     "crates/cloud_sync",
     "crates/ai_engine",
     "crates/production_engine",
+    "crates/installer",
 ]
 
 [workspace.package]
