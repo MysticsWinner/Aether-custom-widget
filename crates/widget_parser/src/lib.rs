@@ -47,7 +47,9 @@ impl WidgetManifest {
     pub fn parse_toml(content: &str) -> Result<Self, ParserError> {
         let manifest: WidgetManifest = toml::from_str(content)?;
         if manifest.metadata.id.is_empty() {
-            return Err(ParserError::InvalidSchema("Widget ID cannot be empty".into()));
+            return Err(ParserError::InvalidSchema(
+                "Widget ID cannot be empty".into(),
+            ));
         }
         Ok(manifest)
     }
@@ -83,7 +85,10 @@ mod tests {
         let manifest = WidgetManifest::parse_toml(toml_str).unwrap();
         assert_eq!(manifest.metadata.id, "widget.sys.cpu");
         assert_eq!(manifest.elements.len(), 1);
-        assert_eq!(manifest.elements[0].binding.as_deref(), Some("sys.cpu_usage"));
+        assert_eq!(
+            manifest.elements[0].binding.as_deref(),
+            Some("sys.cpu_usage")
+        );
     }
 
     #[test]

@@ -21,19 +21,34 @@ pub struct ThemeGenerator;
 
 impl ThemeGenerator {
     pub fn generate_theme(prompt: &str) -> anyhow::Result<ThemeSchema> {
-        info!("AI Theme Generator synthesizing theme for prompt: '{}'", prompt);
+        info!(
+            "AI Theme Generator synthesizing theme for prompt: '{}'",
+            prompt
+        );
 
         let mut schema = ThemeSchema::default();
         schema.metadata.name = format!("AI Generated Theme ({})", prompt);
 
         if prompt.contains("cyberpunk") || prompt.contains("neon") {
-            schema.colors.insert("theme.accent".to_string(), "#FF007F".to_string());
-            schema.colors.insert("theme.background".to_string(), "#0D0221E6".to_string());
-            schema.colors.insert("theme.text_primary".to_string(), "#00F5D4".to_string());
+            schema
+                .colors
+                .insert("theme.accent".to_string(), "#FF007F".to_string());
+            schema
+                .colors
+                .insert("theme.background".to_string(), "#0D0221E6".to_string());
+            schema
+                .colors
+                .insert("theme.text_primary".to_string(), "#00F5D4".to_string());
         } else if prompt.contains("forest") || prompt.contains("green") {
-            schema.colors.insert("theme.accent".to_string(), "#2E7D32".to_string());
-            schema.colors.insert("theme.background".to_string(), "#1B2E1BE6".to_string());
-            schema.colors.insert("theme.text_primary".to_string(), "#A5D6A7".to_string());
+            schema
+                .colors
+                .insert("theme.accent".to_string(), "#2E7D32".to_string());
+            schema
+                .colors
+                .insert("theme.background".to_string(), "#1B2E1BE6".to_string());
+            schema
+                .colors
+                .insert("theme.text_primary".to_string(), "#A5D6A7".to_string());
         }
 
         // Validate JSON serialization
@@ -48,7 +63,10 @@ pub struct WidgetGenerator;
 
 impl WidgetGenerator {
     pub fn generate_widget(prompt: &str) -> anyhow::Result<WidgetManifest> {
-        info!("AI Widget Generator synthesizing widget manifest for prompt: '{}'", prompt);
+        info!(
+            "AI Widget Generator synthesizing widget manifest for prompt: '{}'",
+            prompt
+        );
 
         let manifest_toml = format!(
             r#"
