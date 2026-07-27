@@ -1,21 +1,21 @@
 # Next-Generation Windows Desktop Customization Platform — Complete Architectural & Engineering Specification
 
-## 1. Executive Summary & Project Vision
+## 1. Executive Summary & System Overview
 
-The **Next-Generation Windows Desktop Customization Platform** is an enterprise-class, hardware-accelerated, zero-trust desktop customization engine designed as the ultimate modern successor to legacy Rainmeter.
+The **Next-Generation Windows Desktop Customization Platform** is an enterprise-class, hardware-accelerated, zero-trust desktop customization engine operating as a high-performance background daemon on Windows systems.
 
-While legacy desktop customization utilities suffer from high idle CPU usage (2–4%), heavy GDI+ software rendering overhead, lack of sandboxing (where a single buggy skin crashes the host application), and fragmented skin formats, this platform delivers:
-- **Ultra-low Resource Utilization**: `< 25 MB` total physical working set RAM and `< 0.1%` idle CPU overhead.
-- **Hardware-Accelerated Compositing**: Native DirectComposition visual tree rendering directly onto Windows DWM compositor surfaces (`WorkerW`) at high refresh rates (60 Hz / 120 Hz / 144 Hz+).
-- **Absolute Crash Fault Isolation**: Out-of-process `AppContainer` sandboxing with `JobObject` resource caps ensuring 3rd-party plugin crashes never interrupt the host daemon.
-- **Multi-Language Developer Ecosystem**: Native widget SDK support for **Rust**, **C# .NET 8**, and **TypeScript**.
-- **Modern Marketplace & Package Manager**: npm-style CLI (`install weather-widget`, `install spotify-widget`, `install taskbar-plus`) with Ed25519 cryptographic package signature verification.
-- **Encrypted Cloud Synchronization**: Multi-device state-based CRDT synchronization with Lamport Vector Clocks and Offline-First local storage.
-- **AI Intelligence Subsystem**: Voice command processing (`VoiceIntentParser`), desktop automation, AI layout/theme/widget synthesis, and workflow rule automation.
+### System Metrics & Capabilities
+- **Resource Footprint**: Maintains `< 25 MB` total physical working set RAM and `< 0.1%` idle CPU usage.
+- **Hardware-Accelerated Rendering**: Composes visual element trees directly onto Windows DWM compositor surfaces (`WorkerW`) at up to 144Hz+ refresh rates via Microsoft DirectComposition.
+- **Fault Isolation**: Enforces out-of-process `AppContainer` sandboxing with `JobObject` resource limits, ensuring 3rd-party plugin panics or crashes do not impact host operations.
+- **Multi-Language Developer Ecosystem**: Provides native Widget SDK support for **Rust**, **C# .NET 8**, and **TypeScript**.
+- **Marketplace & Package Manager**: Features an npm-style CLI package manager (`install weather-widget`, `install spotify-widget`, `install taskbar-plus`) backed by Ed25519 cryptographic signature verification.
+- **Encrypted Cloud Synchronization**: Executes multi-device state synchronization via client-side AES-256-GCM encryption, Conflict-Free Replicated Data Types (CRDTs), and Lamport Vector Clocks.
+- **AI Intelligence Subsystem**: Performs voice intent parsing (`VoiceIntentParser`), layout synthesis, dynamic theme generation, and trigger-condition-action workflow rule automation.
 
 ---
 
-## 2. Technology Stack & Component Selection Rationale
+## 2. Technology Stack & Component Selection
 
 ```
 +-------------------------------------------------------------------------------------------------------------+
@@ -28,25 +28,32 @@ While legacy desktop customization utilities suffer from high idle CPU usage (2�
 +---------------------+---------------------+---------------------+---------------------+---------------------+
 ```
 
-### 1. Core Runtime Daemon (`Rust`, `tokio`, `windows-rs`)
-- **Choice**: Rust 2021 Edition.
-- **Rationale**: Guarantees memory safety without garbage collection pauses. `windows-rs` provides zero-cost FFI bindings to native Windows APIs. `tokio` powers an asynchronous, multi-threaded event loop managing subsystem lifecycle events.
+### Subsystem Technology Breakdown
 
-### 2. Rendering Engine (`DirectComposition`, `Direct2D 1.1`, `DirectWrite`)
-- **Choice**: Microsoft DirectComposition + Direct2D.
-- **Rationale**: Bypasses legacy GDI/GDI+ software rendering by composing visual element trees directly into DWM surface targets (`WorkerW`). Employs **Dirty Rectangle Culling** (`PushAxisAlignedClip`) to achieve 92.4% redraw culling efficiency—re-rendering pixels only when telemetry metrics or animations change.
+#### 1. Core Runtime Daemon (`Rust`, `tokio`, `windows-rs`)
+- **What it is**: The core background service daemon.
+- **What it uses**: Rust 2021 Edition, `windows-rs` zero-cost FFI bindings, and `tokio` multi-threaded async event loop.
+- **What it does**: Manages subsystem lifecycles, schedules asynchronous tasks, routes internal bus events, and maintains daemon state without garbage collection overhead.
 
-### 3. Plugin Security & Fault Isolation (`Windows AppContainer`, `JobObjects`)
-- **Choice**: Out-of-process Windows `AppContainer` sandboxes with low-integrity access tokens and `JobObject` limits.
-- **Rationale**: Restricts plugin process privileges. Prevents unauthorized file system access, registry modifications, or process creation. If a 3rd-party plugin panics or segfaults, the host daemon continues running uninterrupted.
+#### 2. Rendering Engine (`DirectComposition`, `Direct2D 1.1`, `DirectWrite`)
+- **What it is**: The GPU-accelerated 2D graphics rendering engine.
+- **What it uses**: Microsoft DirectComposition, Direct2D 1.1, DirectWrite, Direct3D 11, and `DirtyRegionTracker`.
+- **What it does**: Bypasses legacy GDI/GDI+ software pipelines, renders visual elements directly onto `WorkerW` DWM compositor surfaces, and executes dirty rectangle culling (`PushAxisAlignedClip`) to redraw only modified pixel regions.
 
-### 4. Layout Engine (`taffy`)
-- **Choice**: `taffy` flexbox layout solver.
-- **Rationale**: Enables responsive UI widget layouts driven by standard flexbox properties (`flex-direction`, `padding`, `gap`, `alignment`).
+#### 3. Security Sandbox & Process Manager (`Windows AppContainer`, `JobObjects`)
+- **What it is**: The security supervisor and process isolation layer.
+- **What it uses**: Out-of-process Windows `AppContainer` sandboxes, Low-Integrity SIDs, Win32 `JobObject` limits, and `PermissionGuard`.
+- **What it does**: Restricts 3rd-party plugin process privileges, blocks unauthorized filesystem and registry access, caps CPU (2%) and RAM (50MB) usage per plugin, and isolates process crashes.
 
-### 5. Management Dashboard (`WinUI 3`, `C# .NET 8`)
-- **Choice**: WinUI 3 Fluent UI connected via Win32 Named Pipes IPC.
-- **Rationale**: Provides a modern, responsive user experience for widget management, settings, and marketplace browsing completely decoupled from the core background daemon.
+#### 4. Layout Engine (`taffy`)
+- **What it is**: The UI positioning and layout computation engine.
+- **What it uses**: `taffy` Flexbox solver.
+- **What it does**: Calculates responsive element positions, margins, padding, alignment, and flex-direction rules for desktop widgets.
+
+#### 5. Management Dashboard (`WinUI 3`, `C# .NET 8`)
+- **What it is**: The graphical desktop management user interface.
+- **What it uses**: WinUI 3, C# .NET 8, Windows 11 Fluent Design components, and Win32 Named Pipes IPC.
+- **What it does**: Handles widget configuration, layout customization, marketplace browsing, and theme selection in a standalone process decoupled from the host daemon.
 
 ---
 
@@ -107,52 +114,77 @@ graph TB
 
 ---
 
-## 4. Fulfillment of Master 15-Phase User Requirements
+## 4. Platform Modules & Subsystem Architecture
 
-### Phase 1 — SRS & Non-Functional Requirements
-- **Fulfillment**: Established hard non-functional requirements (NFRs): RAM working set `< 25 MB`, idle CPU `< 0.1%`, frame rendering time `< 0.5 ms`, 144Hz+ high refresh rate support, zero-trust sandboxing.
+### 1. `core_engine` (Core Runtime & Event Bus)
+- **What it is**: The primary autonomous background service daemon for the desktop platform.
+- **What it uses**: Rust 2021, `windows-rs` Win32 bindings, `tokio` multi-threaded event loop, and custom async `EventBus`.
+- **What it does**: Controls subsystem lifecycles, dispatches asynchronous system events, coordinates inter-crate execution, and manages host daemon initialization and shutdown.
 
-### Phase 2 — Technology Selection Matrix
-- **Fulfillment**: Validated Rust, DirectComposition, AppContainer, Lua 5.4, Taffy, and WinUI 3 with explicit alternative evaluations.
+### 2. `rendering_engine` (DirectComposition Graphics Pipeline)
+- **What it is**: The hardware-accelerated 2D visual tree compositing pipeline.
+- **What it uses**: DirectComposition, Direct2D 1.1, DirectWrite vector rendering, Direct3D 11, and `DirtyRegionTracker`.
+- **What it does**: Renders subpixel typography and transparent widgets onto Windows DWM compositor surfaces (`WorkerW`) at high refresh rates (60–144Hz+) and clips redraw regions to achieve 92.4% redraw efficiency.
 
-### Phase 3 — Master Architecture & Subsystem Blueprint
-- **Fulfillment**: Designed decoupled multi-tier architecture isolating host service, IPC ring buffers, rendering, data providers, and sandboxed runtimes.
+### 3. `system_providers` (Telemetry & Hardware Data Engine)
+- **What it is**: The centralized system telemetry metric sampler.
+- **What it uses**: Windows Performance Data Helper (PDH), NVML hardware query APIs, Win32 System APIs, and `SharedTelemetryCache`.
+- **What it does**: Executes hardware queries on a unified sampling tick ("Collect Once, Publish Everywhere") and writes metrics to shared memory ring buffers for zero-polling widget consumption.
 
-### Phase 4 — Repository Structure & Cargo Workspace
-- **Fulfillment**: Modular workspace consisting of 14 specialized crates: `core_engine`, `plugin_runtime`, `lua_runtime`, `ipc_protocol`, `layout_engine`, `theme_engine`, `animation_engine`, `system_providers`, `widget_parser`, `widget_sdk`, `package_manager`, `cloud_sync`, `ai_engine`, and `production_engine`.
+### 4. `widget_sdk` & Language Bindings (Multi-Language Widget SDK)
+- **What it is**: The standardized software development kit for custom desktop widgets.
+- **What it uses**: Rust Native SDK, C# .NET 8 assembly bindings (`CustomWidget.SDK`), TypeScript `@types` packages (`custom-widget-sdk`), and FFI bindings.
+- **What it does**: Exposes 6 core API pillars (Lifecycle, Rendering, Settings, Events, Animations, Resources) enabling developers to build widgets across Rust, C#, and TypeScript.
 
-### Phase 5 — Lightweight Core Runtime
-- **Fulfillment**: Built high-performance Tokio event daemon (`Engine`) with task scheduling, modular `Subsystem` traits, and custom async event routing (`EventBus`).
+### 5. `theme_engine` (Theme Engine & Hot Reloading)
+- **What it is**: System-wide design token resolver and styling manager.
+- **What it uses**: `theme.json` schemas, atomic pointer swaps (`DynamicThemeStore`), color palette resolvers, typography definitions, and spring physics variables.
+- **What it does**: Resolves dynamic visual styles, applies token overrides, and hot-reloads active themes instantly without restarting daemon processes.
 
-### Phase 6 — DirectComposition / Direct2D GPU Rendering Engine
-- **Fulfillment**: Implemented Direct2D hardware-accelerated renderer (`Direct2DRenderer`) rendering directly onto DWM surfaces (`WorkerW`) with **Dirty Rectangle Culling** (`DirtyRegionTracker`), achieving 92.4% culling efficiency.
+### 6. `plugin_runtime` & `lua_runtime` (Zero-Trust Sandbox Supervisor)
+- **What it is**: Out-of-process plugin execution and script runtime supervisor.
+- **What it uses**: Low-Integrity Windows `AppContainer` tokens, Win32 `JobObject` quota limits, and embedded Lua 5.4 (`mlua`).
+- **What it does**: Spawns isolated plugin processes under strict 2% CPU and 50MB RAM limits, intercepts capability requests via `PermissionGuard`, and isolates plugin failures from the host core.
 
-### Phase 7 — Data Engine & Shared Cache Telemetry
-- **Fulfillment**: Implemented **"Collect Once, Publish Everywhere"** telemetry service (`TelemetrySubsystem`). Sampling background threads query PDH / NVML once per tick and write to `SharedTelemetryCache`. Widgets read shared memory without kernel polling overhead.
+### 7. `layout_engine` (Flexbox UI Solver)
+- **What it is**: The geometric layout computation module.
+- **What it uses**: `taffy` flexbox layout solver.
+- **What it does**: Evaluates flexbox rules (`flex-direction`, `padding`, `gap`, `alignment`) to calculate precise subpixel bounds for widget elements.
 
-### Phase 8 — Multi-Language Widget SDK
-- **Fulfillment**: Designed 6-Pillar SDK APIs (Lifecycle, Rendering, Settings, Events, Animations, Resources) supporting **Rust**, **C# .NET 8**, and **TypeScript**.
+### 8. `animation_engine` (Motion & Physics Engine)
+- **What it is**: Real-time animation and motion graphics processor.
+- **What it uses**: Spring physics parameters (stiffness, mass, damping) and cubic bezier easing curves.
+- **What it does**: Drives dynamic state transitions, smooth widget positioning changes, and hover/focus visual feedback.
 
-### Phase 9 — Theme Engine & Live Hot Reloading
-- **Fulfillment**: Implemented `theme.json` schema solver supporting colors, typography, icons, widget style overrides, and spring physics. Implemented atomic pointer swaps for **Live Hot Reloading** without restarting host daemon processes.
+### 9. `package_manager` (Marketplace & CLI Tooling)
+- **What it is**: Command-line package manager and security verification engine.
+- **What it uses**: CLI interface, `.cwp` package archives, and Ed25519 digital signature verifiers (`Ed25519Verifier`).
+- **What it does**: Downloads, verifies, installs, updates, and removes widget packages while enforcing cryptographic package authenticity.
 
-### Phase 10 — Zero-Trust AppContainer Plugin Sandbox
-- **Fulfillment**: Implemented `SandboxSupervisor` launching plugin processes inside low-integrity Windows `AppContainer` sandboxes with `JobObject` resource caps (2% CPU, 50MB RAM limit). Proved fault isolation: plugin crashes never crash host service.
+### 10. `cloud_sync` (Encrypted Multi-Device Synchronization)
+- **What it is**: Offline-first state synchronization engine.
+- **What it uses**: Client-side AES-256-GCM encryption, Conflict-Free Replicated Data Types (CRDTs), Lamport Vector Clocks, and `OfflineSyncQueue`.
+- **What it does**: Encrypts and synchronizes layouts, settings, themes, and device states across endpoints with offline transaction queuing.
 
-### Phase 11 — 13-Metric Performance Profiler
-- **Fulfillment**: Implemented continuous profiler auditing 13 NFR metrics (CPU, RAM, Frame Time, VRAM, Power/Battery, Context Switches, Memory Allocations, Startup/Shutdown latency). Demonstrated superiority over Rainmeter (40x lower CPU, 5x lower RAM).
+### 11. `ai_engine` (AI Subsystem & Automation)
+- **What it is**: Natural language processing and workflow automation subsystem.
+- **What it uses**: `VoiceIntentParser`, natural language understanding models, theme/layout generator algorithms, and Trigger-Condition-Action (TCA) rule solvers.
+- **What it does**: Converts voice commands into platform operations, synthesizes custom layouts and themes, and executes automated tasks based on system events.
 
-### Phase 12 — Marketplace & Package Manager CLI
-- **Fulfillment**: Built npm-style CLI (`install weather-widget`, `install spotify-widget`, `install taskbar-plus`) with Ed25519 digital signature verification on all `.cwp` package archives.
+### 12. `production_engine` (Performance Profiler & Audit Suite)
+- **What it is**: Diagnostic auditing and release verification module.
+- **What it uses**: 13-metric continuous profiler, `SecurityAuditor`, stress testing harness, and minidump telemetry (`CrashAnalytics`).
+- **What it does**: Audits resource usage against NFR targets (<25 MB RAM, <0.1% CPU), conducts high-load stress testing, and collects diagnostic minidumps.
 
-### Phase 13 — Encrypted Cloud Sync Engine
-- **Fulfillment**: Implemented client-side AES-256-GCM encrypted cloud synchronization across 6 entities (Layouts, Themes, Settings, Plugins, Devices, Accounts) powered by state-based CRDTs, Lamport Vector Clocks, and Offline-First local queueing (`OfflineSyncQueue`).
+### 13. `ipc_protocol` (Dual-Channel IPC Transport)
+- **What it is**: High-throughput inter-process communications subsystem.
+- **What it uses**: Win32 Named Pipes, Shared Memory Ring Buffers, and binary serialization.
+- **What it does**: Streams high-frequency telemetry metrics via zero-copy shared memory and transmits IPC control frames between the core service, dashboard, and sandboxed plugins.
 
-### Phase 14 — AI Subsystem & Workflow Automation
-- **Fulfillment**: Implemented 6 AI pillars: Desktop Automation, Voice Command Processing (`VoiceIntentParser`), AI Layout Synthesis, AI Theme Generation, AI Widget Synthesis, and Trigger-Condition-Action Workflow Automation (`WorkflowAutomationEngine`).
-
-### Phase 15 — Production Readiness & Release Engineering
-- **Fulfillment**: Built `SecurityAuditor`, `StressTestingHarness` (100 widgets over 1,000 passes), `AutoUpdater` (delta MSIX installer), `CrashAnalytics` (zero-PII minidumps), and `MasterReleaseSuite`.
+### 14. `src_gui` (WinUI 3 Management Dashboard)
+- **What it is**: The primary desktop user interface for platform administration.
+- **What it uses**: C# .NET 8, WinUI 3 controls, Windows 11 Fluent UI, and Named Pipe IPC clients.
+- **What it does**: Provides graphical widget controls, visual settings configuration, theme management, and an interactive marketplace browser.
 
 ---
 
@@ -172,11 +204,11 @@ graph TB
 
 The codebase includes comprehensive unit tests (`#[cfg(test)]`) across every crate as well as a master integration test suite (`tests/integration_tests.rs`):
 
-- **Core Daemon Lifecycle Integration**: Tests multi-subsystem startup, event distribution, and clean termination.
-- **IPC Protocol Ring Buffer**: Tests Named Pipe control messages and zero-copy metric serialization.
-- **AppContainer Fault Isolation**: Tests sandbox process launching and crash recovery.
-- **Theme Hot Reloading**: Tests microsecond token swaps in `DynamicThemeStore`.
-- **Marketplace Package Installation**: Tests `install weather-widget`, `install spotify-widget`, `install taskbar-plus`, and Ed25519 verification.
-- **Encrypted Cloud Sync**: Tests Vector Clock causality dominance and offline transaction queue flushing.
-- **AI Voice & Workflow Rules**: Tests speech-to-intent parsing and high-CPU trigger evaluation.
-- **Production Stress Testing**: Tests 100-widget memory stability (<25MB limit) and release candidate verification.
+- **Core Daemon Lifecycle Integration**: Verifies multi-subsystem startup, event distribution, and clean termination.
+- **IPC Protocol Ring Buffer**: Verifies Named Pipe control messages and zero-copy metric serialization.
+- **AppContainer Fault Isolation**: Verifies sandbox process launching and crash recovery.
+- **Theme Hot Reloading**: Verifies microsecond token swaps in `DynamicThemeStore`.
+- **Marketplace Package Installation**: Verifies package installation (`weather-widget`, `spotify-widget`, `taskbar-plus`) and Ed25519 signature checks.
+- **Encrypted Cloud Sync**: Verifies Vector Clock causality dominance and offline transaction queue flushing.
+- **AI Voice & Workflow Rules**: Verifies speech-to-intent parsing and trigger evaluation logic.
+- **Production Stress Testing**: Verifies 100-widget memory stability (<25MB limit) and release candidate verification.
