@@ -39,9 +39,10 @@ impl TelemetryService {
             _ => 0.0,
         };
 
-        let mem_val = match self.memory_provider.sample()? {
-            MetricValue::Megabytes(v) => v,
-            _ => 0.0,
+        let (mem_used, mem_total) = match self.memory_provider.sample()? {
+            MetricValue::MemoryStats { used_mb, total_mb } => (used_mb, total_mb),
+            MetricValue::Megabytes(v) => (v, 16384.0), // legacy fallback
+            _ => (0.0, 16384.0),
         };
 
         let gpu_val = match self.gpu_provider.sample()? {
@@ -57,8 +58,8 @@ impl TelemetryService {
         let snapshot = TelemetrySnapshot {
             timestamp_ms: now_ms,
             cpu_usage_pct: cpu_val,
-            memory_used_mb: mem_val,
-            memory_total_mb: 16384.0,
+            memory_used_mb: mem_used,
+            memory_total_mb: mem_total,
             gpu_usage_pct: gpu_val,
             net_recv_bytes_per_sec: net_val,
             net_sent_bytes_per_sec: net_val / 4,

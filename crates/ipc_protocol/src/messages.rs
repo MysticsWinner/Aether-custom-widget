@@ -17,6 +17,10 @@ pub enum ControlCommand {
     SetThemeMode { mode: String },
     /// Reload all loaded widgets
     ReloadAll,
+    /// Request detailed subsystem health information
+    GetSubsystemHealth,
+    /// Request engine diagnostics (PID, uptime, tick count, memory)
+    GetDiagnostics,
 }
 
 /// Telemetry metrics payload exchanged via Shared Memory Ring Buffer
@@ -66,5 +70,23 @@ mod tests {
         let metric = MetricPayload::default();
         assert_eq!(metric.timestamp_ms, 0);
         assert_eq!(metric.cpu_usage_pct, 0.0);
+    }
+
+    #[test]
+    fn test_get_subsystem_health_serialization() {
+        let cmd = ControlCommand::GetSubsystemHealth;
+        let json = serde_json::to_string(&cmd).unwrap();
+        assert_eq!(json, "\"GetSubsystemHealth\"");
+        let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, cmd);
+    }
+
+    #[test]
+    fn test_get_diagnostics_serialization() {
+        let cmd = ControlCommand::GetDiagnostics;
+        let json = serde_json::to_string(&cmd).unwrap();
+        assert_eq!(json, "\"GetDiagnostics\"");
+        let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, cmd);
     }
 }

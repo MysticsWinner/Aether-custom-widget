@@ -1,0 +1,54 @@
+[metadata]
+id     = "aether.builtin.perf_monitor"
+name   = "Performance Monitor"
+author = "Aether Platform Team"
+version = "0.1.0"
+update_interval_ms = 500
+
+[layout]
+width  = 340.0
+height = 210.0
+flex_direction = "column"
+padding = 16.0
+
+# CPU usage bar — bound to the telemetry data engine
+[[elements]]
+id           = "cpu_label"
+element_type = "text"
+binding      = "sys.cpu_usage"
+font_size    = 11.5
+color_token  = "theme.text_secondary"
+
+[[elements]]
+id           = "cpu_bar"
+element_type = "progress_bar"
+binding      = "sys.cpu_usage"
+color_token  = "theme.accent_cyan"
+
+# GPU usage bar
+[[elements]]
+id           = "gpu_label"
+element_type = "text"
+binding      = "sys.gpu_usage"
+font_size    = 11.5
+color_token  = "theme.text_secondary"
+
+[[elements]]
+id           = "gpu_bar"
+element_type = "progress_bar"
+binding      = "sys.gpu_usage"
+color_token  = "theme.accent_magenta"
+
+# RAM bar — used_mb binding; total_mb resolved from shared cache
+[[elements]]
+id           = "ram_label"
+element_type = "text"
+binding      = "sys.memory_used_mb"
+font_size    = 11.5
+color_token  = "theme.text_secondary"
+
+[[elements]]
+id           = "ram_bar"
+element_type = "progress_bar"
+binding      = "sys.memory_pct"
+color_token  = "theme.accent_green"

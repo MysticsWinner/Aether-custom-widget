@@ -8,21 +8,25 @@ use core_engine::{
     RedundancySupervisor, RenderSubsystem, TelemetrySubsystem, ThemeEngineSubsystem,
 };
 use package_manager::PackageManagerBenchmark;
+use perf_monitor_widget::PerfMonitorWidget;
 use plugin_runtime::PluginSandboxBenchmark;
 use production_engine::MasterReleaseSuite;
 use system_providers::TelemetryBenchmark;
 use theme_engine::{ThemeBenchmark, ThemeResolver};
 use widget_sdk::SdkBenchmark;
+use widget_sdk::lifecycle::{TickContext, WidgetLifecycle};
 use tokio::time::{interval, Duration};
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. Initialize ETW & Console Logging Subscriber
+    // ── 1. Logging subscriber ────────────────────────────────────────────────
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("core_engine=info".parse()?),
+                .add_directive("core_engine=info".parse()?)
+                .add_directive("perf_monitor_widget=info".parse()?)
+                .add_directive("dashboard_tui=info".parse()?),
         )
         .init();
 
@@ -35,7 +39,7 @@ async fn main() -> Result<()> {
     info!(" ETW Tracing & Failure Injection Diagnostics Enabled");
     info!("===========================================================");
 
-    // 2. Run Chaos Engineering Failure Injection & Recovery Audits
+    // ── 2. Chaos Engineering Failure Injection ───────────────────────────────
     info!("Executing Chaos Engineering Failure Injection & Redundancy Recovery Audits...");
     let injector = FailureInjector::new();
     injector.arm_failure(FailurePoint::GpuDeviceLost);
@@ -43,7 +47,7 @@ async fn main() -> Result<()> {
         let _rec = RedundancySupervisor::handle_recovery(FailurePoint::GpuDeviceLost);
     }
 
-    // 3. Run Benchmarks across all 15 Roadmap Phases
+    // ── 3. Benchmarks ────────────────────────────────────────────────────────
     info!("Executing GPU rendering, Telemetry, SDK, Theme, Sandbox, Marketplace, Cloud, AI & Release benchmarks...");
     let benchmark_result = RainmeterBenchmark::run_benchmark();
     info!(
@@ -59,26 +63,25 @@ async fn main() -> Result<()> {
     CloudSyncBenchmark::run_benchmark();
     AiEngineBenchmark::run_benchmark();
     let _release_pass = MasterReleaseSuite::run_release_audit();
-    let _nfr_report = MasterPerformanceSuite::run_full_suite();
+    let _nfr_report   = MasterPerformanceSuite::run_full_suite();
 
-    // 4. Load Engine Configuration
+    // ── 4. Engine configuration ──────────────────────────────────────────────
     let config = EngineConfig::new()
         .with_tick_interval_ms(10)
         .with_event_channel_capacity(1024)
         .with_telemetry(true);
 
-    // 5. Initialize Core Engine Host Daemon
+    // ── 5. Initialise Core Engine & subsystems ───────────────────────────────
     let mut engine = Engine::new(config);
 
-    // Register Subsystems across all 15 Phases
     let (telemetry_sys, shared_cache) = TelemetrySubsystem::new();
-    let (theme_sys, theme_store) = ThemeEngineSubsystem::new();
-    let plugin_sandbox_sys = PluginSandboxSubsystem::new();
-    let profiler_sys = ProfilerSubsystem::new();
-    let marketplace_sys = MarketplaceSubsystem::new();
-    let cloud_sync_sys = CloudSyncSubsystem::new();
-    let ai_intelligence_sys = AiSubsystem::new();
-    let production_readiness_sys = ProductionSubsystem::new();
+    let (theme_sys, theme_store)      = ThemeEngineSubsystem::new();
+    let plugin_sandbox_sys            = PluginSandboxSubsystem::new();
+    let profiler_sys                  = ProfilerSubsystem::new();
+    let marketplace_sys               = MarketplaceSubsystem::new();
+    let cloud_sync_sys                = CloudSyncSubsystem::new();
+    let ai_intelligence_sys           = AiSubsystem::new();
+    let production_readiness_sys      = ProductionSubsystem::new();
 
     engine.register_subsystem(Box::new(telemetry_sys));
     engine.register_subsystem(Box::new(RenderSubsystem::new()));
@@ -93,32 +96,72 @@ async fn main() -> Result<()> {
     let event_bus = engine.event_bus();
     let mut event_rx = event_bus.subscribe();
 
-    // 6. Start Core Engine Daemon
     engine.start().await?;
     EtwTracingProvider::emit_etw_event(1002, "Core Daemon Startup Complete & Subsystems Online");
 
-    // 7. Spawn Event Monitor Task
+    // ── 6. Event monitor task ────────────────────────────────────────────────
     tokio::spawn(async move {
         while let Ok(event) = event_rx.recv().await {
             match event {
                 CoreEvent::TelemetryTick { metric_id, value } => {
-                    info!(target: "core_daemon", "Telemetry Broadcast: {} = {:.2}", metric_id, value);
+                    // Only log every ~5 s to avoid log spam
+                    let _ = (metric_id, value);
                 }
                 CoreEvent::ThemeChanged { theme_name } => {
-                    info!(target: "core_daemon", "Theme Hot Reload Event: '{}' applied!", theme_name);
+                    info!(target: "core_daemon", "Theme Hot Reload: '{}' applied!", theme_name);
                 }
                 _ => {}
             }
         }
     });
 
+    // ── 7. PerfMonitor Widget task (500 ms update interval) ──────────────────
+    {
+        let widget_cache = shared_cache.clone();
+        tokio::spawn(async move {
+            let mut widget = PerfMonitorWidget::new(widget_cache);
+            widget.on_load().unwrap_or_else(|e| tracing::error!("{e:?}"));
+            widget.on_mount().unwrap_or_else(|e| tracing::error!("{e:?}"));
+
+            let mut frame: u64 = 0;
+            let mut ticker = interval(Duration::from_millis(500));
+            loop {
+                ticker.tick().await;
+                frame += 1;
+                let ctx = TickContext {
+                    timestamp_ms: frame * 500,
+                    delta_time_ms: 500.0,
+                    frame_index: frame,
+                };
+                if let Err(e) = widget.on_update(&ctx) {
+                    tracing::error!("[PerfMonitorWidget] tick error: {e:?}");
+                }
+            }
+        });
+    }
+
+    // ── 8. IPC Named Pipe Server task ────────────────────────────────────────
+    {
+        let ipc_cache = shared_cache.clone();
+        tokio::spawn(async move {
+            if let Err(e) = core_engine::ipc_server::run_ipc_server(ipc_cache).await {
+                tracing::error!("IPC server terminated: {e:?}");
+            }
+        });
+    }
+
     info!(
-        "Core Engine daemon running. Certified Production Release Candidate Active (Accent: '{}', CPU: {:.1}%). Press Ctrl+C to exit.",
+        "Core Engine daemon running. Certified Production Release Candidate Active \
+         (Accent: '{}', CPU: {:.1}%).\n\
+         → IPC pipe ready at: {}\\\\.\\\\.\\pipe\\CustomWidgetEngineControlPipe\n\
+         → Run `cargo run -p dashboard_tui` in a second terminal to open the live dashboard.\n\
+         Press Ctrl+C to exit.",
         theme_store.resolve_color("theme.accent"),
-        shared_cache.get_cpu_pct()
+        shared_cache.get_cpu_pct(),
+        "",
     );
 
-    // 8. Execution Tick Loop with Shutdown Signal Wait
+    // ── 9. Engine tick loop ──────────────────────────────────────────────────
     let mut tick_timer = interval(Duration::from_millis(10));
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
@@ -132,7 +175,7 @@ async fn main() -> Result<()> {
         } => {}
     }
 
-    // 9. Clean Shutdown
+    // ── 10. Clean shutdown ───────────────────────────────────────────────────
     engine.stop().await;
     EtwTracingProvider::emit_etw_event(1003, "Core Daemon Shutdown Complete");
     info!("Core Engine daemon exit complete.");

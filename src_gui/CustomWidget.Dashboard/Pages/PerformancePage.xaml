@@ -1,0 +1,116 @@
+<!-- Copyright (c) Aether Platform. Licensed under the MIT License. -->
+<Page
+    x:Class="CustomWidget.Dashboard.Pages.PerformancePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:lvc="using:LiveChartsCore.SkiaSharpView.WinUI"
+    NavigationCacheMode="Enabled">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource AetherPagePadding}">
+        <StackPanel Spacing="24">
+
+            <!-- ══════ Header ══════ -->
+            <TextBlock Text="Performance" FontSize="{StaticResource AetherFontSizeTitle}"
+                       FontWeight="Bold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+            <TextBlock Text="Real-time hardware telemetry from the Aether core engine — 60-second rolling window"
+                       FontSize="{StaticResource AetherFontSizeBody}"
+                       Foreground="{StaticResource AetherTextSecondaryBrush}" />
+
+            <!-- ══════ CPU Chart ══════ -->
+            <Border Style="{StaticResource AetherMetricCard}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource AetherCpuBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="CPU Usage" FontWeight="SemiBold" FontSize="15"
+                                       Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                            <TextBlock x:Name="CpuCurrentText" Text="0.0%" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                            <TextBlock x:Name="CpuPeakText" Text="Peak: 0.0%" FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" />
+                            <TextBlock x:Name="CpuAvgText" Text="Avg: 0.0%" FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <lvc:CartesianChart x:Name="CpuChart" Height="160"
+                                        TooltipPosition="Hidden" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══════ GPU Chart ══════ -->
+            <Border Style="{StaticResource AetherMetricCard}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource AetherGpuBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="GPU Usage" FontWeight="SemiBold" FontSize="15"
+                                       Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                            <TextBlock x:Name="GpuCurrentText" Text="0.0%" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                            <TextBlock x:Name="GpuPeakText" Text="Peak: 0.0%" FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" />
+                            <TextBlock x:Name="GpuAvgText" Text="Avg: 0.0%" FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <lvc:CartesianChart x:Name="GpuChart" Height="160"
+                                        TooltipPosition="Hidden" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══════ RAM Chart ══════ -->
+            <Border Style="{StaticResource AetherMetricCard}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource AetherRamBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Memory (RAM)" FontWeight="SemiBold" FontSize="15"
+                                       Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                            <TextBlock x:Name="RamCurrentText" Text="0.0 GB" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                            <TextBlock x:Name="RamPeakText" Text="Peak: 0.0 GB" FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" />
+                            <TextBlock x:Name="RamTotalText" Text="Total: 0.0 GB" FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" />
+                        </StackPanel>
+                    </Grid>
+                    <lvc:CartesianChart x:Name="RamChart" Height="160"
+                                        TooltipPosition="Hidden" />
+                </StackPanel>
+            </Border>
+
+            <!-- ══════ Network Chart ══════ -->
+            <Border Style="{StaticResource AetherMetricCard}">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource AetherNetBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Network Throughput" FontWeight="SemiBold" FontSize="15"
+                                       Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                            <TextBlock x:Name="NetRecvText" Text="↓ 0 B/s" FontSize="13" Foreground="{StaticResource AetherNetBrush}" />
+                            <TextBlock x:Name="NetSentText" Text="↑ 0 B/s" FontSize="13" Foreground="#FF8A65" />
+                        </StackPanel>
+                    </Grid>
+                    <lvc:CartesianChart x:Name="NetChart" Height="160"
+                                        TooltipPosition="Hidden" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

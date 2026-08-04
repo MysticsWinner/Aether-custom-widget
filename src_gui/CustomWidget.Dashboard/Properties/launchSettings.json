@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CustomWidget.Dashboard": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}

@@ -14,6 +14,7 @@ pub mod config;
 pub mod engine;
 pub mod event_bus;
 pub mod fault_diagnostics;
+pub mod ipc_server;
 pub mod marketplace_subsystem;
 pub mod plugin_subsystem;
 pub mod production_subsystem;

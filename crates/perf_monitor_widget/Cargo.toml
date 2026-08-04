@@ -1,0 +1,15 @@
+[package]
+name = "perf_monitor_widget"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Aether built-in performance monitor widget — CPU%, GPU%, RAM used/free"
+
+[dependencies]
+widget_sdk      = { path = "../widget_sdk" }
+system_providers = { path = "../system_providers" }
+tracing         = { workspace = true }
+anyhow          = { workspace = true }
+serde           = { workspace = true }
+serde_json      = { workspace = true }

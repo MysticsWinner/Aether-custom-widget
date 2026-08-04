@@ -20,6 +20,7 @@ package_manager = { path = "../package_manager" }
 cloud_sync = { path = "../cloud_sync" }
 ai_engine = { path = "../ai_engine" }
 production_engine = { path = "../production_engine" }
+perf_monitor_widget = { path = "../perf_monitor_widget" }
 
 
 
@@ -31,5 +32,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
 async-trait = "0.1"
 

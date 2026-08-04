@@ -6,6 +6,7 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+windows = { workspace = true }
 ipc_protocol = { path = "../ipc_protocol" }
 tracing.workspace = true
 thiserror.workspace = true
