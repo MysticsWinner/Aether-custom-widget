@@ -43,4 +43,16 @@ mod tests {
         let cmd3 = VoiceIntentParser::parse_intent("load weather widget").unwrap();
         assert!(matches!(cmd3, ControlCommand::LoadWidget { .. }));
     }
+
+    #[test]
+    fn test_voice_intent_light_theme() {
+        let cmd = VoiceIntentParser::parse_intent("switch to light mode").unwrap();
+        assert_eq!(cmd, ControlCommand::SetThemeMode { mode: "light".to_string() });
+    }
+
+    #[test]
+    fn test_voice_intent_status_ping() {
+        let cmd = VoiceIntentParser::parse_intent("check system status").unwrap();
+        assert_eq!(cmd, ControlCommand::GetStatus);
+    }
 }

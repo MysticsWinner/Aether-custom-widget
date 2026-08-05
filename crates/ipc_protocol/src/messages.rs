@@ -21,6 +21,14 @@ pub enum ControlCommand {
     GetSubsystemHealth,
     /// Request engine diagnostics (PID, uptime, tick count, memory)
     GetDiagnostics,
+    /// Toggle visibility of desktop widget overlay window
+    ToggleDesktopWidget,
+    /// Set persistent custom position (x, y) for a widget plugin
+    SetWidgetPosition { widget_id: String, x: i32, y: i32 },
+    /// Set position lock state for a widget (true = locked, false = drag enabled)
+    SetWidgetLock { widget_id: String, locked: bool },
+    /// Toggle position lock state for a widget
+    ToggleWidgetLock { widget_id: String },
 }
 
 /// Telemetry metrics payload exchanged via Shared Memory Ring Buffer
@@ -89,4 +97,41 @@ mod tests {
         let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded, cmd);
     }
+
+    #[test]
+    fn test_toggle_desktop_widget_serialization() {
+        let cmd = ControlCommand::ToggleDesktopWidget;
+        let json = serde_json::to_string(&cmd).unwrap();
+        assert_eq!(json, "\"ToggleDesktopWidget\"");
+        let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, cmd);
+    }
+
+    #[test]
+    fn test_widget_position_and_lock_serialization() {
+        let pos_cmd = ControlCommand::SetWidgetPosition {
+            widget_id: "perf_monitor_widget".to_string(),
+            x: 450,
+            y: 220,
+        };
+        let json = serde_json::to_string(&pos_cmd).unwrap();
+        let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, pos_cmd);
+
+        let lock_cmd = ControlCommand::SetWidgetLock {
+            widget_id: "perf_monitor_widget".to_string(),
+            locked: true,
+        };
+        let json2 = serde_json::to_string(&lock_cmd).unwrap();
+        let decoded2: ControlCommand = serde_json::from_str(&json2).unwrap();
+        assert_eq!(decoded2, lock_cmd);
+
+        let toggle_cmd = ControlCommand::ToggleWidgetLock {
+            widget_id: "perf_monitor_widget".to_string(),
+        };
+        let json3 = serde_json::to_string(&toggle_cmd).unwrap();
+        let decoded3: ControlCommand = serde_json::from_str(&json3).unwrap();
+        assert_eq!(decoded3, toggle_cmd);
+    }
 }
+

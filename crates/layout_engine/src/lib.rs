@@ -1,3 +1,6 @@
+pub mod position_store;
+pub use position_store::{WidgetPositionSpec, WidgetPositionStore};
+
 use taffy::prelude::*;
 use widget_parser::WidgetManifest;
 
@@ -53,5 +56,43 @@ impl WidgetLayoutSolver {
             width: layout.size.width,
             height: layout.size.height,
         })
+    }
+}
+
+impl Default for WidgetLayoutSolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve_layout() {
+        let manifest_str = r#"
+            [metadata]
+            id = "test_widget"
+            name = "Test Widget"
+            author = "Test Author"
+            version = "1.0.0"
+            update_interval_ms = 1000
+
+            [layout]
+            width = 300.0
+            height = 150.0
+
+            [[elements]]
+            id = "elem1"
+            element_type = "text"
+        "#;
+
+        let manifest: WidgetManifest = toml::from_str(manifest_str).unwrap();
+        let mut solver = WidgetLayoutSolver::new();
+        let bounds = solver.solve_layout(&manifest, 1.0).unwrap();
+
+        assert_eq!(bounds.width, 300.0);
+        assert_eq!(bounds.height, 150.0);
     }
 }

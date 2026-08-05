@@ -142,6 +142,7 @@ public sealed partial class MainWindow : Window
                 "Performance" => typeof(PerformancePage),
                 "Diagnostics" => typeof(DiagnosticsPage),
                 "Settings" => typeof(SettingsPage),
+                "About" => typeof(AboutPage),
                 _ => typeof(OverviewPage),
             };
 
@@ -153,6 +154,24 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             App.LogCrash($"NavigateToPage({tag})", ex);
+        }
+    }
+
+    /// <summary>
+    /// Applies visual theme (Dark, Light, Default) live to the WinUI 3 Window framework element.
+    /// </summary>
+    public void SetAppTheme(ElementTheme theme)
+    {
+        try
+        {
+            if (Content is FrameworkElement rootElement)
+            {
+                rootElement.RequestedTheme = theme;
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogCrash("SetAppTheme", ex);
         }
     }
 

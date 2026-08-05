@@ -180,5 +180,40 @@ fn dispatch_command(raw: &str, cache: &SharedTelemetryCache) -> String {
                 "engine_version": env!("CARGO_PKG_VERSION"),
             }).to_string()
         }
+
+        ControlCommand::ToggleDesktopWidget => {
+            info!("IPC: ToggleDesktopWidget requested.");
+            serde_json::json!({ "status": "ok", "message": "desktop widget visibility toggled" }).to_string()
+        }
+
+        ControlCommand::SetWidgetPosition { widget_id, x, y } => {
+            info!("IPC: SetWidgetPosition -> widget='{}' at ({}, {})", widget_id, x, y);
+            let store = layout_engine::WidgetPositionStore::default();
+            let res = store.set_position(&widget_id, x, y);
+            if res.is_ok() {
+                serde_json::json!({ "status": "ok", "widget_id": widget_id, "x": x, "y": y }).to_string()
+            } else {
+                serde_json::json!({ "status": "error", "message": "Failed to update position" }).to_string()
+            }
+        }
+
+        ControlCommand::SetWidgetLock { widget_id, locked } => {
+            info!("IPC: SetWidgetLock -> widget='{}' locked={}", widget_id, locked);
+            let store = layout_engine::WidgetPositionStore::default();
+            let res = store.set_locked(&widget_id, locked);
+            if res.is_ok() {
+                serde_json::json!({ "status": "ok", "widget_id": widget_id, "locked": locked }).to_string()
+            } else {
+                serde_json::json!({ "status": "error", "message": "Failed to update lock state" }).to_string()
+            }
+        }
+
+        ControlCommand::ToggleWidgetLock { widget_id } => {
+            info!("IPC: ToggleWidgetLock -> widget='{}'", widget_id);
+            let store = layout_engine::WidgetPositionStore::default();
+            let new_lock = store.toggle_locked(&widget_id);
+            serde_json::json!({ "status": "ok", "widget_id": widget_id, "locked": new_lock }).to_string()
+        }
     }
 }
+

@@ -8,5 +8,9 @@ license.workspace = true
 [dependencies]
 mlua.workspace = true
 ipc_protocol = { path = "../ipc_protocol" }
+system_providers = { path = "../system_providers" }
+layout_engine = { path = "../layout_engine" }
+widget_sdk = { path = "../widget_sdk" }
 thiserror.workspace = true
 tracing.workspace = true
+

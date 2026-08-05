@@ -1,10 +1,14 @@
 pub mod benchmark;
 pub mod d2d_renderer;
+pub mod desktop_widget_window;
 pub mod dirty_rect;
+pub mod workerw;
 
 pub use benchmark::{RainmeterBenchmark, RenderBenchmarkResult};
 pub use d2d_renderer::Direct2DRenderer;
+pub use desktop_widget_window::DesktopWidgetWindow;
 pub use dirty_rect::DirtyRegionTracker;
+pub use workerw::find_desktop_workerw_hwnd;
 
 use std::fmt;
 

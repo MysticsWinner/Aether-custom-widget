@@ -92,6 +92,22 @@ impl ThemeResolver for DynamicThemeStore {
     }
 }
 
+impl DynamicThemeStore {
+    /// Queries the active Windows 11 system accent color via DwmGetColorizationColor
+    /// and updates the `theme.accent` token in real time.
+    pub fn sync_windows_system_accent(&self) -> bool {
+        if let Some(accent_hex) = query_windows_accent_color() {
+            if let Ok(mut lock) = self.schema.write() {
+                lock.colors.insert("theme.accent".to_string(), accent_hex.clone());
+                info!("Synced Windows 11 system accent color -> {}", accent_hex);
+                return true;
+            }
+        }
+        false
+    }
+}
+
+
 /// Performance benchmark harness evaluating Theme Engine token resolution throughput.
 pub struct ThemeBenchmark;
 
@@ -135,4 +151,31 @@ mod tests {
     fn test_theme_benchmark_execution() {
         ThemeBenchmark::run_benchmark();
     }
+
+    #[test]
+    fn test_windows_accent_color_query() {
+        let _accent = query_windows_accent_color();
+    }
+}
+
+/// Queries Windows 11 desktop accent color using DwmGetColorizationColor Win32 API.
+#[cfg(windows)]
+pub fn query_windows_accent_color() -> Option<String> {
+    use windows::Win32::Graphics::Dwm::DwmGetColorizationColor;
+    unsafe {
+        let mut colorization: u32 = 0;
+        let mut opaque_blend = windows::Win32::Foundation::BOOL(0);
+        if DwmGetColorizationColor(&mut colorization, &mut opaque_blend).is_ok() {
+            let r = (colorization >> 16) & 0xFF;
+            let g = (colorization >> 8) & 0xFF;
+            let b = colorization & 0xFF;
+            return Some(format!("#{:02X}{:02X}{:02X}", r, g, b));
+        }
+    }
+    None
+}
+
+#[cfg(not(windows))]
+pub fn query_windows_accent_color() -> Option<String> {
+    None
 }

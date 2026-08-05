@@ -85,6 +85,12 @@ public sealed partial class WidgetsPage : Page
         }
     }
 
+    private async void DesktopWidgetBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var ipc = App.Services.GetRequiredService<CustomWidget.Dashboard.Services.AetherIpcService>();
+        await ipc.ToggleDesktopWidgetAsync();
+    }
+
     private void ReloadBtn_Click(object sender, RoutedEventArgs e)
         => _ = _vm.ReloadAllCommand.ExecuteAsync(null);
 
@@ -93,6 +99,22 @@ public sealed partial class WidgetsPage : Page
         if (sender is Button btn && btn.Tag is string widgetId)
         {
             _ = _vm.UnloadWidgetCommand.ExecuteAsync(widgetId);
+        }
+    }
+
+    private void LockBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string widgetId)
+        {
+            _ = _vm.ToggleWidgetLockCommand.ExecuteAsync(widgetId);
+        }
+    }
+
+    private void ResetPosBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string widgetId)
+        {
+            _ = _vm.ResetWidgetPositionCommand.ExecuteAsync(widgetId);
         }
     }
 }

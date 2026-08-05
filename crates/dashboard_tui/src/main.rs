@@ -187,7 +187,7 @@ fn draw(f: &mut Frame, app: &App) {
                 format!(
                     "  Phase 15  v{}  ",
                     if app.metrics.engine_version.is_empty() {
-                        "0.1.0"
+                        "0.5.0"
                     } else {
                         &app.metrics.engine_version
                     }

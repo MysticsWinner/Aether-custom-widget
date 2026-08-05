@@ -71,7 +71,7 @@
 
                             <TextBlock Grid.Column="0" FontSize="11" FontFamily="Cascadia Code,Consolas"
                                        Foreground="{StaticResource AetherTextDimBrush}"
-                                       Text="{Binding Timestamp, Converter={x:Null}}" />
+                                       Text="{Binding Timestamp}" />
 
                             <TextBlock Grid.Column="1" FontSize="11" FontWeight="Bold"
                                        FontFamily="Cascadia Code,Consolas"

@@ -121,6 +121,53 @@ public partial class WidgetsViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task ToggleWidgetLockAsync(string? widgetId)
+    {
+        string target = string.IsNullOrWhiteSpace(widgetId) ? "perf_monitor_widget" : widgetId;
+        StatusMessage = $"Toggling lock for '{target}'...";
+        try
+        {
+            await _ipc.ToggleWidgetLockAsync(target);
+            StatusMessage = $"✓ Lock state toggled for '{target}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error toggling lock: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResetWidgetPositionAsync(string? widgetId)
+    {
+        string target = string.IsNullOrWhiteSpace(widgetId) ? "perf_monitor_widget" : widgetId;
+        StatusMessage = $"Resetting position for '{target}'...";
+        try
+        {
+            await _ipc.SetWidgetPositionAsync(target, 100, 100);
+            StatusMessage = $"✓ Position reset to default (100, 100) for '{target}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error resetting position: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ToggleDesktopWidgetAsync()
+    {
+        StatusMessage = "Toggling desktop overlay widget...";
+        try
+        {
+            await _ipc.ToggleDesktopWidgetAsync();
+            StatusMessage = "✓ Desktop overlay widget toggled.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error toggling overlay: {ex.Message}";
+        }
+    }
+
     private static string FormatWidgetName(string id)
     {
         // Convert "aether.builtin.perf_monitor" → "Perf Monitor"

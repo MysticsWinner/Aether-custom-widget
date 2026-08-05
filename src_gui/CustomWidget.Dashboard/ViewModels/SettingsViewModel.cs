@@ -56,8 +56,22 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
+            // Apply theme live to WinUI 3 Dashboard Window
+            var elementTheme = mode switch
+            {
+                "light" => Microsoft.UI.Xaml.ElementTheme.Light,
+                "system" => Microsoft.UI.Xaml.ElementTheme.Default,
+                _ => Microsoft.UI.Xaml.ElementTheme.Dark,
+            };
+
+            if (App.Current.MainWindow is MainWindow window)
+            {
+                window.SetAppTheme(elementTheme);
+            }
+
+            // Sync theme with Core Engine Daemon via IPC
             await _ipc.SetThemeModeAsync(mode);
-            StatusMessage = $"Theme set to '{mode}'.";
+            StatusMessage = $"Theme updated to '{mode}'.";
         }
         catch (Exception ex)
         {

@@ -61,6 +61,12 @@ public sealed partial class OverviewPage : Page
         IpcText.Text = connected ? "Connected" : "Disconnected";
     }
 
+    private async void DesktopWidgetBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var ipc = App.Services.GetRequiredService<AetherIpcService>();
+        await ipc.ToggleDesktopWidgetAsync();
+    }
+
     private void ReloadBtn_Click(object sender, RoutedEventArgs e)
         => _ = _vm.ReloadAllCommand.ExecuteAsync(null);
 

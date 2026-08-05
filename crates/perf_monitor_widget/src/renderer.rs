@@ -1,12 +1,5 @@
 //! Perf-card renderer — produces a `BatchRenderCanvas` draw-command list
-//! representing a dark glassmorphism performance overlay (320 × 200 px).
-//!
-//! Layout (Y offsets from card top-left):
-//!   0–18  : title bar + separator
-//!  38–75  : CPU row (label + progress bar)
-//!  82–119 : GPU row
-//! 126–163 : RAM row (with used/total/free text)
-//! 178–200 : footer
+//! representing a dark glassmorphism performance overlay (340 × 250 px).
 
 use system_providers::TelemetrySnapshot;
 use widget_sdk::rendering::{BatchRenderCanvas, Color, RectF, RenderCanvas};
@@ -21,12 +14,13 @@ const FOOTER: Color      = Color { r: 0.38, g: 0.43, b: 0.54, a: 1.00 };
 const CYAN: Color        = Color { r: 0.00, g: 0.83, b: 1.00, a: 1.00 }; // CPU
 const MAGENTA: Color     = Color { r: 0.73, g: 0.18, b: 1.00, a: 1.00 }; // GPU
 const GREEN: Color       = Color { r: 0.08, g: 0.88, b: 0.48, a: 1.00 }; // RAM
+const YELLOW: Color      = Color { r: 1.00, g: 0.78, b: 0.18, a: 1.00 }; // NET
 
 // ── dimensions ────────────────────────────────────────────────────────────────
 const CARD_X: f32 = 20.0;
 const CARD_Y: f32 = 20.0;
 const CARD_W: f32 = 340.0;
-const CARD_H: f32 = 210.0;
+const CARD_H: f32 = 250.0;
 const PAD: f32    = 16.0;
 const BAR_H: f32  = 10.0;
 const FONT: &str  = "Segoe UI Variable";
@@ -58,14 +52,14 @@ pub fn render_perf_card(canvas: &mut BatchRenderCanvas, snap: &TelemetrySnapshot
     // ── CPU row ──────────────────────────────────────────────────────────────
     let cpu_label = format!("CPU  {:5.1}%", snap.cpu_usage_pct);
     metric_row(
-        canvas, CARD_X + PAD, CARD_Y + 48.0, inner_w,
+        canvas, CARD_X + PAD, CARD_Y + 44.0, inner_w,
         &cpu_label, snap.cpu_usage_pct / 100.0, CYAN,
     );
 
     // ── GPU row ──────────────────────────────────────────────────────────────
     let gpu_label = format!("GPU  {:5.1}%", snap.gpu_usage_pct);
     metric_row(
-        canvas, CARD_X + PAD, CARD_Y + 96.0, inner_w,
+        canvas, CARD_X + PAD, CARD_Y + 88.0, inner_w,
         &gpu_label, snap.gpu_usage_pct / 100.0, MAGENTA,
     );
 
@@ -84,13 +78,27 @@ pub fn render_perf_card(canvas: &mut BatchRenderCanvas, snap: &TelemetrySnapshot
         pct = ram_pct * 100.0, free = free_gb,
     );
     metric_row(
-        canvas, CARD_X + PAD, CARD_Y + 144.0, inner_w,
+        canvas, CARD_X + PAD, CARD_Y + 132.0, inner_w,
         &ram_label, ram_pct, GREEN,
+    );
+
+    // ── NET row ──────────────────────────────────────────────────────────────
+    let net_kbps = snap.net_recv_bytes_per_sec as f32 / 1024.0;
+    let net_mbps = net_kbps / 1024.0;
+    let net_text = if net_mbps >= 1.0 {
+        format!("NET  {:.2} MB/s", net_mbps)
+    } else {
+        format!("NET  {:.1} KB/s", net_kbps)
+    };
+    let net_fill = (net_kbps / 10240.0).clamp(0.0, 1.0); // 10 MB/s full scale reference
+    metric_row(
+        canvas, CARD_X + PAD, CARD_Y + 176.0, inner_w,
+        &net_text, net_fill, YELLOW,
     );
 
     // ── footer ───────────────────────────────────────────────────────────────
     canvas.draw_text(
-        "Aether v0.1.0  \u{2022}  Phase 15 RC  \u{2022}  DirectComposition",
+        "Aether v0.5.0  \u{2022}  Phase 15 RC  \u{2022}  DirectComposition",
         "Segoe UI", 9.5,
         RectF::new(CARD_X + PAD, CARD_Y + CARD_H - 20.0, inner_w, 13.0),
         FOOTER,
@@ -128,7 +136,7 @@ mod tests {
         TelemetrySnapshot {
             timestamp_ms: 0, cpu_usage_pct: cpu, gpu_usage_pct: gpu,
             memory_used_mb: used, memory_total_mb: total,
-            net_recv_bytes_per_sec: 0, net_sent_bytes_per_sec: 0,
+            net_recv_bytes_per_sec: 204800, net_sent_bytes_per_sec: 51200,
             custom_metrics: HashMap::new(),
         }
     }
@@ -137,9 +145,8 @@ mod tests {
     fn test_full_load_renders_correctly() {
         let mut canvas = BatchRenderCanvas::new();
         render_perf_card(&mut canvas, &snap(100.0, 100.0, 16384.0, 16384.0));
-        // Each row = label + track + fill = 3 cmds; + bg + separator + title + footer = 4
-        // Total ≥ 3 × 3 + 4 = 13
-        assert!(canvas.commands().len() >= 13);
+        // Each row = label + track + fill = 3 cmds; 4 rows = 12 cmds; + bg + separator + title + footer = 16
+        assert!(canvas.commands().len() >= 16);
     }
 
     #[test]
@@ -158,3 +165,4 @@ mod tests {
         assert!(!canvas.commands().is_empty());
     }
 }
+

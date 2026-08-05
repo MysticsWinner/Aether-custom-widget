@@ -134,4 +134,42 @@ public sealed class AetherIpcService
         var cmd = new ReloadAllCommand();
         return await SendRawCommandAsync(cmd.ToJson());
     }
+
+    /// <summary>
+    /// Sends <c>ToggleDesktopWidget</c> to toggle the transparent desktop overlay window.
+    /// </summary>
+    public async Task<string> ToggleDesktopWidgetAsync()
+    {
+        return await SendRawCommandAsync("\"ToggleDesktopWidget\"");
+    }
+
+    /// <summary>
+    /// Sends <c>SetWidgetPosition</c> to set specific (X, Y) coordinates for a widget.
+    /// </summary>
+    public async Task<string> SetWidgetPositionAsync(string widgetId, int x, int y)
+    {
+        var payload = JsonSerializer.Serialize(new { widget_id = widgetId, x, y });
+        var cmdJson = $"{{\"type\": \"SetWidgetPosition\", \"payload\": {payload}}}";
+        return await SendRawCommandAsync(cmdJson);
+    }
+
+    /// <summary>
+    /// Sends <c>SetWidgetLock</c> to lock or unlock widget drag movement.
+    /// </summary>
+    public async Task<string> SetWidgetLockAsync(string widgetId, bool locked)
+    {
+        var payload = JsonSerializer.Serialize(new { widget_id = widgetId, locked });
+        var cmdJson = $"{{\"type\": \"SetWidgetLock\", \"payload\": {payload}}}";
+        return await SendRawCommandAsync(cmdJson);
+    }
+
+    /// <summary>
+    /// Sends <c>ToggleWidgetLock</c> to flip widget position lock state.
+    /// </summary>
+    public async Task<string> ToggleWidgetLockAsync(string widgetId)
+    {
+        var payload = JsonSerializer.Serialize(new { widget_id = widgetId });
+        var cmdJson = $"{{\"type\": \"ToggleWidgetLock\", \"payload\": {payload}}}";
+        return await SendRawCommandAsync(cmdJson);
+    }
 }

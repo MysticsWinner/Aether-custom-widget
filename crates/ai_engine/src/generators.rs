@@ -68,6 +68,17 @@ impl WidgetGenerator {
             prompt
         );
 
+        let binding = if prompt.contains("gpu") {
+            "sys.gpu_usage"
+        } else if prompt.contains("ram") || prompt.contains("memory") {
+            "sys.memory_used"
+        } else if prompt.contains("net") || prompt.contains("network") {
+            "sys.network_rate"
+        } else {
+            "sys.cpu_usage"
+        };
+
+        let sanitized_prompt = prompt.replace('"', "'");
         let manifest_toml = format!(
             r#"
             [metadata]
@@ -78,24 +89,25 @@ impl WidgetGenerator {
             update_interval_ms = 1000
 
             [layout]
-            width = 320.0
-            height = 160.0
+            width = 340.0
+            height = 200.0
             padding = 12.0
 
             [[elements]]
             id = "ai_label"
             element_type = "text"
-            binding = "sys.cpu_usage"
+            binding = "{}"
             font_size = 16.0
             color_token = "theme.text_primary"
             "#,
-            prompt
+            sanitized_prompt, binding
         );
 
         let manifest = WidgetManifest::parse_toml(&manifest_toml)?;
         Ok(manifest)
     }
 }
+
 
 #[cfg(test)]
 mod tests {

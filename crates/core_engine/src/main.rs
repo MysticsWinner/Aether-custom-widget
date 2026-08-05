@@ -138,6 +138,10 @@ async fn main() -> Result<()> {
                 }
             }
         });
+
+        // Spawn Desktop Overlay Widget Window (WorkerW / DirectComposition Layer)
+        let desktop_window = core_engine::DesktopWidgetWindow::new();
+        desktop_window.spawn_overlay(shared_cache.clone());
     }
 
     // ── 8. IPC Named Pipe Server task ────────────────────────────────────────

@@ -1,6 +1,50 @@
-# Development Rules & Guidelines
+Read these documents before writing code.
 
-The following mandatory development rules apply to all engineering, architecture, and coding tasks across this codebase:
+Priority order
+
+1. AGENTS.md
+
+2. docs/Architecture/
+
+3. docs/Development/
+
+4. docs/Testing/
+
+5. docs/Security/
+
+6. docs/Performance/
+
+7. docs/API/
+
+If two documents conflict,
+
+Architecture wins.
+
+Never invent architecture.
+
+Never skip phases.
+
+Never replace real Windows APIs with simulated code.
+
+Every PR requires
+
+Tests
+
+Benchmarks
+
+Documentation
+
+Security review
+
+Performance analysis
+
+Run cargo check
+
+Run cargo test
+
+No task is complete until tests pass.
+
+After every prompt, update the documents in docs/ accordingly, dont remove content unless it is neccessary. For example: "Feature: show CPU metrics." is there and only a partial update has been done like "Feature: Show CPU usage, temperature, cores ..." -> then edit the line to "Feature: Show CPU usage, temperature ..." and dont remove the "..." if it is there, instead add the new feature to it. Make sure that the docs are always up to date with the current implementation.
 
 ## Workflow & Process Governance
 1. **Never skip phases**: Follow the phased architecture roadmap strictly.
@@ -36,6 +80,7 @@ The following mandatory development rules apply to all engineering, architecture
 
 > **Rule**: Regardless of the size or nature of the request, every code change MUST include tests
 > that are verified to pass before the task is considered complete. No exceptions.
+ For every new code, if it has any functional value and requires a test to be created, create the test following the testing methodology.
 
 ### Required steps for every prompt:
 1. **Write tests** alongside (or before) the implementation -- never skip them.
@@ -77,7 +122,8 @@ fn test_ipc_dispatch_get_status_returns_json() { ... }
 - **Phase**: 15 (Production Release Candidate)
 - **Root**: `d:\Code\Aether-custom-widget\`
 - **Workspace manifest**: `Cargo.toml` at repo root
-- **Current test count**: 87 -- run `cargo test --workspace` to verify
+- **Current test count**: 97 -- run `cargo test --workspace` to verify. This number is subjected to change but only expected to increase over the time.
+
 
 ### Core Architecture Principle -- "Collect Once, Publish Everywhere"
 - A single `TelemetrySubsystem` tick collects all hardware metrics once per 10 ms engine cycle.

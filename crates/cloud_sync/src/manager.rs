@@ -1,5 +1,5 @@
 use crate::crdt::{CrdtItem, CrdtResolver, VectorClock};
-use crate::entities::{LayoutEntity, SyncEntity};
+use crate::entities::SyncEntity;
 use crate::offline_queue::{OfflineSyncQueue, SyncOperation};
 use std::collections::HashMap;
 use tracing::info;
@@ -51,6 +51,18 @@ impl CloudSyncManager {
         }
     }
 
+    pub fn sync_widget_position(&mut self, widget_id: &str, x: i32, y: i32) {
+        let layout = SyncEntity::Layout(crate::entities::LayoutEntity {
+            layout_id: widget_id.to_string(),
+            display_id: "PRIMARY".into(),
+            bounds_x: x as f32,
+            bounds_y: y as f32,
+            width: 340.0,
+            height: 250.0,
+        });
+        self.sync_entity(widget_id, layout);
+    }
+
     pub fn set_online_status(&mut self, online: bool) {
         self.offline_queue.set_online_status(online);
         if online && self.offline_queue.pending_count() > 0 {
@@ -68,9 +80,11 @@ impl CloudSyncManager {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::LayoutEntity;
 
     #[test]
     fn test_cloud_sync_manager_workflow() {

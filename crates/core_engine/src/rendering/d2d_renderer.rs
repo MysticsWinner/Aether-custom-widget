@@ -40,8 +40,15 @@ impl GpuRenderer for Direct2DRenderer {
             self.refresh_rate
         );
 
-        // Platform DirectX device initialization logic occurs here
-        // On Windows 11: ID3D11Device -> IDXGIDevice -> ID2D1DeviceContext -> IDCompositionVisual
+        #[cfg(windows)]
+        {
+            if let Some(workerw_hwnd) = crate::rendering::workerw::find_desktop_workerw_hwnd() {
+                info!("DirectComposition target WorkerW HWND resolved: {:?}", workerw_hwnd.0);
+            } else {
+                info!("Progman/WorkerW window hook fallback: Target HWND defaults to desktop desktop window");
+            }
+        }
+
         self.initialized = true;
 
         info!("Direct2D & DirectComposition GPU pipeline initialized successfully.");

@@ -1,7 +1,7 @@
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
-use tracing::{info, warn};
+use std::path::PathBuf;
+use tracing::info;
 
 /// Aether Desktop Customization Engine - Setup Installer & Uninstaller Wizard
 pub struct AetherInstaller {
@@ -116,5 +116,17 @@ mod tests {
     fn test_installer_initialization() {
         let installer = AetherInstaller::new();
         assert!(installer.install_dir.to_string_lossy().contains("Aether"));
+    }
+
+    #[test]
+    fn test_installer_status_check() {
+        let installer = AetherInstaller::new();
+        let _installed = installer.is_installed();
+    }
+
+    #[test]
+    fn test_installer_dir_paths() {
+        let installer = AetherInstaller::new();
+        assert!(installer.app_data_dir.to_string_lossy().contains("data"));
     }
 }

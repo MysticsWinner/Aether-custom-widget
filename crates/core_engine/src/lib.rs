@@ -38,7 +38,7 @@ pub use production_subsystem::ProductionSubsystem;
 pub use profiler::{MasterPerformanceSuite, PerformanceProfileReport, SystemProfiler};
 pub use profiler_subsystem::ProfilerSubsystem;
 pub use rendering::{
-    Color, Direct2DRenderer, DirtyRegionTracker, FrameStats, GpuRenderer, RainmeterBenchmark,
+    Color, DesktopWidgetWindow, Direct2DRenderer, DirtyRegionTracker, FrameStats, GpuRenderer, RainmeterBenchmark,
     RectF, RefreshRate, RenderBenchmarkResult,
 };
 pub use subsystems::{RenderSubsystem, Subsystem, SubsystemHealth, SubsystemManager};

@@ -16,6 +16,8 @@ public partial class App : Application
 {
     private Window? _mainWindow;
 
+    public Window? MainWindow => _mainWindow;
+
     /// <summary>
     /// Global service provider for dependency injection.
     /// </summary>
@@ -101,6 +103,7 @@ public partial class App : Application
         services.AddTransient<PerformanceViewModel>();
         services.AddTransient<DiagnosticsViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<AboutViewModel>();
 
         return services.BuildServiceProvider();
     }

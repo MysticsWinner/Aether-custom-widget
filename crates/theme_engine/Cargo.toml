@@ -12,4 +12,5 @@ tracing.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "time"] }
+windows = { workspace = true }
 

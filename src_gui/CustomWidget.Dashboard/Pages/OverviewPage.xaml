@@ -116,8 +116,11 @@
             <!-- ══════ Quick Actions ══════ -->
             <TextBlock Text="Quick Actions" Style="{StaticResource AetherSectionHeader}" />
             <StackPanel Orientation="Horizontal" Spacing="12">
-                <Button x:Name="ReloadBtn" Content="🔄  Reload All Widgets"
-                        Click="ReloadBtn_Click" Style="{StaticResource AccentButtonStyle}"
+                <Button x:Name="DesktopWidgetBtn" Content="🖥️  Toggle Desktop Overlay Widget"
+                        Click="DesktopWidgetBtn_Click" Style="{StaticResource AccentButtonStyle}"
+                        Padding="16,10,16,10" CornerRadius="6" />
+                <Button x:Name="ReloadBtn" Content="🔄  Reload All"
+                        Click="ReloadBtn_Click"
                         Padding="16,10,16,10" CornerRadius="6" />
                 <Button x:Name="ThemeBtn" Content="🎨  Toggle Theme"
                         Click="ThemeBtn_Click" Padding="16,10,16,10" CornerRadius="6" />
