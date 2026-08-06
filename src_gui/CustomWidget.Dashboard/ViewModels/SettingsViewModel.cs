@@ -1,5 +1,10 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Services;
@@ -13,6 +18,7 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly AetherIpcService _ipc;
     private readonly TelemetryPollerService _poller;
+    private readonly string _settingsFilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
     [ObservableProperty] private int _selectedThemeIndex; // 0=Dark, 1=Light, 2=System
     [ObservableProperty] private int _pollingIntervalMs = 500;
@@ -29,13 +35,60 @@ public partial class SettingsViewModel : ObservableObject
         _ipc = ipc;
         _poller = poller;
 
+        LoadSettings();
+
         _engineVersion = string.IsNullOrEmpty(ipc.LastEngineVersion)
             ? "—"
             : $"v{ipc.LastEngineVersion}";
     }
 
+    private void LoadSettings()
+    {
+        try
+        {
+            if (File.Exists(_settingsFilePath))
+            {
+                string json = File.ReadAllText(_settingsFilePath);
+                var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                if (dict != null)
+                {
+                    if (dict.TryGetValue(nameof(SelectedThemeIndex), out var themeStr) && int.TryParse(themeStr, out var themeVal))
+                        SelectedThemeIndex = themeVal;
+                    if (dict.TryGetValue(nameof(PollingIntervalMs), out var pollStr) && int.TryParse(pollStr, out var pollVal))
+                        PollingIntervalMs = pollVal;
+                    if (dict.TryGetValue(nameof(AutoStartEngine), out var autoStr) && bool.TryParse(autoStr, out var autoVal))
+                        AutoStartEngine = autoVal;
+                    if (dict.TryGetValue(nameof(CloudSyncEnabled), out var cloudStr) && bool.TryParse(cloudStr, out var cloudVal))
+                        CloudSyncEnabled = cloudVal;
+                    if (dict.TryGetValue(nameof(AiFeaturesEnabled), out var aiStr) && bool.TryParse(aiStr, out var aiVal))
+                        AiFeaturesEnabled = aiVal;
+                }
+            }
+        }
+        catch { }
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            var dict = new Dictionary<string, string>
+            {
+                { nameof(SelectedThemeIndex), SelectedThemeIndex.ToString() },
+                { nameof(PollingIntervalMs), PollingIntervalMs.ToString() },
+                { nameof(AutoStartEngine), AutoStartEngine.ToString() },
+                { nameof(CloudSyncEnabled), CloudSyncEnabled.ToString() },
+                { nameof(AiFeaturesEnabled), AiFeaturesEnabled.ToString() }
+            };
+            string json = JsonSerializer.Serialize(dict);
+            File.WriteAllText(_settingsFilePath, json);
+        }
+        catch { }
+    }
+
     partial void OnSelectedThemeIndexChanged(int value)
     {
+        SaveSettings();
         string mode = value switch
         {
             0 => "dark",
@@ -50,6 +103,22 @@ public partial class SettingsViewModel : ObservableObject
     partial void OnPollingIntervalMsChanged(int value)
     {
         _poller.PollIntervalMs = Math.Clamp(value, 100, 5000);
+        SaveSettings();
+    }
+
+    partial void OnAutoStartEngineChanged(bool value)
+    {
+        SaveSettings();
+    }
+
+    partial void OnCloudSyncEnabledChanged(bool value)
+    {
+        SaveSettings();
+    }
+
+    partial void OnAiFeaturesEnabledChanged(bool value)
+    {
+        SaveSettings();
     }
 
     private async Task ApplyThemeAsync(string mode)
@@ -88,5 +157,6 @@ public partial class SettingsViewModel : ObservableObject
         CloudSyncEnabled = false;
         AiFeaturesEnabled = false;
         StatusMessage = "Settings reset to defaults.";
+        SaveSettings();
     }
 }

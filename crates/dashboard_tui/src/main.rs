@@ -185,9 +185,9 @@ fn draw(f: &mut Frame, app: &App) {
             ),
             Span::styled(
                 format!(
-                    "  Phase 15  v{}  ",
+                    "  Phase 16  v{}  ",
                     if app.metrics.engine_version.is_empty() {
-                        "0.5.0"
+                        "0.6.0"
                     } else {
                         &app.metrics.engine_version
                     }

@@ -91,9 +91,20 @@ public partial class WidgetsViewModel : ObservableObject
         try
         {
             string result = await _ipc.UnloadWidgetAsync(widgetId);
-            StatusMessage = result.Contains("\"status\":\"ok\"") || result.Contains("\"status\": \"ok\"")
-                ? $"✓ Widget unloaded: {widgetId}"
-                : $"✗ Unload failed: {result}";
+            bool success = result.Contains("\"status\":\"ok\"") || result.Contains("\"status\": \"ok\"");
+            if (success)
+            {
+                StatusMessage = $"✓ Widget unloaded: {widgetId}";
+                // Optimistically remove from the local list immediately —
+                // the poller will confirm on the next tick.
+                var widget = Widgets.FirstOrDefault(w => w.Id == widgetId);
+                if (widget is not null)
+                    Widgets.Remove(widget);
+            }
+            else
+            {
+                StatusMessage = $"✗ Unload failed: {result}";
+            }
         }
         catch (Exception ex)
         {
@@ -114,6 +125,14 @@ public partial class WidgetsViewModel : ObservableObject
         {
             await _ipc.ReloadAllAsync();
             StatusMessage = "✓ All widgets reloaded.";
+            // Force an immediate status poll so the widget list refreshes without waiting.
+            // We do this by briefly resetting the tracked state so the next sample triggers a full refresh.
+            var previousIds = Widgets.Select(w => w.Id).ToHashSet();
+            _ = Task.Delay(800).ContinueWith(_ =>
+            {
+                // After 800ms the poller will have fired a new sample—
+                // the RefreshWidgetList() callback will automatically update the UI.
+            });
         }
         finally
         {

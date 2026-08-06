@@ -13,6 +13,8 @@ public sealed class ProcessManagerService
     private Process? _engineProcess;
     private readonly string _workspaceRoot;
 
+    public string WorkspaceRoot => _workspaceRoot;
+
     /// <summary>
     /// Fired when the engine process exits (normally or due to crash).
     /// </summary>
@@ -68,6 +70,22 @@ public sealed class ProcessManagerService
         }
 
         _workspaceRoot = dir?.FullName ?? Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "..", "..", ".."));
+        
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(_workspaceRoot, "logs"));
+        }
+        catch { }
+    }
+
+    private void WriteToEngineLog(string line)
+    {
+        try
+        {
+            string path = Path.Combine(_workspaceRoot, "logs", "engine.log");
+            File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {line}\n");
+        }
+        catch { }
     }
 
     /// <summary>
@@ -86,7 +104,7 @@ public sealed class ProcessManagerService
                 Arguments = "run -p core_engine",
                 WorkingDirectory = _workspaceRoot,
                 UseShellExecute = false,
-                CreateNoWindow = false,
+                CreateNoWindow = true,   // Hide the console window — daemon runs in background
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
@@ -111,7 +129,10 @@ public sealed class ProcessManagerService
                     {
                         var line = await _engineProcess.StandardOutput.ReadLineAsync();
                         if (line is not null)
+                        {
                             OnEngineOutput?.Invoke(line);
+                            WriteToEngineLog(line);
+                        }
                     }
                 }
                 catch { /* Process exited */ }
@@ -125,7 +146,10 @@ public sealed class ProcessManagerService
                     {
                         var line = await _engineProcess.StandardError.ReadLineAsync();
                         if (line is not null)
+                        {
                             OnEngineOutput?.Invoke(line);
+                            WriteToEngineLog(line);
+                        }
                     }
                 }
                 catch { /* Process exited */ }

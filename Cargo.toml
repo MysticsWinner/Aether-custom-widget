@@ -18,10 +18,11 @@ members = [
     "crates/installer",
     "crates/perf_monitor_widget",
     "crates/dashboard_tui",
+    "tests",
 ]
 
 [workspace.package]
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Next-Gen Desktop Customization Team"]
 license = "MIT OR Apache-2.0"

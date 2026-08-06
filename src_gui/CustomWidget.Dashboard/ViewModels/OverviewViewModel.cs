@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
 using CustomWidget.Dashboard.Services;
+using Microsoft.UI.Xaml;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -16,6 +17,13 @@ public partial class OverviewViewModel : ObservableObject
 {
     private readonly TelemetryPollerService _poller;
     private readonly AetherIpcService _ipc;
+
+    // Current theme cycle position: 0=dark, 1=light, 2=system
+    private int _currentThemeIndex = 0;
+    private static readonly string[] _themeNames = ["dark", "light", "system"];
+
+    // Ping result timer — clears the ping banner after 8 seconds
+    private DispatcherTimer? _pingClearTimer;
 
     [ObservableProperty] private float _cpuPct;
     [ObservableProperty] private float _gpuPct;
@@ -32,6 +40,12 @@ public partial class OverviewViewModel : ObservableObject
     [ObservableProperty] private string _activeWidgetsText = "No active widgets";
     [ObservableProperty] private string _statusText = "Engine Offline";
     [ObservableProperty] private bool _isBusy;
+
+    /// <summary>
+    /// Separate field for the ping result — not overwritten by the telemetry refresh loop.
+    /// Displayed below the Quick Actions buttons and auto-clears after 8 seconds.
+    /// </summary>
+    [ObservableProperty] private string _pingResultText = "";
 
     public OverviewViewModel(TelemetryPollerService poller, AetherIpcService ipc)
     {
@@ -83,15 +97,28 @@ public partial class OverviewViewModel : ObservableObject
     private async Task ToggleThemeAsync()
     {
         // Cycle: dark → light → system → dark
-        string current = "dark";
-        string next = current switch
+        _currentThemeIndex = (_currentThemeIndex + 1) % _themeNames.Length;
+        string next = _themeNames[_currentThemeIndex];
+
+        // Apply live to the WinUI 3 dashboard window
+        var elementTheme = next switch
         {
-            "dark" => "light",
-            "light" => "system",
-            _ => "dark",
+            "light" => ElementTheme.Light,
+            "system" => ElementTheme.Default,
+            _ => ElementTheme.Dark,
         };
 
+        if (App.Current.MainWindow is MainWindow window)
+        {
+            window.SetAppTheme(elementTheme);
+        }
+
+        // Sync theme with Core Engine daemon via IPC
         await _ipc.SetThemeModeAsync(next);
+
+        // Show feedback in status text briefly
+        PingResultText = $"🎨 Theme switched to '{next}'.";
+        SchedulePingClear();
     }
 
     [RelayCommand]
@@ -101,11 +128,31 @@ public partial class OverviewViewModel : ObservableObject
         try
         {
             bool ok = await _ipc.PingAsync();
-            StatusText = ok ? "Pong! Engine is alive" : "No response from engine";
+            // Write to dedicated PingResultText — not StatusText — so it isn't overwritten by telemetry refresh
+            PingResultText = ok ? "📡 Pong! Engine is alive ✓" : "📡 No response from engine ✗";
+            SchedulePingClear();
+
+            // Also update status text (will be overwritten on next sample, that's fine)
+            StatusText = ok ? "Engine Online — Pong received" : "Engine Offline";
         }
         finally
         {
             IsBusy = false;
         }
+    }
+
+    /// <summary>
+    /// Starts a timer that clears <see cref="PingResultText"/> after 8 seconds.
+    /// </summary>
+    private void SchedulePingClear()
+    {
+        _pingClearTimer?.Stop();
+        _pingClearTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        _pingClearTimer.Tick += (_, _) =>
+        {
+            PingResultText = "";
+            _pingClearTimer?.Stop();
+        };
+        _pingClearTimer.Start();
     }
 }

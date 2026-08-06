@@ -15,12 +15,12 @@ use core_engine::{
     MasterPerformanceSuite, PluginSandboxSubsystem, ProductionSubsystem, ProfilerSubsystem,
     RainmeterBenchmark, RenderSubsystem, TelemetrySubsystem, ThemeEngineSubsystem,
 };
-use ipc_protocol::{ControlCommand, IpcChannel, IpcMessage};
+use ipc_protocol::{ControlCommand, SharedMemoryRingBuffer, MetricPayload};
 use package_manager::PackageManager;
-use plugin_runtime::SandboxSupervisor;
+use plugin_runtime::{ApiVersion, PermissionManifest, PluginHealth, PluginSupervisor};
 use production_engine::{MasterReleaseSuite, SecurityAuditor, StressTestingHarness};
 use std::sync::Arc;
-use theme_engine::{DynamicThemeStore, ThemeSchema};
+use theme_engine::{DynamicThemeStore, ThemeSchema, ThemeResolver};
 
 #[tokio::test]
 async fn test_01_core_engine_subsystem_integration_lifecycle() {
@@ -56,7 +56,7 @@ async fn test_01_core_engine_subsystem_integration_lifecycle() {
 
     // Execute Tick Loop Passes
     for _ in 0..10 {
-        assert!(engine.tick().await.is_ok());
+        engine.tick().await;
     }
 
     // Verify Telemetry Cache Sampling
@@ -68,41 +68,56 @@ async fn test_01_core_engine_subsystem_integration_lifecycle() {
 
 #[tokio::test]
 async fn test_02_ipc_protocol_ring_buffer_integration() {
-    let channel = IpcChannel::new("test_control_pipe");
+    let mut ring_buffer = SharedMemoryRingBuffer::new();
+
+    let payload = MetricPayload {
+        timestamp_ms: 123456789,
+        cpu_usage_pct: 42.5,
+        memory_used_mb: 1024.0,
+        memory_total_mb: 16384.0,
+        gpu_usage_pct: 12.0,
+        net_recv_bytes_per_sec: 5000,
+        net_sent_bytes_per_sec: 2500,
+    };
+
+    // Assert successful push & pop
+    assert!(ring_buffer.push(payload));
+    let popped = ring_buffer.pop();
+    assert_eq!(popped, Some(payload));
+
+    // Verify ControlCommand json roundtrip serialization
     let cmd = ControlCommand::SetThemeMode {
         mode: "dark".to_string(),
     };
-
-    let msg = IpcMessage::Command(cmd.clone());
-    let json = serde_json::to_string(&msg).unwrap();
-    let decoded: IpcMessage = serde_json::from_str(&json).unwrap();
-
-    assert_eq!(decoded, msg);
-    assert_eq!(channel.pipe_name(), "test_control_pipe");
+    let json = serde_json::to_string(&cmd).unwrap();
+    let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
+    assert_eq!(decoded, cmd);
 }
 
 #[tokio::test]
 async fn test_03_appcontainer_sandbox_fault_isolation_integration() {
-    let mut supervisor = SandboxSupervisor::new();
+    let mut supervisor = PluginSupervisor::new();
+    let manifest = PermissionManifest::new("mock_plugin_id");
     let pid = supervisor
-        .spawn_sandbox("mock_plugin_id", "mock_binary.exe", vec!["capability.telemetry.read"])
+        .launch_plugin("mock_plugin_id", ApiVersion::new(1, 0, 0), manifest)
         .unwrap();
 
     assert!(pid > 0);
-    assert!(supervisor.is_healthy("mock_plugin_id"));
+    assert_eq!(supervisor.plugin_health("mock_plugin_id"), Some(PluginHealth::Running));
 
     // Simulate crash fault isolation
-    supervisor.simulate_plugin_crash("mock_plugin_id");
-    assert!(!supervisor.is_healthy("mock_plugin_id"));
+    supervisor.handle_plugin_crash("mock_plugin_id", -1);
+    // Since restarts (1) <= max_restarts (3), it auto-restarts to Running state
+    assert_eq!(supervisor.plugin_health("mock_plugin_id"), Some(PluginHealth::Running));
 }
 
 #[tokio::test]
 async fn test_04_theme_hot_reload_token_resolution_integration() {
-    let store = Arc::new(DynamicThemeStore::new());
+    let store = Arc::new(DynamicThemeStore::new(ThemeSchema::default()));
 
     let mut schema = ThemeSchema::default();
     schema.colors.insert("theme.accent".to_string(), "#FF007F".to_string());
-    store.update_theme(schema);
+    store.hot_swap_schema(schema);
 
     assert_eq!(store.resolve_color("theme.accent"), "#FF007F");
 }

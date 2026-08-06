@@ -12,6 +12,7 @@
 
             <!-- Primary Accent -->
             <SolidColorBrush x:Key="AetherAccentBrush" Color="#00B4FF" />
+            <SolidColorBrush x:Key="AetherAccentMutedBrush" Color="#1A00B4FF" />
 
             <!-- Surface / Background -->
             <SolidColorBrush x:Key="AetherSurfaceBrush" Color="#1A1C2E" />

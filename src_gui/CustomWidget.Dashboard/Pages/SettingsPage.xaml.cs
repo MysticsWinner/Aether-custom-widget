@@ -16,8 +16,8 @@ public sealed partial class SettingsPage : Page
 
     public SettingsPage()
     {
-        this.InitializeComponent();
         _vm = App.Services.GetRequiredService<SettingsViewModel>();
+        this.InitializeComponent();
 
         // Initialize UI state from ViewModel
         ThemeCombo.SelectedIndex = _vm.SelectedThemeIndex;
@@ -31,7 +31,7 @@ public sealed partial class SettingsPage : Page
 
     private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ThemeCombo.SelectedIndex >= 0)
+        if (_vm != null && ThemeCombo.SelectedIndex >= 0)
         {
             _vm.SelectedThemeIndex = ThemeCombo.SelectedIndex;
         }
@@ -40,24 +40,28 @@ public sealed partial class SettingsPage : Page
     private void IntervalSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         int val = (int)e.NewValue;
-        _vm.PollingIntervalMs = val;
+        if (_vm != null)
+            _vm.PollingIntervalMs = val;
         if (IntervalText is not null)
             IntervalText.Text = $"{val} ms";
     }
 
     private void AutoStartToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        _vm.AutoStartEngine = AutoStartToggle.IsOn;
+        if (_vm != null)
+            _vm.AutoStartEngine = AutoStartToggle.IsOn;
     }
 
     private void CloudSyncToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        _vm.CloudSyncEnabled = CloudSyncToggle.IsOn;
+        if (_vm != null)
+            _vm.CloudSyncEnabled = CloudSyncToggle.IsOn;
     }
 
     private void AiToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        _vm.AiFeaturesEnabled = AiToggle.IsOn;
+        if (_vm != null)
+            _vm.AiFeaturesEnabled = AiToggle.IsOn;
     }
 
     private void ResetBtn_Click(object sender, RoutedEventArgs e)

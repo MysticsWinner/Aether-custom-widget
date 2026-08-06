@@ -18,7 +18,7 @@ public partial class ServicesViewModel : ObservableObject
     private readonly TelemetryPollerService _poller;
 
     [ObservableProperty] private bool _isEngineRunning;
-    [ObservableProperty] private string _engineStatusText = "Unknown";
+    [ObservableProperty] private string _engineStatusText = "Checking...";
     [ObservableProperty] private string _enginePidText = "—";
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _busyText = "";
@@ -53,7 +53,16 @@ public partial class ServicesViewModel : ObservableObject
         _poller = poller;
 
         _poller.OnNewSample += _ => RefreshStatus();
-        _poller.OnConnectionChanged += connected => RefreshSubsystems(connected);
+        _poller.OnConnectionChanged += connected =>
+        {
+            RefreshStatus();
+            RefreshSubsystems(connected);
+        };
+
+        // Initialize immediately so the UI shows correct state without waiting for first poll
+        RefreshStatus();
+        if (_ipc.IsConnected)
+            RefreshSubsystems(true);
     }
 
     private void RefreshStatus()

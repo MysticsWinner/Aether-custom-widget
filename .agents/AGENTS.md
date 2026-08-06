@@ -119,10 +119,10 @@ fn test_ipc_dispatch_get_status_returns_json() { ... }
 - **Name**: Aether -- Next-Gen Windows Desktop Customization Platform
 - **Language**: Rust (backend / engine) + C# / WinUI 3 (GUI dashboard)
 - **Target OS**: Windows 11, x86_64 & ARM64
-- **Phase**: 15 (Production Release Candidate)
+- **Phase**: 16 (Production Release Candidate — Diagnostics & Integration)
 - **Root**: `d:\Code\Aether-custom-widget\`
 - **Workspace manifest**: `Cargo.toml` at repo root
-- **Current test count**: 97 -- run `cargo test --workspace` to verify. This number is subjected to change but only expected to increase over the time.
+- **Current test count**: 121 -- run `cargo test --workspace` to verify. This number is subjected to change but only expected to increase over the time.
 
 
 ### Core Architecture Principle -- "Collect Once, Publish Everywhere"

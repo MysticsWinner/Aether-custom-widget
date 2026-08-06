@@ -52,6 +52,17 @@ public sealed partial class OverviewPage : Page
         WidgetListText.Text = _vm.ActiveWidgetsText;
         SubsystemText.Text = "9"; // Known subsystem count from architecture
 
+        // Ping / action result feedback (shown/hidden based on content)
+        if (!string.IsNullOrEmpty(_vm.PingResultText))
+        {
+            PingResultDisplay.Text = _vm.PingResultText;
+            PingResultDisplay.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            PingResultDisplay.Visibility = Visibility.Collapsed;
+        }
+
         // IPC connection dot
         var ipc = App.Services.GetRequiredService<AetherIpcService>();
         bool connected = ipc.IsConnected;

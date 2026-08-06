@@ -37,3 +37,28 @@ sequenceDiagram
 | **INT-IPC-03** | Multi-Client Pipe Concurrent Access | Concurrent connections from WinUI GUI and Ratatui TUI proceed without pipe lock contention. |
 | **INT-IPC-04** | Theme Swapped Signal Propagation | `SetThemeMode` command updates engine state and publishes `CoreEvent::ThemeChanged` to event bus. |
 | **INT-SUB-01** | Engine Graceful Shutdown | Requesting `stop()` triggers reverse-order subsystem shutdown cleanly within timeout budget. |
+
+---
+
+## 3. System Test Scenarios (`tests/system_tests.rs`)
+
+System tests validate full end-to-end user workflows, lifecycle stages, fault-tolerance, and persistence properties:
+
+| Scenario ID | Test Objectives | Verified Assertions |
+|---|---|---|
+| **SYS-LFC-01** | Engine Lifecycle E2E | Initial state is `Initializing`, transition to `Running` on start, tick loop runs, and gracefully updates to `Stopped` on clean shutdown. |
+| **SYS-CHS-02** | Chaos Failure Recovery | Arming a simulated GPU Device Lost failure triggers redundancy supervisor healing process without crashing the loop. |
+| **SYS-PST-03** | Layout State Persistence | Active layout updates are written to disk, and a fresh engine start restores positions and locks correctly. |
+
+---
+
+## 4. Interface Test Scenarios (`tests/interface_tests.rs`)
+
+Interface tests target serialization schemas, command routing compatibility, and input boundary exception handling:
+
+| Scenario ID | Test Objectives | Verified Assertions |
+|---|---|---|
+| **INTF-CMD-01**| ControlCommand Serialization | Asserts C# and Rust JSON compatibility for Ping, GetStatus, SetThemeMode, SetWidgetPosition commands. |
+| **INTF-ERR-02**| Boundary Exception Handling | Invalid JSON and non-existent commands return error payload `{"status":"error","message":"..."}` gracefully. |
+| **INTF-HLT-03**| Health Report Schema | Asserts health diagnostics query lists all 9 subsystems (telemetry, render, theme, plugin_sandbox, profiler, marketplace, cloud_sync, ai, production) as "Healthy". |
+

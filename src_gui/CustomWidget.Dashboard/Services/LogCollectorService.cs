@@ -78,6 +78,16 @@ public sealed partial class LogCollectorService
         AddEntry(entry);
     }
 
+    private void WriteToDashboardLog(LogEntry entry)
+    {
+        try
+        {
+            string path = Path.Combine(_processManager.WorkspaceRoot, "logs", "dashboard.log");
+            File.AppendAllText(path, $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{entry.Level}] [{entry.Target}] {entry.Message}\n");
+        }
+        catch { }
+    }
+
     private void AddEntry(LogEntry entry)
     {
         if (entry.Level == "WARN") WarnCount++;
@@ -90,6 +100,7 @@ public sealed partial class LogCollectorService
                 Entries.RemoveAt(0);
         }
 
+        WriteToDashboardLog(entry);
         OnNewEntry?.Invoke(entry);
     }
 

@@ -55,12 +55,33 @@ public sealed partial class MainWindow : Window
                 _statusTimer?.Stop();
                 _poller?.Stop();
             };
+
+            AutoStartEngineIfNeeded();
         }
         catch (Exception ex)
         {
             App.LogCrash("MainWindow_Constructor", ex);
             throw;
         }
+    }
+
+    private async void AutoStartEngineIfNeeded()
+    {
+        try
+        {
+            string settingsFile = System.IO.Path.Combine(AppContext.BaseDirectory, "settings.json");
+            if (System.IO.File.Exists(settingsFile))
+            {
+                string json = System.IO.File.ReadAllText(settingsFile);
+                var dict = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(json);
+                if (dict != null && dict.TryGetValue("AutoStartEngine", out var autoStr) && bool.TryParse(autoStr, out var autoVal) && autoVal)
+                {
+                    var pm = App.Services.GetRequiredService<ProcessManagerService>();
+                    await pm.StartEngineAsync();
+                }
+            }
+        }
+        catch { }
     }
 
     private void SetWindowSize(int width, int height)

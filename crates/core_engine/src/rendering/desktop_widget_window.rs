@@ -297,7 +297,7 @@ fn run_desktop_window_loop(
 
                 // Status footer
                 SetTextColor(mem_dc, COLORREF(0x0094A3B8));
-                let footer_str = format!("Aether Engine v0.5.0 • Position ({}, {})", cur_x, cur_y);
+                let footer_str = format!("Aether Engine v0.6.0 • Position ({}, {})", cur_x, cur_y);
                 let mut r_footer = RECT { left: 16, top: 168, right: width - 16, bottom: 186 };
                 windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut footer_str.encode_utf16().collect::<Vec<u16>>(), &mut r_footer, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
 

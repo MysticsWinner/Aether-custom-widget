@@ -98,7 +98,7 @@ pub fn render_perf_card(canvas: &mut BatchRenderCanvas, snap: &TelemetrySnapshot
 
     // ── footer ───────────────────────────────────────────────────────────────
     canvas.draw_text(
-        "Aether v0.5.0  \u{2022}  Phase 15 RC  \u{2022}  DirectComposition",
+        "Aether v0.6.0  \u{2022}  Phase 16 RC  \u{2022}  DirectComposition",
         "Segoe UI", 9.5,
         RectF::new(CARD_X + PAD, CARD_Y + CARD_H - 20.0, inner_w, 13.0),
         FOOTER,

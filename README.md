@@ -14,7 +14,7 @@ An enterprise-class, hardware-accelerated, zero-trust desktop customization engi
 - **Aether Renderer** — DirectComposition & Direct2D hardware-accelerated compositing engine targetting Windows DWM surfaces (`WorkerW`).
 - **Aether SDK** — Standardized 6-pillar widget SDK with native bindings for **Rust**, **C# .NET 8**, and **TypeScript**.
 - **Aether CLI** — Native npm-style package manager CLI with Ed25519 cryptographic signature verification.
-- **Aether Studio** — Modern WinUI 3 desktop management dashboard connected via Win32 Named Pipes IPC.
+- **Aether Studio / Aether Desktop** — Modern WinUI 3 desktop management dashboard connected via Win32 Named Pipes IPC.
 - **Aether Marketplace** — Decentralized, security-verified widget package registry ecosystem.
 
 ---

@@ -1,0 +1,44 @@
+[package]
+name = "tests_suite"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[[test]]
+name = "integration_tests"
+path = "integration_tests.rs"
+
+[[test]]
+name = "system_tests"
+path = "system_tests.rs"
+
+[[test]]
+name = "interface_tests"
+path = "interface_tests.rs"
+
+[dependencies]
+# Empty lib, but dependencies are listed in dev-dependencies for tests to use.
+
+[dev-dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+
+# System Crates
+core_engine = { path = "../crates/core_engine" }
+plugin_runtime = { path = "../crates/plugin_runtime" }
+lua_runtime = { path = "../crates/lua_runtime" }
+ipc_protocol = { path = "../crates/ipc_protocol" }
+layout_engine = { path = "../crates/layout_engine" }
+theme_engine = { path = "../crates/theme_engine" }
+animation_engine = { path = "../crates/animation_engine" }
+system_providers = { path = "../crates/system_providers" }
+widget_parser = { path = "../crates/widget_parser" }
+widget_sdk = { path = "../crates/widget_sdk" }
+package_manager = { path = "../crates/package_manager" }
+cloud_sync = { path = "../crates/cloud_sync" }
+ai_engine = { path = "../crates/ai_engine" }
+production_engine = { path = "../crates/production_engine" }
+perf_monitor_widget = { path = "../crates/perf_monitor_widget" }

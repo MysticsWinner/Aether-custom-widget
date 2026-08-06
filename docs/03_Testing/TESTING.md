@@ -15,24 +15,30 @@ Per project governance rules:
 ## 2. Test Suite Status Summary
 
 ```
-Total Workspace Unit Tests: 87 / 87 Passing (100% Pass Rate)
+Total Workspace Tests: 116 / 116 Passing (100% Pass Rate)
 Test Execution Command: cargo test --workspace
 Compilation Verification: cargo check --workspace
 ```
 
 ```mermaid
-pie title Workspace Unit Test Count by Component (87 Total)
-    "core_engine" : 30
-    "system_providers" : 6
+pie title Workspace Test Count by Component (116 Total)
+    "core_engine (Unit)" : 41
+    "system_providers" : 9
     "widget_sdk" : 8
     "perf_monitor_widget" : 6
     "production_engine" : 6
-    "ipc_protocol" : 4
+    "ipc_protocol" : 6
     "package_manager" : 4
-    "theme_engine" : 4
-    "plugin_runtime" : 3
+    "theme_engine" : 5
+    "plugin_runtime" : 5
+    "dashboard_tui" : 3
+    "lua_runtime" : 2
     "widget_parser" : 2
-    "other / doc-tests" : 14
+    "installer" : 1
+    "integration_tests" : 8
+    "system_tests" : 3
+    "interface_tests" : 3
+    "other / doc-tests" : 34
 ```
 
 ---
@@ -43,5 +49,7 @@ pie title Workspace Unit Test Count by Component (87 Total)
 |---|---|---|---|
 | **Unit Tests** | Function, method, struct state machine validation | `cargo test --workspace` | Built-in `#[test]` Rust test runner |
 | **Doc Tests** | Public API code example validity | `cargo test --doc` | Rustdoc runner |
-| **Integration Tests** | IPC named pipe roundtrip & subsystem lifecycle | `crates/core_engine/src/ipc_server.rs` | Async Tokio test runner (`#[tokio::test]`) |
+| **Integration Tests** | IPC named pipe ring buffer & subsystem cross-interaction | `tests/integration_tests.rs` | Async Tokio test runner (`#[tokio::test]`) |
+| **System Tests** | E2E lifecycle, chaos recovery, layout persistence | `tests/system_tests.rs` | Async Tokio test runner (`#[tokio::test]`) |
+| **Interface Tests** | Serialization compatibility, error handling, health reports | `tests/interface_tests.rs` | Built-in `#[test]` Rust test runner |
 | **Micro-Benchmarks** | dirty region tracking, telemetry collect latency | `RainmeterBenchmark` | Benchmark modules within `core_engine` & `widget_sdk` |

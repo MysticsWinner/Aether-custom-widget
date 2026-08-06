@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use anyhow::Result;
 use ai_engine::AiEngineBenchmark;
 use cloud_sync::CloudSyncBenchmark;
@@ -138,17 +139,25 @@ async fn main() -> Result<()> {
                 }
             }
         });
-
-        // Spawn Desktop Overlay Widget Window (WorkerW / DirectComposition Layer)
-        let desktop_window = core_engine::DesktopWidgetWindow::new();
-        desktop_window.spawn_overlay(shared_cache.clone());
     }
+
+    // Spawn Desktop Overlay Widget Window (WorkerW / DirectComposition Layer)
+    // NOTE: Created outside blocks so it can be shared with the IPC server.
+    let desktop_window = Arc::new(core_engine::DesktopWidgetWindow::new());
+    desktop_window.spawn_overlay(shared_cache.clone());
 
     // ── 8. IPC Named Pipe Server task ────────────────────────────────────────
     {
         let ipc_cache = shared_cache.clone();
+        let ipc_desktop_window = desktop_window.clone();
+        let ipc_state = core_engine::ipc_server::IpcSharedState::new(
+            ipc_cache,
+            ipc_desktop_window,
+            // Built-in perf_monitor widget is always loaded
+            vec!["aether.builtin.perf_monitor".to_string()],
+        );
         tokio::spawn(async move {
-            if let Err(e) = core_engine::ipc_server::run_ipc_server(ipc_cache).await {
+            if let Err(e) = core_engine::ipc_server::run_ipc_server(ipc_state).await {
                 tracing::error!("IPC server terminated: {e:?}");
             }
         });

@@ -22,8 +22,8 @@
 | **Phase 12** | Ratatui Terminal Dashboard | ✅ **Completed** | `dashboard_tui` live terminal client connecting to IPC pipe, animated CPU/RAM gauges. |
 | **Phase 13** | Native Win32 Desktop Hooks | ✅ **Completed** | Native C++ `workerw_hook.cpp`Progman/WorkerW message injection library. |
 | **Phase 14** | WinUI 3 Management Dashboard | ✅ **Completed** | `CustomWidget.Dashboard` C# app with 6 pages, Mica backdrop, MVVM architecture, live telemetry poller. |
-| **Phase 15** | Production Release Candidate | ✅ **Active Phase** | Comprehensive unit & doc test suite (**87/87 passing**), workspace audit, complete modular documentation library. |
-| **Phase 16+** | Native Hardware Integration | Planned | FFI connection to WorkerW C++ hook, DXGI GPU telemetry, AppContainer sandboxing. |
+| **Phase 15** | Production Release Candidate | ✅ **Completed** | EMA hardware telemetry, drag-to-position overlay cards, Lua SDK expansion, CRDT sync (107/107 passing). |
+| **Phase 16** | Diagnostics & System Integration | ✅ **Active Phase (v0.6.0)** | Real-time WinUI 3 Diagnostics Dashboard, Process Manager, Event Log Collector, IPC Diagnostics API, and Integration Test Suite (**121/121 passing**). |
 
 ---
 

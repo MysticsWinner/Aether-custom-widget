@@ -15,9 +15,9 @@ public partial class AboutViewModel : ObservableObject
 {
     private readonly AetherIpcService _ipc;
 
-    [ObservableProperty] private string _appVersion = "0.5.0";
-    [ObservableProperty] private string _engineVersion = "0.5.0";
-    [ObservableProperty] private string _phaseName = "15 — Production Release Candidate";
+    [ObservableProperty] private string _appVersion = "0.6.0";
+    [ObservableProperty] private string _engineVersion = "0.6.0";
+    [ObservableProperty] private string _phaseName = "16 — Production Release Candidate (Diagnostics & System Control)";
     [ObservableProperty] private string _targetOS = "Windows 11 (x64 / ARM64)";
     [ObservableProperty] private string _githubRepoUrl = "https://github.com/MysticsWinner/Aether-custom-widget";
     [ObservableProperty] private string _licenseName = "MIT / Apache-2.0 License";

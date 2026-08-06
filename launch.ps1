@@ -36,7 +36,7 @@ function Write-Banner {
     Write-Host ""
     Write-Host "  +--------------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host "  |  *  Aether -- Next-Gen Windows Desktop Customization         |" -ForegroundColor Cyan
-    Write-Host "  |      Phase 15 Production Release Candidate                   |" -ForegroundColor Cyan
+    Write-Host "  |      Phase 16 Production Release Candidate (v0.6.0)         |" -ForegroundColor Cyan
     Write-Host "  +--------------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
 }

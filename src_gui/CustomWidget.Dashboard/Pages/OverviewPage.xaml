@@ -128,6 +128,12 @@
                         Click="PingBtn_Click" Padding="16,10,16,10" CornerRadius="6" />
             </StackPanel>
 
+            <!-- Ping / action result feedback banner -->
+            <TextBlock x:Name="PingResultDisplay" Text=""
+                       FontSize="13" FontWeight="SemiBold"
+                       Foreground="{StaticResource AetherAccentBrush}"
+                       Visibility="Collapsed" />
+
             <!-- ══════ Status Summary ══════ -->
             <TextBlock Text="System Summary" Style="{StaticResource AetherSectionHeader}" />
             <Grid ColumnSpacing="16">

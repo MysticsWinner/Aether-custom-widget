@@ -2,7 +2,7 @@
 id     = "aether.builtin.perf_monitor"
 name   = "Performance Monitor"
 author = "Aether Platform Team"
-version = "0.5.0"
+version = "0.6.0"
 update_interval_ms = 500
 
 [layout]

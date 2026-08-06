@@ -28,3 +28,4 @@ CMakeCache.txt
 *.log
 *.dump
 *.dmp
+.aether/
