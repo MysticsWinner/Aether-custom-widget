@@ -24,6 +24,20 @@
 | **Phase 14** | WinUI 3 Management Dashboard | ✅ **Completed** | `CustomWidget.Dashboard` C# app with 6 pages, Mica backdrop, MVVM architecture, live telemetry poller. |
 | **Phase 15** | Production Release Candidate | ✅ **Completed** | EMA hardware telemetry, drag-to-position overlay cards, Lua SDK expansion, CRDT sync (107/107 passing). |
 | **Phase 16** | Diagnostics & System Integration | ✅ **Active Phase (v0.6.0)** | Real-time WinUI 3 Diagnostics Dashboard, Process Manager, Event Log Collector, IPC Diagnostics API, and Integration Test Suite (**121/121 passing**). |
+| **Phase 17** | Crash Recovery Manager & Safe Mode | ✅ **Completed (v0.7.0-alpha.1)** | `recovery_manager` crate — widget quarantine, crash-loop detection, rollback coordinator, safe-mode sentinel guard (**6/6 tests**). |
+| **Phase 18** | Transactional Config, Versioned Migration & Snapshots | ✅ **Completed (v0.7.0-alpha.2)** | `config_manager` crate — atomic temp+rename writes, 5-generation backup rotation, schema migration engine (v1→vN), desktop snapshot capture/restore via IPC (**7/7 tests**). |
+| **Phase 19** | Permission System, Widget Firewall & Plugin Integrity | ✅ **Completed (v0.7.0-alpha.3)** | `capability_broker` crate — revocable capability tokens, `WidgetFirewall`, persistent `GrantStore`, BLAKE3 binary integrity monitor, `MemoryGuard` (**7/7 tests**). |
+| **Phase 20** | Health Monitor, Watchdog & Chaos Testing | ✅ **Completed (v0.7.0-beta.1)** | `watchdog` + `event_recorder` crates — structured subsystem health reports, two-process heartbeat watchdog supervisor, adversarial chaos testing harness, time-travel event recording (**5/5 tests**). |
+| **Phase 21** | Observability Platform | ✅ **Completed (v0.7.0-beta.2)** | `observability` crate — ETW provider, Prometheus `/metrics` exporter, Windows `MiniDumpWriteDump` crash collector (`.dmp`), distributed `TraceContext` (**4/4 tests**). |
+| **Phase 22** | Adaptive Tick Rate & Frame Scheduler | ✅ **Completed (v0.7.0-beta.3)** | `TickRateAdvisor` (10ms–100ms adaptive tick), `FrameScheduler` (per-widget Hz budgets), `LruResourceCache` (render object LRU eviction) (**5/5 tests**). |
+| **Phase 23** | Dev Tools: Hot Reload, Inspector & CLI | ✅ **Completed (v0.7.0-rc.1)** | `dev_tools` crate — `DevHotReloader` directory watcher, `WidgetInspector` DOM profiler, `aether_cli` command runner, `LayoutGridOverlay` (**4/4 tests**). |
+| **Phase 24** | AI Expansion & Marketplace++ | ✅ **Completed (v0.7.0-rc.2)** | `WidgetSynthesizer` (NL prompt → manifest+Lua), `WallpaperThemeGenerator` (wallpaper palette extractor), `AiPerformanceAdvisor`, `MarketplaceCatalog` (**5/5 tests**). |
+| **Phase 25** | Enterprise Governance & Policy Management | ✅ **Completed (v0.7.0-rc.3)** | `enterprise` crate — `PolicyEngine` (Group Policy JSON solver), `AuditLogger` (SHA-256 block hash chain), `AuthGate` (Windows Hello PIN prompt) (**4/4 tests**). |
+| **Phase 26** | Long-Term Wow Features | 📋 **Planned (v0.7.0)** | Multi-monitor profiles, per-virtual-desktop layouts, HDR/VRR rendering, touchscreen/pen input, Rust + WASM widget runtimes, workspace profiles, benchmark vs Rainmeter, accessibility. Est. +20 tests. |
+
+---
+
+> **v0.7 Full Design Document**: See [PLAN_0_7.md](file:///d:/Code/Aether-custom-widget/docs/00_Project/PLAN_0_7.md) for the complete phase-by-phase architecture, key types, integration points, IPC variants, test coverage requirements, and open design questions for all Phases 17–26.
 
 ---
 

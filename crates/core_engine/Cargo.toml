@@ -21,6 +21,14 @@ cloud_sync = { path = "../cloud_sync" }
 ai_engine = { path = "../ai_engine" }
 production_engine = { path = "../production_engine" }
 perf_monitor_widget = { path = "../perf_monitor_widget" }
+recovery_manager = { path = "../recovery_manager" }
+config_manager = { path = "../config_manager" }
+capability_broker = { path = "../capability_broker" }
+watchdog = { path = "../watchdog" }
+event_recorder = { path = "../event_recorder" }
+observability = { path = "../observability" }
+dev_tools = { path = "../dev_tools" }
+enterprise = { path = "../enterprise" }
 
 
 

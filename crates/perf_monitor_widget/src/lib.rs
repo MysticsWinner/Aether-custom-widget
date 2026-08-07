@@ -10,6 +10,7 @@ use anyhow::Result;
 use system_providers::SharedTelemetryCache;
 use tracing::info;
 use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
+use widget_sdk::render_config::RenderConfig;
 use widget_sdk::rendering::{BatchRenderCanvas, RenderCanvas};
 
 /// Performance Monitor Widget — implements the 6-pillar `WidgetLifecycle` SDK.
@@ -17,6 +18,7 @@ pub struct PerfMonitorWidget {
     state: WidgetState,
     cache: SharedTelemetryCache,
     tick_count: u64,
+    config: RenderConfig,
 }
 
 impl PerfMonitorWidget {
@@ -26,7 +28,16 @@ impl PerfMonitorWidget {
             state: WidgetState::Unloaded,
             cache,
             tick_count: 0,
+            config: RenderConfig::default(),
         }
+    }
+
+    pub fn set_config(&mut self, config: RenderConfig) {
+        self.config = config;
+    }
+
+    pub fn config(&self) -> &RenderConfig {
+        &self.config
     }
 }
 
@@ -49,9 +60,9 @@ impl WidgetLifecycle for PerfMonitorWidget {
         self.tick_count += 1;
         let snap = self.cache.get_snapshot();
 
-        // Build this frame's draw command list
+        // Build this frame's draw command list with active RenderConfig
         let mut canvas = BatchRenderCanvas::new();
-        renderer::render_perf_card(&mut canvas, &snap);
+        renderer::render_perf_card_with_config(&mut canvas, &snap, &self.config);
 
         let ram_total_gb = snap.memory_total_mb / 1024.0;
         let ram_used_gb  = snap.memory_used_mb  / 1024.0;
@@ -119,6 +130,7 @@ mod tests {
             net_recv_bytes_per_sec: 0,
             net_sent_bytes_per_sec: 0,
             custom_metrics: HashMap::new(),
+            ..TelemetrySnapshot::default()
         }
     }
 

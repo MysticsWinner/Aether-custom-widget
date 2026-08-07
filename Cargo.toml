@@ -18,6 +18,14 @@ members = [
     "crates/installer",
     "crates/perf_monitor_widget",
     "crates/dashboard_tui",
+    "crates/recovery_manager",
+    "crates/config_manager",
+    "crates/capability_broker",
+    "crates/watchdog",
+    "crates/event_recorder",
+    "crates/observability",
+    "crates/dev_tools",
+    "crates/enterprise",
     "tests",
 ]
 

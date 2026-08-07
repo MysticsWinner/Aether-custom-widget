@@ -5,6 +5,7 @@
 
 pub mod auto_updater;
 pub mod benchmark;
+pub mod chaos_harness;
 pub mod crash_analytics;
 pub mod docs_portal;
 pub mod security_audit;
@@ -12,6 +13,7 @@ pub mod stress_test;
 
 pub use auto_updater::AutoUpdater;
 pub use benchmark::MasterReleaseSuite;
+pub use chaos_harness::{ChaosHarness, ChaosScenario};
 pub use crash_analytics::CrashAnalytics;
 pub use docs_portal::DocumentationPortal;
 pub use security_audit::SecurityAuditor;

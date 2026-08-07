@@ -73,6 +73,57 @@ impl EmbeddedLuaPluginHost {
             })?;
             globals.set("get_net_rate", net_fn)?;
 
+            // ── Extended Telemetry Bindings ──────────────────────────────────
+            let c_apps = cache.clone();
+            globals.set("get_open_apps_count", lua.create_function(move |_, (): ()| {
+                Ok(c_apps.get_snapshot().open_apps_count)
+            })?)?;
+
+            let c_tabs = cache.clone();
+            globals.set("get_browser_tabs_count", lua.create_function(move |_, (): ()| {
+                Ok(c_tabs.get_snapshot().browser_tabs_count)
+            })?)?;
+
+            let c_audio = cache.clone();
+            globals.set("get_audio_apps_count", lua.create_function(move |_, (): ()| {
+                Ok(c_audio.get_snapshot().audio_playing_apps_count)
+            })?)?;
+
+            let c_game = cache.clone();
+            globals.set("get_gaming_apps_count", lua.create_function(move |_, (): ()| {
+                Ok(c_game.get_snapshot().gaming_apps_count)
+            })?)?;
+
+            let c_dev = cache.clone();
+            globals.set("get_dev_suite_apps_count", lua.create_function(move |_, (): ()| {
+                Ok(c_dev.get_snapshot().dev_suite_apps_count)
+            })?)?;
+
+            let c_vol = cache.clone();
+            globals.set("get_master_volume_pct", lua.create_function(move |_, (): ()| {
+                Ok(c_vol.get_snapshot().master_volume_pct)
+            })?)?;
+
+            let c_bat = cache.clone();
+            globals.set("get_battery_charge_pct", lua.create_function(move |_, (): ()| {
+                Ok(c_bat.get_snapshot().battery_charge_pct)
+            })?)?;
+
+            let c_bat_secs = cache.clone();
+            globals.set("get_battery_remaining_secs", lua.create_function(move |_, (): ()| {
+                Ok(c_bat_secs.get_snapshot().battery_remaining_secs)
+            })?)?;
+
+            let c_gpu_c = cache.clone();
+            globals.set("get_gpu_count", lua.create_function(move |_, (): ()| {
+                Ok(c_gpu_c.get_snapshot().total_gpu_count)
+            })?)?;
+
+            let c_disp_c = cache.clone();
+            globals.set("get_display_count", lua.create_function(move |_, (): ()| {
+                Ok(c_disp_c.get_snapshot().total_display_count)
+            })?)?;
+
             // ── Position & Lock Bindings ─────────────────────────────────────
             let pos_store_c1 = pos_store.clone();
             let pos_fn = lua.create_function(move |_, widget_id: String| {
@@ -125,6 +176,23 @@ impl Default for EmbeddedLuaPluginHost {
 mod tests {
     use super::*;
     use system_providers::TelemetrySnapshot;
+
+    #[test]
+    fn test_lua_extended_telemetry_bindings() {
+        let host = EmbeddedLuaPluginHost::new().unwrap();
+        let script = r#"
+            local apps = get_open_apps_count()
+            local tabs = get_browser_tabs_count()
+            local bat = get_battery_charge_pct()
+            local gpus = get_gpu_count()
+            return "apps:" .. apps .. ",tabs:" .. tabs .. ",bat:" .. bat .. ",gpus:" .. gpus
+        "#;
+        let res = host.eval_script(script).unwrap();
+        assert!(res.contains("apps:5"));
+        assert!(res.contains("tabs:12"));
+        assert!(res.contains("bat:85"));
+        assert!(res.contains("gpus:2"));
+    }
 
     #[test]
     fn test_lua_runtime_execution() {

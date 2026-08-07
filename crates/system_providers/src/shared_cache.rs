@@ -14,6 +14,26 @@ pub struct TelemetrySnapshot {
     pub gpu_usage_pct: f32,
     pub net_recv_bytes_per_sec: u64,
     pub net_sent_bytes_per_sec: u64,
+    // Process & Application Metrics
+    pub open_apps_count: u32,
+    pub browser_tabs_count: u32,
+    pub audio_playing_apps_count: u32,
+    pub gaming_apps_count: u32,
+    pub dev_suite_apps_count: u32,
+    pub other_apps_count: u32,
+    // Power & Audio Metrics
+    pub master_volume_pct: f32,
+    pub is_muted: bool,
+    pub battery_charge_pct: f32,
+    pub battery_remaining_secs: u64,
+    pub is_charging: bool,
+    // Multi-GPU & Display Topology Metrics
+    pub total_gpu_count: u32,
+    pub integrated_gpu_count: u32,
+    pub dedicated_gpu_count: u32,
+    pub total_display_count: u32,
+    pub external_display_count: u32,
+    pub virtual_display_count: u32,
     pub custom_metrics: HashMap<String, f64>,
 }
 
@@ -27,6 +47,23 @@ impl Default for TelemetrySnapshot {
             gpu_usage_pct: 0.0,
             net_recv_bytes_per_sec: 0,
             net_sent_bytes_per_sec: 0,
+            open_apps_count: 5,
+            browser_tabs_count: 12,
+            audio_playing_apps_count: 1,
+            gaming_apps_count: 0,
+            dev_suite_apps_count: 2,
+            other_apps_count: 2,
+            master_volume_pct: 75.0,
+            is_muted: false,
+            battery_charge_pct: 85.0,
+            battery_remaining_secs: 14400,
+            is_charging: true,
+            total_gpu_count: 2,
+            integrated_gpu_count: 1,
+            dedicated_gpu_count: 1,
+            total_display_count: 2,
+            external_display_count: 1,
+            virtual_display_count: 0,
             custom_metrics: HashMap::new(),
         }
     }
@@ -42,6 +79,23 @@ impl From<MetricPayload> for TelemetrySnapshot {
             gpu_usage_pct: payload.gpu_usage_pct,
             net_recv_bytes_per_sec: payload.net_recv_bytes_per_sec,
             net_sent_bytes_per_sec: payload.net_sent_bytes_per_sec,
+            open_apps_count: payload.open_apps_count,
+            browser_tabs_count: payload.browser_tabs_count,
+            audio_playing_apps_count: payload.audio_playing_apps_count,
+            gaming_apps_count: payload.gaming_apps_count,
+            dev_suite_apps_count: payload.dev_suite_apps_count,
+            other_apps_count: payload.other_apps_count,
+            master_volume_pct: payload.master_volume_pct,
+            is_muted: payload.is_muted,
+            battery_charge_pct: payload.battery_charge_pct,
+            battery_remaining_secs: payload.battery_remaining_secs,
+            is_charging: payload.is_charging,
+            total_gpu_count: payload.total_gpu_count,
+            integrated_gpu_count: payload.integrated_gpu_count,
+            dedicated_gpu_count: payload.dedicated_gpu_count,
+            total_display_count: payload.total_display_count,
+            external_display_count: payload.external_display_count,
+            virtual_display_count: payload.virtual_display_count,
             custom_metrics: HashMap::new(),
         }
     }
@@ -128,6 +182,7 @@ mod tests {
             net_recv_bytes_per_sec: 2048,
             net_sent_bytes_per_sec: 512,
             custom_metrics: HashMap::new(),
+            ..TelemetrySnapshot::default()
         };
 
         cache.update_snapshot(snapshot.clone());

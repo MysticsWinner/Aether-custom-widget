@@ -22,11 +22,12 @@ gantt
     section Phase 6-10 GUI & Infrastructure
     WinUI 3 GUI & TUI Dashboards       :done, p3, 2026-04-15, 2026-06-01
     Subsystem Suite & Simulation Layer :done, p4, 2026-06-01, 2026-07-15
-    section Phase 11-15 Hardening (Current)
-    Production Release Candidate (RC)  :active, p5, 2026-07-15, 2026-09-01
-    section Phase 16+ Hardware Native
-    DirectComposition Desktop Hooking  :crit, p6, 2026-09-01, 2026-11-01
-    AppContainer Sandboxing            :p7, 2026-11-01, 2027-01-01
+    section Phase 11-16 RC & Diagnostics
+    Diagnostics & System Integration   :done, p5, 2026-07-15, 2026-08-15
+    section Phase 17-26 v0.7 Roadmap
+    Phase 17-18: Crash Recovery & Config Safety :active, p6, 2026-09-01, 2026-11-01
+    Phase 19-21: Security Depth & Reliability   :p7, 2026-11-01, 2027-02-01
+    Phase 22-26: Perf, DevTools & Wow Features :p8, 2027-02-01, 2027-08-01
 ```
 
 ---

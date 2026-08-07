@@ -78,6 +78,7 @@ async fn test_02_ipc_protocol_ring_buffer_integration() {
         gpu_usage_pct: 12.0,
         net_recv_bytes_per_sec: 5000,
         net_sent_bytes_per_sec: 2500,
+        ..MetricPayload::default()
     };
 
     // Assert successful push & pop

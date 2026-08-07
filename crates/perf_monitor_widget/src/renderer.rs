@@ -2,6 +2,8 @@
 //! representing a dark glassmorphism performance overlay (340 × 250 px).
 
 use system_providers::TelemetrySnapshot;
+use widget_sdk::contrast::ContrastGuard;
+use widget_sdk::render_config::RenderConfig;
 use widget_sdk::rendering::{BatchRenderCanvas, Color, RectF, RenderCanvas};
 
 // ── palette ───────────────────────────────────────────────────────────────────
@@ -25,22 +27,35 @@ const PAD: f32    = 16.0;
 const BAR_H: f32  = 10.0;
 const FONT: &str  = "Segoe UI Variable";
 
-/// Builds the complete draw-command list for the performance overlay card.
-///
-/// The caller owns the `BatchRenderCanvas`; the render host submits it to the
-/// DirectComposition pipeline once per frame.
 pub fn render_perf_card(canvas: &mut BatchRenderCanvas, snap: &TelemetrySnapshot) {
+    let default_config = RenderConfig::default();
+    render_perf_card_with_config(canvas, snap, &default_config);
+}
+
+/// Builds the complete draw-command list with dynamic contrast protection & customized render config.
+pub fn render_perf_card_with_config(
+    canvas: &mut BatchRenderCanvas,
+    snap: &TelemetrySnapshot,
+    config: &RenderConfig,
+) {
     let inner_w = CARD_W - PAD * 2.0;
 
+    // Determine background color & opacity
+    let mut bg_color = config.custom_bg.unwrap_or(BG);
+    bg_color.a *= config.opacity;
+
     // ── background card ──────────────────────────────────────────────────────
-    canvas.draw_rect(RectF::new(CARD_X, CARD_Y, CARD_W, CARD_H), BG, 12.0);
+    canvas.draw_rect(RectF::new(CARD_X, CARD_Y, CARD_W, CARD_H), bg_color, 12.0);
+
+    // Apply ContrastGuard to ensure text readability
+    let title_color = ContrastGuard::ensure_legible_fg(&TITLE, &bg_color);
 
     // ── title ────────────────────────────────────────────────────────────────
     canvas.draw_text(
         "\u{26A1} Aether Performance Monitor",
         FONT, 13.0,
         RectF::new(CARD_X + PAD, CARD_Y + PAD, inner_w, 18.0),
-        TITLE,
+        title_color,
     );
 
     // ── separator ────────────────────────────────────────────────────────────
@@ -138,6 +153,7 @@ mod tests {
             memory_used_mb: used, memory_total_mb: total,
             net_recv_bytes_per_sec: 204800, net_sent_bytes_per_sec: 51200,
             custom_metrics: HashMap::new(),
+            ..TelemetrySnapshot::default()
         }
     }
 

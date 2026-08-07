@@ -5,10 +5,12 @@
 
 pub mod benchmark;
 pub mod installer;
+pub mod marketplace;
 pub mod package;
 pub mod security;
 
 pub use benchmark::PackageManagerBenchmark;
 pub use installer::PackageManager;
+pub use marketplace::MarketplaceCatalog;
 pub use package::WidgetPackage;
 pub use security::Ed25519Verifier;

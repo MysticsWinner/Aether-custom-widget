@@ -291,14 +291,20 @@ fn run_desktop_window_loop(
                 let _ = DeleteObject(brush_ram);
 
                 // Network Line
-                let net_str = format!("Network Throughput: {:.1} KB/s", snap.net_recv_bytes_per_sec as f32 / 1024.0);
+                let net_str = format!("Network: {:.1} KB/s", snap.net_recv_bytes_per_sec as f32 / 1024.0);
                 let mut r_net = RECT { left: 16, top: 140, right: width - 16, bottom: 158 };
                 windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut net_str.encode_utf16().collect::<Vec<u16>>(), &mut r_net, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
 
+                // Extended Telemetry Line: Apps, Battery %, Volume %
+                let bat_str = if snap.is_charging { format!("{}%", snap.battery_charge_pct) } else { format!("{}%", snap.battery_charge_pct) };
+                let ext_str = format!("Apps: {} | Battery: {} | Vol: {}%", snap.open_apps_count, bat_str, snap.master_volume_pct as u32);
+                let mut r_ext = RECT { left: 16, top: 158, right: width - 16, bottom: 176 };
+                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut ext_str.encode_utf16().collect::<Vec<u16>>(), &mut r_ext, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
                 // Status footer
                 SetTextColor(mem_dc, COLORREF(0x0094A3B8));
-                let footer_str = format!("Aether Engine v0.6.0 • Position ({}, {})", cur_x, cur_y);
-                let mut r_footer = RECT { left: 16, top: 168, right: width - 16, bottom: 186 };
+                let footer_str = format!("Aether Engine v0.7.0 • Pos ({}, {}) • GPUs: {}", cur_x, cur_y, snap.total_gpu_count);
+                let mut r_footer = RECT { left: 16, top: 186, right: width - 16, bottom: 204 };
                 windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut footer_str.encode_utf16().collect::<Vec<u16>>(), &mut r_footer, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
 
                 // Present layered transparent window

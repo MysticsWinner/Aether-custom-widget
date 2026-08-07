@@ -7,10 +7,12 @@
 pub mod providers;
 pub mod shared_cache;
 pub mod telemetry_service;
+pub mod tick_advisor;
 
 pub use providers::{CpuProvider, GpuProvider, MemoryProvider, MetricProvider, NetworkProvider};
 pub use shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
 pub use telemetry_service::{TelemetryBenchmark, TelemetryService};
+pub use tick_advisor::{TickMode, TickRateAdvisor};
 
 use ipc_protocol::MetricPayload;
 
@@ -53,6 +55,7 @@ impl SystemMetricCollector for MockSystemCollector {
             gpu_usage_pct: 12.5,
             net_recv_bytes_per_sec: 1024 * 50,
             net_sent_bytes_per_sec: 1024 * 12,
+            ..MetricPayload::default()
         })
     }
 }
