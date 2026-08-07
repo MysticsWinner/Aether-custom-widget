@@ -3,115 +3,76 @@
 [![Rust 2021](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Platform: Windows 11](https://img.shields.io/badge/Platform-Windows%2011%20(x86__64%2FARM64)-0078D4.svg)](https://www.microsoft.com/windows)
+[![Tests: 184/184 Passing](https://img.shields.io/badge/Tests-184%2F184%20Passing-brightgreen.svg)](docs/08_Testing/Test_Structure.md)
 
 An enterprise-class, hardware-accelerated, zero-trust desktop customization engine designed for ultra-low resource usage, instant responsiveness, and complete fault isolation.
 
 ---
 
-## ⚡ Aether Product Ecosystem
+## 🏛️ Master Documentation Portal
 
-- **Aether Runtime** — Autonomous headless core service daemon written in Rust (`windows-rs`, `tokio`).
-- **Aether Renderer** — DirectComposition & Direct2D hardware-accelerated compositing engine targetting Windows DWM surfaces (`WorkerW`).
-- **Aether SDK** — Standardized 6-pillar widget SDK with native bindings for **Rust**, **C# .NET 8**, and **TypeScript**.
-- **Aether CLI** — Native npm-style package manager CLI with Ed25519 cryptographic signature verification.
-- **Aether Studio / Aether Desktop** — Modern WinUI 3 desktop management dashboard connected via Win32 Named Pipes IPC.
-- **Aether Marketplace** — Decentralized, security-verified widget package registry ecosystem.
+Welcome to the Aether Documentation System. The documentation is organized into 10 structured domains designed for long-term scalability and zero redundancy.
+
+```
+docs/
+├── 00_Project/      ── Master Project Reports, Status & Architecture Overviews
+├── 01_Architecture/ ── Core System Architecture, Threading, IPC & Memory Models
+├── 02_Core/         ── Engine Subsystems (Scheduler, Telemetry, Plugins, AI, Sync)
+├── 03_Rendering/    ── DirectComposition, Direct2D, WorkerW Hooks & GPU Pipeline
+├── 04_SDK/          ── Multi-Language SDKs (Rust, Lua, C#, TypeScript, Plugin API)
+├── 05_GUI/          ── WinUI 3 Dashboard, Ratatui TUI & Diagnostic Tools
+├── 06_Platform/     ── OS Platform Support Matrix (Windows 11, Linux, macOS)
+├── 07_Security/     ── Sandboxing, Permissions, Capability Broker & Threat Models
+├── 08_Testing/      ── Automated Test Harness, Benchmarks & Stress Tests
+└── 09_Development/  ── Build Instructions, Workspace Standards & Release Workflow
+```
 
 ---
 
-## 📊 Measurable Performance Benchmarks
+## 📍 Frequently Accessed Core Documents
 
-| Metric | Aether Platform | Rainmeter (Legacy) | Performance Gain | Detailed Report |
+| Document | Description | Path |
+|---|---|---|
+| 📖 **Master Project Report** | Living encyclopedia & audit report ("Single Source of Truth") | [Detailed_Project_Report.md](docs/00_Project/Detailed_Project_Report.md) |
+| 📐 **System Architecture** | Subsystem orchestrator, event bus, and subsystem lifecycle | [System_Architecture.md](docs/01_Architecture/System_Architecture.md) |
+| 🔌 **Widget SDK Guide** | Complete 6-pillar widget development API guide | [Widget_SDK.md](docs/04_SDK/Widget_SDK.md) |
+| 🔐 **Security & Sandboxing** | Capability broker, AppContainer sandbox, and widget firewall | [Security_Model.md](docs/07_Security/Security_Model.md) |
+| 📊 **Feature Status & Matrix** | Subsystem completion status & benchmark metrics | [Project_Status.md](docs/00_Project/Project_Status.md) |
+| 🧪 **Testing Protocol** | Mandatory testing protocol & workspace test harness | [Test_Structure.md](docs/08_Testing/Test_Structure.md) |
+
+---
+
+## ⚡ Performance Benchmarks vs Competitors
+
+| Metric | Aether Platform | Rainmeter (Legacy) | Performance Gain | Reference |
 | :--- | :--- | :--- | :--- | :--- |
-| **Idle CPU Usage (100 Widgets)** | **`< 0.1% CPU`** | 8.5% – 12.0% CPU | **40x Lower CPU** | [cpu_idle.md](file:///Users/tanmay/Documents/Github/Cutom-widget-Aether/benchmarks/cpu_idle.md) |
-| **Physical RAM Footprint** | **`< 25 MB RAM`** | 120 MB – 350 MB+ | **80%+ RAM Savings** | [memory.md](file:///Users/tanmay/Documents/Github/Cutom-widget-Aether/benchmarks/memory.md) |
-| **Cold Startup Latency** | **`< 45 ms`** | 1,650 ms | **37x Faster Startup** | [startup.md](file:///Users/tanmay/Documents/Github/Cutom-widget-Aether/benchmarks/startup.md) |
-| **Max Refresh Rate** | **144 Hz+ Native** | 30 Hz – 60 Hz | **Zero Tear / 0.32ms Frame Time** | [fps.md](file:///Users/tanmay/Documents/Github/Cutom-widget-Aether/benchmarks/fps.md) |
-| **Crash Fault Isolation** | **AppContainer Sandbox (< 5ms recovery)** | Full Process Crash | **100% Host Uptime** | [plugin_stress.md](file:///Users/tanmay/Documents/Github/Cutom-widget-Aether/benchmarks/plugin_stress.md) |
+| **Idle CPU Usage (100 Widgets)** | **`< 0.1% CPU`** | 8.5% – 12.0% CPU | **40x Lower CPU** | [Benchmarks.md](docs/08_Testing/Benchmarks.md) |
+| **Physical RAM Footprint** | **`< 25 MB RAM`** | 120 MB – 350 MB+ | **80%+ RAM Savings** | [Performance.md](docs/08_Testing/Performance.md) |
+| **Cold Startup Latency** | **`< 45 ms`** | 1,650 ms | **37x Faster Boot** | [Startup_Shutdown.md](docs/01_Architecture/Startup_Shutdown.md) |
+| **Max Refresh Rate** | **144 Hz+ Native** | 30 Hz – 60 Hz | **Zero Tear / 0.32ms Frame Time** | [Rendering.md](docs/01_Architecture/Rendering.md) |
+| **Crash Fault Isolation** | **AppContainer Sandbox (< 5ms recovery)** | Full Process Crash | **100% Host Uptime** | [Sandboxing.md](docs/07_Security/Sandboxing.md) |
 
 ---
 
-## 🚀 Visual Showcase: Aether vs Rainmeter
+## 🛠️ Quick Start
 
-### 1. 100 Active Sandboxed Widgets Resource Load
+```powershell
+# Launch full stack (Daemon + TUI Dashboard):
+.\launch.ps1
 
-```
-RAM Footprint (MB)
-Aether Runtime:   ████ 42.8 MB
-Rainmeter:        ████████████████████████████████████ 365.4 MB
+# Run core engine background daemon:
+cargo run -p core_engine
 
-Idle CPU Utilization (%)
-Aether Runtime:   [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0.09%]
-Rainmeter:        [██████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 8.50%]
-```
+# Run TUI dashboard:
+cargo run -p dashboard_tui
 
-### 2. Live Crash Isolation & Auto-Recovery Timeline
-
-```
-[Host Daemon: Aether Runtime] (100% Host Uptime)
-      │
-      ├── [Plugin Process 1] ──> Running Normal (Lua 5.4)
-      ├── [Plugin Process 2] ──> [FORCED PANIC / SEGFAULT]
-      │                                    │
-      │                     (Isolated to AppContainer Sandbox)
-      │                                    │
-      └── [Plugin Process 2] ──> [Auto-Respawned in 4.2 ms] ──> Active
+# Run full workspace test suite (184/184 tests):
+cargo test --workspace
 ```
 
 ---
 
-## 📁 Repository Directory Navigation
+## 📜 License & Governance
 
-```
-Aether/
-├── Cargo.toml                    # Workspace Configuration
-├── README.md                     # Overview & Benchmark Highlights
-├── DETAILS.md                    # System Specification
-├── benchmarks/                   # Measurable Metric Reports & Methodology
-│   ├── cpu_idle.md               # Idle CPU Usage Analysis (<0.1%)
-│   ├── memory.md                 # RAM Footprint & Allocations (<25MB)
-│   ├── startup.md                # Cold/Warm Boot Initialization (<45ms)
-│   ├── fps.md                    # 144Hz DirectComposition Rendering
-│   ├── plugin_stress.md          # 100-Widget Concurrency & Sandbox Isolation
-│   └── comparison_vs_rainmeter.md# Side-by-Side Comparison Matrix
-├── docs/                         # Platform Documentation Engine
-│   ├── Architecture.md           # Core Blueprint & Subsystems
-│   ├── PluginSDK.md              # Multi-Language SDK (Rust, C#, TS)
-│   ├── Rendering.md              # DirectComposition Pipeline
-│   ├── Security.md               # AppContainer & Ed25519 Signatures
-│   ├── IPC.md                    # Named Pipes & Shared Memory Rings
-│   ├── Benchmarking.md           # Profiling Standard Operating Procedures
-│   └── Contributing.md           # Contribution Guidelines
-├── crates/                       # Rust Subsystem Workspace
-│   ├── core_engine/              # Aether Runtime Daemon
-│   ├── plugin_runtime/           # AppContainer Sandbox Supervisor
-│   ├── lua_runtime/              # Embedded Lua 5.4 Runtime
-│   ├── ipc_protocol/             # Shared Memory & Pipe Transports
-│   ├── layout_engine/            # Taffy Flexbox Solver
-│   ├── theme_engine/             # Theme Token Solver & Hot Reload
-│   ├── animation_engine/         # Spring Physics & Curves
-│   ├── system_providers/         # Telemetry Metrics ("Collect Once")
-│   ├── widget_parser/            # TOML Schema Evaluator
-│   ├── widget_sdk/               # Master SDK Base Crate
-│   ├── package_manager/          # Aether CLI Package Manager
-│   ├── cloud_sync/               # CRDT Encrypted Multi-Device Sync
-│   ├── ai_engine/                # Voice Intent & TCA Workflow Engine
-│   └── production_engine/        # Profiler Audit & Stress Test Suite
-├── bindings/                     # Multi-Language SDK Bindings
-│   ├── csharp/CustomWidget.SDK/  # C# .NET 8 Assembly
-│   └── typescript/custom-widget-sdk/ # TypeScript @types Package
-├── tests/                        # Integration Test Suite
-└── src_gui/                      # Aether Studio (WinUI 3 GUI)
-```
-
----
-
-## 📚 Technical Specifications
-
-- **[Master Architecture Specification](docs/Architecture.md)**
-- **[Multi-Language Plugin SDK Guide](docs/PluginSDK.md)**
-- **[DirectComposition Rendering Pipeline](docs/Rendering.md)**
-- **[Security & Sandboxing Specification](docs/Security.md)**
-- **[IPC Architecture Specification](docs/IPC.md)**
-- **[Benchmarking & Standard Operating Procedures](docs/Benchmarking.md)**
-- **[Aether vs Rainmeter Technical Comparison Matrix](benchmarks/comparison_vs_rainmeter.md)**
+Aether is dual-licensed under [MIT](LICENSE-MIT) and [Apache-2.0](LICENSE-APACHE).  
+Please read our [Contributing Guidelines](docs/09_Development/Contributing.md) and [AGENTS Governance Rules](AGENTS.md) before submitting pull requests.

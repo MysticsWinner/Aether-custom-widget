@@ -1,73 +1,43 @@
-# Aether — Threading & Async Execution Model
+# Threading & Concurrency Model
 
-**Concurrency Model, Channels, and Lock Management**
-
----
-
-## 1. Async Runtime Architecture
-
-Aether relies on **Tokio 1.38 (`features = ["full"]`)** for multi-threaded asynchronous task scheduling. The execution model is structured around a centralized host daemon process running worker threads mapped to available CPU logical cores.
-
-```mermaid
-graph TD
-    subgraph TokioRuntime ["Tokio Multi-Threaded Async Runtime"]
-        MainThread["Main Engine Loop (10ms Interval Tick)"]
-        IPCThread["Named Pipe Server Listener Loop"]
-        PerfWidgetThread["PerfMonitorWidget Update Loop (500ms)"]
-        ScheduledTasks["Background Task Scheduler Handles"]
-    end
-
-    subgraph Synchronization ["State & Lock Boundaries"]
-        CacheLock["SharedTelemetryCache (Arc<RwLock<TelemetrySnapshot>>)"]
-        StateLock["EngineState (Arc<RwLock<EngineState>>)"]
-        EventBusChan["Broadcast Channel (tokio::sync::broadcast)"]
-    end
-
-    MainThread -->|Write Snapshot| CacheLock
-    MainThread -->|Broadcast Tick| EventBusChan
-    IPCThread -->|Read Snapshot| CacheLock
-    IPCThread -->|Read/Write State| StateLock
-    PerfWidgetThread -->|Read Snapshot| CacheLock
-```
+**Purpose**: Explains thread allocation, Tokio async execution pool, and lock-free concurrency design in Aether.  
+**Audience**: Core Engine Developers, Concurrency Engineers.  
+**Prerequisites**: [System_Architecture.md](System_Architecture.md).  
+**Related Documents**: [Memory_Model.md](Memory_Model.md), [Data_Flow.md](Data_Flow.md).  
+**Last Updated**: 2026-08-07  
+**Status**: Active / Technical Specification  
+**Owner**: Core Engine Team  
 
 ---
 
-## 2. Main Engine Tick Loop Cadence
+## 1. Thread Pool Allocation
 
-The engine execution driver operates inside `core_engine::Engine::start()`:
+Aether divides execution across dedicated, isolated thread contexts:
 
-```rust
-let tick_interval = self.config.tick_interval_ms; // 10 ms
-let mut interval = tokio::time::interval(Duration::from_millis(tick_interval));
-
-while *self.state.read().await == EngineState::Running {
-    interval.tick().await;
-    self.tick().await?;
-}
-```
-
-During each 10 ms interval tick:
-1. `TelemetrySubsystem` samples hardware providers and writes to `SharedTelemetryCache`.
-2. `SubsystemManager` invokes `tick()` on all registered subsystems sequentially.
-3. `EventBus` broadcasts `CoreEvent::TelemetryTick`.
-4. Any active widget background tasks receive notification and schedule re-renders.
+1. **Tokio Async Worker Pool** (Default: $N$ Logical Cores):
+   - Handles async Named Pipe IPC I/O, event bus broadcasting, and subsystem ticks.
+2. **Dedicated Rendering Thread (Win32 Message Loop)**:
+   - Owns native Win32 window handles (`HWND`) and GDI/DirectComposition composition targets. Prevents UI thread blocking.
+3. **AppContainer Worker Process Pool**:
+   - Out-of-process AppContainer worker processes executing sandboxed widget logic.
 
 ---
 
-## 3. Communication Channels & Topologies
+## 2. Lock-Free Synchronization
 
-| Channel Type | Primitive | Sender | Receiver | Purpose |
-|---|---|---|---|---|
-| **Event Bus** | `tokio::sync::broadcast` | `EventBus` | Subsystems, Widgets | Pub/Sub system-wide events (`CoreEvent`). Capacity: 1024. |
-| **IPC Pipe** | `tokio::net::windows::named_pipe` | C# GUI / TUI Client | `IpcServer` task | Request/Response control commands (`ControlCommand`). |
-| **Task Handles** | `tokio::task::JoinHandle` | `TaskScheduler` | Engine Manager | Delayed & periodic background task management. |
+`SharedTelemetryCache` uses `Arc<RwLock<TelemetrySnapshot>>` and atomic sequence updates to ensure read operations from multiple widgets never block sensor ticks.
 
 ---
 
-## 4. Lock Safety & Non-Blocking Rules
+## Future Work
+- Move GDI window message loop to worker thread pool via `PostThreadMessageW`.
 
-To guarantee predictable latency in the 10 ms tick loop, the following rules are strictly enforced:
+## Known Issues
+- None.
 
-1. **Zero Blocking Calls on Async Workers**: No standard library `std::thread::sleep` or blocking I/O inside Tokio tasks.
-2. **Lock Hold Duration**: `RwLock` read/write guards on `SharedTelemetryCache` and `EngineState` must be held for minimal duration (scope-bounded clones).
-3. **Write Priority**: Telemetry writers clone snapshots before holding the write lock to prevent reader starvation.
+## References
+- [crates/core_engine/src/rendering/desktop_widget_window.rs](file:///d:/Code/Aether-custom-widget/crates/core_engine/src/rendering/desktop_widget_window.rs)
+
+## Related Documents
+- [System_Architecture.md](System_Architecture.md)
+- [Memory_Model.md](Memory_Model.md)
