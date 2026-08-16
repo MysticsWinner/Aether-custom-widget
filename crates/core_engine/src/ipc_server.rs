@@ -1,4 +1,4 @@
-//! Tokio async Named Pipe IPC Server
+﻿//! Tokio async Named Pipe IPC Server
 //!
 //! Listens on `\\.\pipe\CustomWidgetEngineControlPipe` and handles
 //! `ControlCommand` JSON messages from any IPC client (the WinUI 3 dashboard,
@@ -30,6 +30,7 @@ use recovery_manager::{CrashPolicy, LaunchMode, RecoveryManager};
 use system_providers::TickRateAdvisor;
 use watchdog::WatchdogSupervisor;
 use widget_sdk::{FrameScheduler, LruResourceCache, RectF};
+use crate::widget_config_store::WidgetConfigStore;
 
 /// Named pipe address (matches the C# `NamedPipeClient`).
 pub const PIPE_NAME: &str = r"\\.\pipe\CustomWidgetEngineControlPipe";
@@ -84,6 +85,8 @@ pub struct IpcSharedState {
     pub marketplace: Arc<Mutex<MarketplaceCatalog>>,
     /// Enterprise Group Policy & MDM engine.
     pub policy_engine: Arc<Mutex<PolicyEngine>>,
+    /// Per-widget display configuration store (persists to per-widget JSON files).
+    pub widget_config_store: Arc<Mutex<WidgetConfigStore>>,
     /// Cryptographic append-only SHA-256 audit logger.
     pub audit_logger: Arc<Mutex<AuditLogger>>,
 }
@@ -110,6 +113,7 @@ impl IpcSharedState {
         let mkt = MarketplaceCatalog::new();
         let pol_eng = PolicyEngine::new(base_dir.join("policy.json"));
         let audit_log = AuditLogger::new(base_dir.join("audit.log"));
+        let wcs = WidgetConfigStore::new(base_dir.join("widget_settings"));
 
         Self {
             cache,
@@ -130,6 +134,7 @@ impl IpcSharedState {
             marketplace: Arc::new(Mutex::new(mkt)),
             policy_engine: Arc::new(Mutex::new(pol_eng)),
             audit_logger: Arc::new(Mutex::new(audit_log)),
+            widget_config_store: Arc::new(Mutex::new(wcs)),
         }
     }
 
@@ -154,6 +159,7 @@ impl IpcSharedState {
         let mkt = MarketplaceCatalog::new();
         let pol_eng = PolicyEngine::new(base_dir.join("policy.json"));
         let audit_log = AuditLogger::new(base_dir.join("audit.log"));
+        let wcs = WidgetConfigStore::new(base_dir.join("widget_settings"));
 
         Self {
             cache,
@@ -174,6 +180,7 @@ impl IpcSharedState {
             marketplace: Arc::new(Mutex::new(mkt)),
             policy_engine: Arc::new(Mutex::new(pol_eng)),
             audit_logger: Arc::new(Mutex::new(audit_log)),
+            widget_config_store: Arc::new(Mutex::new(wcs)),
         }
     }
 }
@@ -1000,6 +1007,88 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             let discovered = dev_tools::WidgetDiscoveryScanner::scan_directories(&paths, &loaded_ids);
             serde_json::json!({ "status": "ok", "discovered_widgets": discovered }).to_string()
         }
+
+        ControlCommand::ListWidgets => {
+            info!("IPC: ListWidgets requested.");
+            let loaded_ids = state.widget_registry.lock().map_or(Vec::new(), |r| r.clone());
+            let descriptors: Vec<serde_json::Value> = loaded_ids.iter().map(|id| {
+                let (opacity, scale, locked, enabled) = state.widget_config_store.lock()
+                    .map(|mut s| {
+                        let cfg = s.get_or_default(id);
+                        (cfg.display_options.opacity, cfg.display_options.scale,
+                         cfg.display_options.locked, cfg.display_options.enabled)
+                    })
+                    .unwrap_or((1.0, 1.0, false, true));
+                let desc = ipc_protocol::WidgetDescriptor::from_id(id);
+                serde_json::json!({
+                    "id": id,
+                    "name": desc.name,
+                    "state": if enabled { "running" } else { "disabled" },
+                    "opacity": opacity,
+                    "scale": scale,
+                    "locked": locked,
+                    "enabled": enabled,
+                })
+            }).collect();
+            serde_json::json!({ "status": "ok", "widgets": descriptors }).to_string()
+        }
+
+        ControlCommand::UpdateWidgetDisplayOptions { widget_id, opacity, scale, locked, enabled } => {
+            info!("IPC: UpdateWidgetDisplayOptions -> widget='{}'", widget_id);
+            if let Ok(mut store) = state.widget_config_store.lock() {
+                store.update_display_options(&widget_id, opacity, scale, locked, enabled);
+                serde_json::json!({ "status": "ok", "widget_id": widget_id }).to_string()
+            } else {
+                serde_json::json!({ "status": "error", "message": "Failed to lock widget config store" }).to_string()
+            }
+        }
+
+        ControlCommand::QuickSwapWidget { from_id, to_id, mode } => {
+            info!("IPC: QuickSwapWidget -> from='{}' to='{}' mode='{}'", from_id, to_id, mode);
+            if mode == "configuration" {
+                if let Ok(mut store) = state.widget_config_store.lock() {
+                    store.swap_configs(&from_id, &to_id);
+                }
+                serde_json::json!({ "status": "ok", "swap_mode": "configuration", "from": from_id, "to": to_id }).to_string()
+            } else {
+                let _ = state.desktop_window.swap_positions(&from_id, &to_id);
+                serde_json::json!({ "status": "ok", "swap_mode": "position", "from": from_id, "to": to_id }).to_string()
+            }
+        }
+
+        ControlCommand::EnableWidget { widget_id } => {
+            info!("IPC: EnableWidget -> '{}'", widget_id);
+            if let Ok(mut store) = state.widget_config_store.lock() {
+                store.update_display_options(&widget_id, None, None, None, Some(true));
+            }
+            serde_json::json!({ "status": "ok", "widget_id": widget_id, "enabled": true }).to_string()
+        }
+
+        ControlCommand::DisableWidget { widget_id } => {
+            info!("IPC: DisableWidget -> '{}'", widget_id);
+            if let Ok(mut store) = state.widget_config_store.lock() {
+                store.update_display_options(&widget_id, None, None, None, Some(false));
+            }
+            serde_json::json!({ "status": "ok", "widget_id": widget_id, "enabled": false }).to_string()
+        }
+
+        ControlCommand::SetWidgetOpacity { widget_id, opacity } => {
+            info!("IPC: SetWidgetOpacity -> widget='{}' opacity={}", widget_id, opacity);
+            let clamped = opacity.clamp(0.0, 1.0);
+            if let Ok(mut store) = state.widget_config_store.lock() {
+                store.update_display_options(&widget_id, Some(clamped), None, None, None);
+            }
+            serde_json::json!({ "status": "ok", "widget_id": widget_id, "opacity": clamped }).to_string()
+        }
+
+        ControlCommand::ResetWidgetConfig { widget_id } => {
+            info!("IPC: ResetWidgetConfig -> '{}'", widget_id);
+            if let Ok(mut store) = state.widget_config_store.lock() {
+                store.reset(&widget_id);
+            }
+            serde_json::json!({ "status": "ok", "widget_id": widget_id, "reset": true }).to_string()
+        }
+
     }
 }
 

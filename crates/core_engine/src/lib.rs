@@ -1,4 +1,4 @@
-//! Next-Gen Windows Desktop Customization Platform - Core Engine Library
+﻿//! Next-Gen Windows Desktop Customization Platform - Core Engine Library
 //!
 //! Provides the event-driven, multi-threaded, native host daemon infrastructure
 //! responsible for system event routing, task scheduling, lifecycle management,
@@ -25,6 +25,7 @@ pub mod subsystems;
 pub mod task_scheduler;
 pub mod telemetry_subsystem;
 pub mod theme_subsystem;
+pub mod widget_config_store;
 
 pub use ai_subsystem::AiSubsystem;
 pub use cloud_subsystem::CloudSyncSubsystem;

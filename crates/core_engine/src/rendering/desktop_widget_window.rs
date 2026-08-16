@@ -1,4 +1,4 @@
-use layout_engine::WidgetPositionStore;
+﻿use layout_engine::WidgetPositionStore;
 use system_providers::SharedTelemetryCache;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -56,6 +56,18 @@ impl DesktopWidgetWindow {
 
     pub fn set_locked(&self, widget_id: &str, locked: bool) -> anyhow::Result<()> {
         self.position_store.set_locked(widget_id, locked)
+    }
+
+
+    /// Swap the desktop positions of two widgets.
+    pub fn swap_positions(&self, from_id: &str, to_id: &str) -> anyhow::Result<()> {
+        // Read current positions (default 100,100 if not set)
+        let (fx, fy) = self.position_store.get_position(from_id).unwrap_or((100, 100));
+        let (tx, ty) = self.position_store.get_position(to_id).unwrap_or((100, 100));
+        self.position_store.set_position(from_id, tx, ty)?;
+        self.position_store.set_position(to_id, fx, fy)?;
+        info!("Swapped positions: '{}' <-> '{}'", from_id, to_id);
+        Ok(())
     }
 
     pub fn toggle_locked(&self, widget_id: &str) -> bool {

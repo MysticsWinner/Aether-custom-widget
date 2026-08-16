@@ -5,12 +5,13 @@ using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.Storage.Pickers;
 
 namespace CustomWidget.Dashboard.Pages;
 
 /// <summary>
-/// Widgets management page — auto-discovers plugins from folders and provides 1-click loading/unloading.
+/// Widgets management page — auto-discovers plugins from folders and provides 1-click loading/unloading and per-widget settings.
 /// </summary>
 public sealed partial class WidgetsPage : Page
 {
@@ -131,6 +132,61 @@ public sealed partial class WidgetsPage : Page
         if (sender is Button btn && btn.Tag is string widgetId)
         {
             _ = _vm.ResetWidgetPositionCommand.ExecuteAsync(widgetId);
+        }
+    }
+
+    private void OpacitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (sender is Slider slider && slider.Tag is string widgetId)
+        {
+            _ = _vm.SetOpacityCommand.ExecuteAsync((widgetId, e.NewValue));
+        }
+    }
+
+    private void EnableToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch ts && ts.Tag is string widgetId)
+        {
+            _ = _vm.ToggleEnableDisableCommand.ExecuteAsync(widgetId);
+        }
+    }
+
+    private void LockToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch ts && ts.Tag is string widgetId)
+        {
+            _ = _vm.ToggleWidgetLockCommand.ExecuteAsync(widgetId);
+        }
+    }
+
+    private void ResetWidgetConfig_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string widgetId)
+        {
+            _ = _vm.ResetWidgetConfigCommand.ExecuteAsync(widgetId);
+        }
+    }
+
+    private async void DetailedSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is WidgetInfo widget)
+        {
+            var panel = new StackPanel { Spacing = 12 };
+            panel.Children.Add(new TextBlock { Text = $"Widget ID: {widget.Id}", FontWeight = Microsoft.UI.Text.FontWeights.Bold });
+            panel.Children.Add(new TextBlock { Text = $"Manifest Path: {widget.ManifestPath}" });
+            panel.Children.Add(new TextBlock { Text = $"Update Interval: {widget.UpdateIntervalMs} ms" });
+            panel.Children.Add(new TextBlock { Text = $"Target FPS: {widget.TargetFps}" });
+            panel.Children.Add(new TextBlock { Text = $"Description: {widget.Description}" });
+
+            var dialog = new ContentDialog
+            {
+                Title = $"{widget.Name} — Detailed Settings",
+                Content = panel,
+                CloseButtonText = "Close",
+                XamlRoot = this.XamlRoot,
+            };
+
+            await dialog.ShowAsync();
         }
     }
 }

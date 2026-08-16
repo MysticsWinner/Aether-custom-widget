@@ -1,4 +1,4 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
+﻿// Copyright (c) Aether Platform. Licensed under the MIT License.
 
 using System.IO;
 using CustomWidget.Dashboard.Services;
@@ -96,6 +96,7 @@ public partial class App : Application
         services.AddSingleton<ProcessManagerService>();
         services.AddSingleton<LogCollectorService>();
         services.AddSingleton<MemoryManagerService>();
+        services.AddSingleton<WidgetSettingsService>();
 
         // ── ViewModels (transient — new instance per page navigation) ──
         services.AddTransient<OverviewViewModel>();

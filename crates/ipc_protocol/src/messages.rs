@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 
 /// High-level IPC Control Commands sent over Win32 Named Pipes
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -136,6 +136,31 @@ pub enum ControlCommand {
     },
     /// Recursively scan directories for widget.toml manifests and return metadata list
     DiscoverWidgets { search_paths: Option<Vec<String>> },
+    /// List all registered widgets with full descriptor (state + display config)
+    ListWidgets,
+    /// Update display options (opacity, scale, locked, enabled) for a specific widget
+    UpdateWidgetDisplayOptions {
+        widget_id: String,
+        opacity: Option<f32>,
+        scale: Option<f32>,
+        locked: Option<bool>,
+        enabled: Option<bool>,
+    },
+    /// Swap two widgets — either their desktop positions or their full configurations
+    QuickSwapWidget {
+        from_id: String,
+        to_id: String,
+        /// "position" or "configuration"
+        mode: String,
+    },
+    /// Enable a previously disabled widget (sets visible + updating)
+    EnableWidget { widget_id: String },
+    /// Disable a widget without unloading it (invisible, stops updating)
+    DisableWidget { widget_id: String },
+    /// Set the opacity of a widget [0.0, 1.0]
+    SetWidgetOpacity { widget_id: String, opacity: f32 },
+    /// Reset a widget to its default display options
+    ResetWidgetConfig { widget_id: String },
 }
 
 /// Metadata payload for a discovered widget plugin manifest scanned from disk.
@@ -154,6 +179,52 @@ pub struct DiscoveredWidgetInfo {
     pub position_y: i32,
     pub target_fps: u32,
     pub description: String,
+}
+
+/// Full descriptor for a running widget returned by `ListWidgets`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct WidgetDescriptor {
+    pub id: String,
+    pub name: String,
+    pub state: String,       // "running" | "disabled" | "loaded"
+    pub opacity: f32,
+    pub scale: f32,
+    pub locked: bool,
+    pub enabled: bool,
+    pub quick_swap: bool,
+    pub position_x: i32,
+    pub position_y: i32,
+    pub manifest_path: String,
+}
+
+impl WidgetDescriptor {
+    pub fn from_id(id: &str) -> Self {
+        let name = id.split('.').last().unwrap_or(id)
+            .replace('_', " ")
+            .split_whitespace()
+            .map(|w| {
+                let mut c = w.chars();
+                match c.next() {
+                    None => String::new(),
+                    Some(f) => f.to_uppercase().to_string() + c.as_str(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        Self {
+            id: id.to_string(),
+            name,
+            state: "running".to_string(),
+            opacity: 1.0,
+            scale: 1.0,
+            locked: false,
+            enabled: true,
+            quick_swap: false,
+            position_x: 100,
+            position_y: 100,
+            manifest_path: String::new(),
+        }
+    }
 }
 
 /// Telemetry metrics payload exchanged via Shared Memory Ring Buffer

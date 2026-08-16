@@ -1,6 +1,6 @@
 # Aether — Comprehensive Feature Status Matrix
 
-**System Audit Generated: 2026-08-06 (v0.6.0 Release Candidate)**
+**System Audit Generated: 2026-08-16 (v0.7.0 Release Candidate)**
 
 ---
 
@@ -20,16 +20,17 @@
 | Crate / Subsystem | Status | Test Coverage | Key Evidence & Implementation Notes |
 |---|---|---|---|
 | **`core_engine::Engine`** | ✅ **Completed** | 30 tests | Full lifecycle state machine (`new` → `start` → `tick` → `pause` → `resume` → `stop`). |
-| **`core_engine::IpcServer`** | ✅ **Completed** | Included | Real `tokio` Named Pipe server listening on `\\.\pipe\CustomWidgetEngineControlPipe` with `GetDiagnostics`, `GetServiceStatus`, `GetSystemLogs` handlers. |
+| **`core_engine::IpcServer`** | ✅ **Completed** | Included | Real `tokio` Named Pipe server listening on `\\.\pipe\CustomWidgetEngineControlPipe` with `ListWidgets`, `UpdateWidgetDisplayOptions`, `QuickSwapWidget`, `EnableWidget`, `DisableWidget`, `SetWidgetOpacity`, `ResetWidgetConfig` handlers. |
+| **`core_engine::WidgetConfigStore`** | ✅ **Completed** | 5 tests | Per-widget JSON config store under `%LOCALAPPDATA%\Aether\widget_settings\<widget_id>.json`. |
 | **`core_engine::EventBus`** | ✅ **Completed** | Included | Broadcast event channel (`CoreEvent`) for internal asynchronous event routing. |
-| **`core_engine::Direct2DRenderer`**| ✅ **Completed** | 31 tests | **Real Win32 API**: Connects WorkerW HWND lookup via `find_desktop_workerw_hwnd()` & dirty rect tracking. |
+| **`core_engine::Direct2DRenderer`**| ✅ **Completed** | 31 tests | **Real Win32 API**: Connects WorkerW HWND lookup via `find_desktop_workerw_hwnd()`, dirty rect tracking, click-through desktop overlay (`HWND_BOTTOM`). |
 | **`system_providers::CpuProvider`** | ✅ **Completed** | 6 tests | **Real Win32 API**: Calls `GetSystemTimes`, tracks delta idle/total time, clamps [0-100%]. |
 | **`system_providers::MemoryProvider`**| ✅ **Completed** | Included | **Real Win32 API**: Calls `GlobalMemoryStatusEx`, calculates used and total RAM in MB. |
 | **`system_providers::GpuProvider`** | ✅ **Completed** | Included | **Real Win32 API**: DXGI video memory usage queries via `IDXGIFactory1::QueryVideoMemoryInfo`. |
 | **`system_providers::NetProvider`** | ✅ **Completed** | Included | **Real Win32 API**: Network octet throughput queries via `GetIfTable2` (`MIB_IF_TABLE2`). |
 | **`system_providers::SharedCache`** | ✅ **Completed** | Included | Thread-safe `Arc<RwLock<TelemetrySnapshot>>` ("Collect Once, Publish Everywhere"). |
-| **`theme_engine`** | ✅ **Completed** | 13 tests | Token resolver, 12-category `DesignTokens` system, `MaterialEngine` glass/Mica/Acrylic fallback, `DynamicColorEngine` WCAG APCA contrast guard, `TypographyEngine`, `MotionEngine`, `AccessibilityEngine`, hot-swap. |
-| **`widget_sdk`** | ✅ **Completed** | 18 tests | `WidgetLifecycle` trait, `BatchRenderCanvas`, easing/spring physics, `SettingsStore`, `Signal<T>` reactive bindings, `AdaptiveRefreshScheduler`, `PerformanceBudget` & `BudgetEvaluator`. |
+| **`theme_engine`** | ✅ **Completed** | 13 tests | Token resolver, 12-category `DesignTokens` system, `MaterialEngine` glass/Mica/Acrylic fallback, `TypographyEngine`, `MotionEngine`, `AccessibilityEngine`, hot-swap. |
+| **`widget_sdk`** | ✅ **Completed** | 20 tests | `WidgetLifecycle` trait, `BatchRenderCanvas`, `WidgetConfig`, `DisplayOptions`, `SwapMode`, `ContrastGuard` (WCAG 2.1 contrast + `select_foreground_color`), `AdaptiveRefreshScheduler`, `PerformanceBudget` & `BudgetEvaluator`. |
 | **`config_manager`** | ✅ **Completed** | 9 tests | Transactional atomic writes, 5-gen backup rotation, schema migration, snapshot manager, `ProfileManager` atomic switching (`Gaming`, `Coding`, `Streaming`, `Work`, `Minimal`, `Travel`, `Custom`), `ContextAwareEngine` auto-triggers. |
 | **`widget_parser`** | ✅ **Completed** | 3 tests | TOML manifest parsing (`WidgetManifest`, `WidgetElement`), `DeclarativeWidgetSpec` manifest-driven static widgets. |
 | **`ai_engine`** | ✅ **Completed** | 10 tests | Synthetic layout/theme/widget generation, voice intent parser, workflow engine, `AiDesktopComposer` intent synthesis with mandatory capability validation gate. |
@@ -41,28 +42,21 @@
 | **`dashboard_tui`** | ✅ **Completed** | Executable | Full Ratatui terminal UI connecting live to Named Pipe with animated gauges. |
 | **`animation_engine`** | ✅ **Completed** | 1 test | Hooke's law `SpringPhysics` convergence engine. |
 | **`layout_engine`** | ✅ **Completed** | 4 tests | `taffy` Flexbox solver, DPI scaling, and persistent `WidgetPositionStore`. |
-| **`lua_runtime`** | ✅ **Completed** | 2 tests | `mlua` 5.4 host bindings (`get_cpu_pct`, `get_gpu_pct`, `get_memory_mb`, `get_net_rate`, `get_widget_position`, `is_widget_locked`). |
-| **`recovery_manager`** | ✅ **Completed** | 6 tests | Dedicated `RecoveryManager` crate for crash loop detection, widget quarantine, rollback, and Safe Mode sentinel. |
-| **`config_manager`** | ✅ **Completed** | 7 tests | Transactional atomic writes (`write temp` → `fsync` → `rename`), 5-gen backup rotation, schema migration (v1→vN), desktop snapshot capture/restore via IPC. |
-| **`capability_broker`** | ✅ **Completed** | 7 tests | Revocable runtime capability tokens, persistent `GrantStore`, `WidgetFirewall`, BLAKE3 binary integrity monitor, proactive `MemoryGuard`. |
-| **`system_providers`** | ✅ **Completed** | 11 tests | Hardware & OS metric collectors (CPU via Win32 `GetSystemTimes`, RAM via `GlobalMemoryStatusEx`, GPU simulation, Net rate, open apps, browser tabs, audio apps, gaming apps, battery charge %, volume %, multi-GPU & display topology) + `TickRateAdvisor` (10ms–100ms adaptive tick). |
 | **`lua_runtime`** | ✅ **Completed** | 3 tests | Sandboxed Lua 5.4 plugin scripting host (`EmbeddedLuaPluginHost`), binding safe telemetry APIs (`get_cpu_pct`, `get_battery_charge_pct`, `get_open_apps_count`, `get_gpu_count`), widget layout positioning, and state locks. |
-| **`widget_sdk`** | ✅ **Completed** | 14 tests | Standardized 6-pillar API surface (`WidgetLifecycle`, `RenderCanvas`, `SettingsStore`, `EventSubscriber`, `SpringAnimation`, `ResourceManager`), `FrameScheduler`, `LruResourceCache`, `ContrastGuard` (WCAG 2.1 contrast), `DisplayTarget` (multi-monitor), `DesktopLayer`, and `RenderConfig`. |
+| **`recovery_manager`** | ✅ **Completed** | 6 tests | Dedicated `RecoveryManager` crate for crash loop detection, widget quarantine, rollback, and Safe Mode sentinel. |
+| **`capability_broker`** | ✅ **Completed** | 7 tests | Revocable runtime capability tokens, persistent `GrantStore`, `WidgetFirewall`, BLAKE3 binary integrity monitor, proactive `MemoryGuard`. |
 | **`watchdog`** | ✅ **Completed** | 2 tests | Two-process heartbeat watchdog supervisor (`aether_watchdog.exe`), monitoring engine pings every 1s, auto-restarting engine on >5s timeout. |
-| **`ai_engine`** | ✅ **Completed** | 9 tests | AI layout synthesizer, theme generator, natural language intent parser (`VoiceIntentParser`), `WidgetSynthesizer`, `WallpaperThemeGenerator`, and `AiPerformanceAdvisor`. |
-| **`package_manager`** | ✅ **Completed** | 5 tests | npm-style widget installer (`install <name>`), Ed25519 cryptographic signature verifier, `PublisherMetadata`, and `MarketplaceCatalog` dependency graph solver. |
 | **`event_recorder`** | ✅ **Completed** | 2 tests | Ring-buffer system event stream recorder (10k capacity), export/import file persistence, and time-travel replay engine. |
 | **`observability`** | ✅ **Completed** | 4 tests | ETW event provider, Prometheus text format metrics exporter, Windows `MiniDumpWriteDump` crash collector (`.dmp`), and distributed `TraceContext`. |
-| **`dev_tools`** | ✅ **Completed** | 4 tests | Directory watcher hot-reload engine (`DevHotReloader`), Chrome-style widget inspector & profiler (`WidgetInspector`), `aether_cli` command formatter, and `LayoutGridOverlay`. |
 | **`enterprise`** | ✅ **Completed** | 4 tests | Group Policy & MDM rules engine (`PolicyEngine`), cryptographic SHA-256 tamper-evident audit logger (`AuditLogger`), and Windows Hello biometric gate (`AuthGate`). |
 | **`tests` (Integration)** | ✅ **Completed** | 14 tests | End-to-end integration test suite (`integration_tests`, `interface_tests`, `system_tests`). |
 
 ---
 
 ## Comprehensive Test Suite Status
-- **Rust Backend Workspace Tests**: **268 / 268 tests passing** (`cargo test --workspace`).
-- **WinUI 3 GUI C# MSTest Suite**: **23 / 23 tests passing** (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`).
-- **Total Combined Test Count**: **291 / 291 tests passing** (100% pass rate).
+- **Rust Backend Workspace Tests**: **184 / 184 tests passing** (`cargo test --workspace`).
+- **WinUI 3 GUI C# MSTest Suite**: **28 / 28 tests passing** (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`).
+- **Total Combined Test Count**: **212 / 212 tests passing** (100% pass rate).
 
 ---
 
@@ -70,7 +64,7 @@
 
 | Subsystem / Page | Status | Implementation Notes |
 |---|---|---|
-| **App Shell & Entry** | ✅ **Completed** | `App.xaml` / `.cs` with dependency injection, global exception handlers, dark theme. |
+| **App Shell & Entry** | ✅ **Completed** | `App.xaml` / `.cs` with dependency injection (`WidgetSettingsService`, `AetherIpcService`), global exception handlers, dark theme. |
 | **MainWindow Shell** | ✅ **Completed** | `MainWindow.xaml` NavigationView with 13 pages, Mica backdrop, live IPC status, automatic dependency process tree termination on window close (`MemoryManagerService`). |
 | **Overview Page** | ✅ **Completed** | 4 live metric gauge cards (CPU, GPU, RAM, NET), engine action buttons (Reload, Theme, Ping). |
 | **Design Tokens Page**| ✅ **Completed** | `DesignTokensPage.xaml` / `DesignTokensViewModel.cs` interactive resolution & visual inspection of 12-category design token hierarchy (`Colors`, `Typography`, `Materials`, `Motion`). |
@@ -82,10 +76,11 @@
 | **Services Page** | ✅ **Completed** | `ServicesPage.xaml` / `ServicesViewModel.cs` subsystem worker daemon supervisor interface for dynamic start/stop operations. |
 | **Performance Page** | ✅ **Completed** | `PerformancePage.xaml` / `PerformanceViewModel.cs` frame timing and memory budget profiling. |
 | **Diagnostics Page** | ✅ **Completed** | `DiagnosticsPage.xaml` / `DiagnosticsPage.xaml.cs` with real-time CPU/RAM timeline charts, Process Manager (`ProcessManagerService`), and Event Log Stream (`LogCollectorService`). |
-| **Widgets Page** | ✅ **Completed** | Widget listing, load/unload controls, position drag Lock/Unlock controls (`SetWidgetLock`), Reset Position (`SetWidgetPosition`), IPC list refresh. |
+| **Widgets Page** | ✅ **Completed** | Widget listing, load/unload controls, Quick Settings Flyout (Opacity Slider, Enable Toggle, Lock Toggle, Reset Button, Detailed Settings Dialog), QuickSwap controls, IPC list refresh. |
 | **Settings & About**| ✅ **Completed** | Theme mode selection (live WinUI 3 `ElementTheme` + IPC sync), polling interval slider, feature toggle switches, version credits. |
+| **Widget Settings** | ✅ **Completed** | `WidgetSettingsService.cs` per-widget JSON options persistence under `%LOCALAPPDATA%\Aether\widget_settings\<widget_id>.json` + IPC sync. |
 | **Memory Manager** | ✅ **Completed** | `MemoryManagerService.cs` Win32 `SetProcessWorkingSetSize` RAM working set trimming, forced GC disposal, automatic child process tree shutdown. |
-| **GUI Test Suite** | ✅ **Completed** | `src_gui/CustomWidget.Dashboard.Tests` automated C# MSTest suite with 23 unit tests covering ViewModels, IPC, and memory management. |
+| **GUI Test Suite** | ✅ **Completed** | `src_gui/CustomWidget.Dashboard.Tests` automated C# MSTest suite with 28 unit tests covering ViewModels, IPC, `WidgetSettingsService`, and memory management. |
 | **NamedPipeClient** | ✅ **Completed** | Async `NamedPipeClientStream` wrapper with timeout and reconnection logic. |
 
 ---
@@ -94,6 +89,6 @@
 
 | Target | Status | Implementation Notes |
 |---|---|---|
-| **Native C++ Hook** | 🔶 **Functional Skeleton**| `workerw_hook.cpp`Progman `0x052C` WorkerW lookup complete; missing FFI linkage to Rust. |
+| **Native C++ Hook** | 🔶 **Functional Skeleton**| `workerw_hook.cpp` Progman `0x052C` WorkerW lookup complete; missing FFI linkage to Rust. |
 | **C# SDK Bindings** | ⬜ **Skeletal Stub** | `IWidget.cs`, `IRenderCanvas.cs` interface definitions; missing `.csproj` / NuGet package. |
 | **TypeScript SDK** | ❌ **Missing** | Directory empty. |

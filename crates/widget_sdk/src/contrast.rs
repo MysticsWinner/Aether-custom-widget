@@ -31,6 +31,21 @@ impl ContrastGuard {
         (bright + 0.05) / (dark + 0.05)
     }
 
+    /// Selects light or dark foreground color based on background ARGB (0xAARRGGBB).
+    pub fn select_foreground_color(bg_argb: u32, light: Color, dark: Color) -> Color {
+        let a = ((bg_argb >> 24) & 0xFF) as f32 / 255.0;
+        let r = ((bg_argb >> 16) & 0xFF) as f32 / 255.0;
+        let g = ((bg_argb >> 8) & 0xFF) as f32 / 255.0;
+        let b = (bg_argb & 0xFF) as f32 / 255.0;
+        let bg_color = Color::rgba(r, g, b, a);
+
+        if Self::relative_luminance(&bg_color) < 0.5 {
+            light
+        } else {
+            dark
+        }
+    }
+
     /// Ensures foreground color is crisp and legible over the given background color.
     /// If contrast ratio < 4.5:1 (WCAG AA), returns an automatically contrast-adjusted color.
     pub fn ensure_legible_fg(fg: &Color, bg: &Color) -> Color {
@@ -72,5 +87,19 @@ mod tests {
 
         let legible = ContrastGuard::ensure_legible_fg(&black_fg, &black_bg);
         assert!(legible.r > 0.8 && legible.g > 0.8 && legible.b > 0.8);
+    }
+
+    #[test]
+    fn test_select_foreground_color() {
+        let white = Color::rgba(1.0, 1.0, 1.0, 1.0);
+        let black = Color::rgba(0.0, 0.0, 0.0, 1.0);
+
+        let bg_dark = 0xFF111111;
+        let selected = ContrastGuard::select_foreground_color(bg_dark, white, black);
+        assert_eq!(selected, white);
+
+        let bg_light = 0xFFEEEEEE;
+        let selected_light = ContrastGuard::select_foreground_color(bg_light, white, black);
+        assert_eq!(selected_light, black);
     }
 }

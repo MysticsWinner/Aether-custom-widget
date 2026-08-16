@@ -5,6 +5,7 @@
 
 pub mod animations;
 pub mod benchmark;
+pub mod config;
 pub mod contrast;
 pub mod display_target;
 pub mod events;
@@ -20,6 +21,7 @@ pub mod resources;
 pub mod settings;
 
 pub use animations::{EasingCurve, SpringAnimation, SpringParams};
+pub use config::{ColourOverrides, DisplayOptions, SwapMode, WidgetConfig};
 pub use benchmark::SdkBenchmark;
 pub use contrast::ContrastGuard;
 pub use display_target::{DesktopLayer, DisplayTarget};

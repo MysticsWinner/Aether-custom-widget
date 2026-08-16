@@ -16,6 +16,7 @@ public partial class WidgetsViewModel : ObservableObject
 {
     private readonly AetherIpcService _ipc;
     private readonly TelemetryPollerService _poller;
+    private readonly WidgetSettingsService _settingsService;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "";
@@ -25,10 +26,11 @@ public partial class WidgetsViewModel : ObservableObject
     public ObservableCollection<WidgetInfo> Widgets { get; } = new();
     public ObservableCollection<WidgetInfo> DiscoveredWidgets { get; } = new();
 
-    public WidgetsViewModel(AetherIpcService ipc, TelemetryPollerService poller)
+    public WidgetsViewModel(AetherIpcService ipc, TelemetryPollerService poller, WidgetSettingsService settingsService)
     {
         _ipc = ipc;
         _poller = poller;
+        _settingsService = settingsService;
 
         _poller.OnNewSample += _ =>
         {
@@ -59,6 +61,13 @@ public partial class WidgetsViewModel : ObservableObject
 
             foreach (var w in list)
             {
+                // Sync options from settings service
+                var opts = _settingsService.Load(w.Id);
+                w.Opacity = opts.Opacity;
+                w.Scale = opts.Scale;
+                w.IsLocked = opts.Locked;
+                w.Enabled = opts.Enabled;
+
                 if (string.IsNullOrEmpty(query) ||
                     w.Name.ToLowerInvariant().Contains(query) ||
                     w.Author.ToLowerInvariant().Contains(query) ||
@@ -93,11 +102,16 @@ public partial class WidgetsViewModel : ObservableObject
             Widgets.Clear();
             foreach (var widgetId in status.ActiveWidgets)
             {
+                var opts = _settingsService.Load(widgetId);
                 Widgets.Add(new WidgetInfo
                 {
                     Id = widgetId,
                     Name = FormatWidgetName(widgetId),
                     IsLoaded = true,
+                    Opacity = opts.Opacity,
+                    Scale = opts.Scale,
+                    IsLocked = opts.Locked,
+                    Enabled = opts.Enabled,
                 });
             }
         }
@@ -218,12 +232,86 @@ public partial class WidgetsViewModel : ObservableObject
         StatusMessage = $"Toggling lock for '{target}'...";
         try
         {
-            await _ipc.ToggleWidgetLockAsync(target);
+            await _settingsService.ToggleLockAsync(target);
             StatusMessage = $"✓ Lock state toggled for '{target}'.";
         }
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error toggling lock: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task SetOpacityAsync((string widgetId, double opacity) args)
+    {
+        try
+        {
+            await _settingsService.SetOpacityAsync(args.widgetId, args.opacity);
+            StatusMessage = $"✓ Opacity updated to {args.opacity:P0} for '{args.widgetId}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error updating opacity: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ToggleEnableDisableAsync(string? widgetId)
+    {
+        if (string.IsNullOrWhiteSpace(widgetId)) return;
+        try
+        {
+            var opts = _settingsService.Load(widgetId);
+            bool next = !opts.Enabled;
+            await _settingsService.SetEnabledAsync(widgetId, next);
+            StatusMessage = $"✓ Widget '{widgetId}' is now {(next ? "enabled" : "disabled")}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error toggling widget state: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task QuickSwapPositionAsync((string fromId, string toId) args)
+    {
+        try
+        {
+            await _ipc.QuickSwapWidgetAsync(args.fromId, args.toId, "position");
+            StatusMessage = $"✓ Swapped desktop position between '{args.fromId}' and '{args.toId}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error swapping positions: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task QuickSwapConfigAsync((string fromId, string toId) args)
+    {
+        try
+        {
+            await _ipc.QuickSwapWidgetAsync(args.fromId, args.toId, "configuration");
+            StatusMessage = $"✓ Swapped configuration between '{args.fromId}' and '{args.toId}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error swapping configurations: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResetWidgetConfigAsync(string? widgetId)
+    {
+        if (string.IsNullOrWhiteSpace(widgetId)) return;
+        try
+        {
+            await _settingsService.ResetAsync(widgetId);
+            StatusMessage = $"✓ Configuration reset to defaults for '{widgetId}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Error resetting config: {ex.Message}";
         }
     }
 

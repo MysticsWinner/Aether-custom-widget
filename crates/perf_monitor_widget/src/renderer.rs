@@ -47,8 +47,10 @@ pub fn render_perf_card_with_config(
     // ── background card ──────────────────────────────────────────────────────
     canvas.draw_rect(RectF::new(CARD_X, CARD_Y, CARD_W, CARD_H), bg_color, 12.0);
 
-    // Apply ContrastGuard to ensure text readability
+    // Apply ContrastGuard to ensure text readability across transparent backgrounds
     let title_color = ContrastGuard::ensure_legible_fg(&TITLE, &bg_color);
+    let label_color = ContrastGuard::ensure_legible_fg(&LABEL, &bg_color);
+    let footer_color = ContrastGuard::ensure_legible_fg(&FOOTER, &bg_color);
 
     // ── title ────────────────────────────────────────────────────────────────
     canvas.draw_text(
@@ -68,14 +70,14 @@ pub fn render_perf_card_with_config(
     let cpu_label = format!("CPU  {:5.1}%", snap.cpu_usage_pct);
     metric_row(
         canvas, CARD_X + PAD, CARD_Y + 44.0, inner_w,
-        &cpu_label, snap.cpu_usage_pct / 100.0, CYAN,
+        &cpu_label, snap.cpu_usage_pct / 100.0, CYAN, label_color,
     );
 
     // ── GPU row ──────────────────────────────────────────────────────────────
     let gpu_label = format!("GPU  {:5.1}%", snap.gpu_usage_pct);
     metric_row(
         canvas, CARD_X + PAD, CARD_Y + 88.0, inner_w,
-        &gpu_label, snap.gpu_usage_pct / 100.0, MAGENTA,
+        &gpu_label, snap.gpu_usage_pct / 100.0, MAGENTA, label_color,
     );
 
     // ── RAM row ──────────────────────────────────────────────────────────────
@@ -94,7 +96,7 @@ pub fn render_perf_card_with_config(
     );
     metric_row(
         canvas, CARD_X + PAD, CARD_Y + 132.0, inner_w,
-        &ram_label, ram_pct, GREEN,
+        &ram_label, ram_pct, GREEN, label_color,
     );
 
     // ── NET row ──────────────────────────────────────────────────────────────
@@ -108,7 +110,7 @@ pub fn render_perf_card_with_config(
     let net_fill = (net_kbps / 10240.0).clamp(0.0, 1.0); // 10 MB/s full scale reference
     metric_row(
         canvas, CARD_X + PAD, CARD_Y + 176.0, inner_w,
-        &net_text, net_fill, YELLOW,
+        &net_text, net_fill, YELLOW, label_color,
     );
 
     // ── footer ───────────────────────────────────────────────────────────────
@@ -116,7 +118,7 @@ pub fn render_perf_card_with_config(
         "Aether v0.6.0  \u{2022}  Phase 16 RC  \u{2022}  DirectComposition",
         "Segoe UI", 9.5,
         RectF::new(CARD_X + PAD, CARD_Y + CARD_H - 20.0, inner_w, 13.0),
-        FOOTER,
+        footer_color,
     );
 }
 
@@ -126,10 +128,10 @@ pub fn render_perf_card_with_config(
 fn metric_row(
     canvas: &mut BatchRenderCanvas,
     x: f32, y: f32, width: f32,
-    label: &str, fill_ratio: f32, bar_color: Color,
+    label: &str, fill_ratio: f32, bar_color: Color, text_color: Color,
 ) {
     // label
-    canvas.draw_text(label, FONT, 11.5, RectF::new(x, y, width, 14.0), LABEL);
+    canvas.draw_text(label, FONT, 11.5, RectF::new(x, y, width, 14.0), text_color);
 
     let bar_y = y + 18.0;
     // track
@@ -181,4 +183,3 @@ mod tests {
         assert!(!canvas.commands().is_empty());
     }
 }
-

@@ -36,6 +36,18 @@ public sealed class WidgetInfo
     [JsonPropertyName("is_locked")]
     public bool IsLocked { get; set; }
 
+    [JsonPropertyName("opacity")]
+    public double Opacity { get; set; } = 1.0;
+
+    [JsonPropertyName("scale")]
+    public double Scale { get; set; } = 1.0;
+
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; } = true;
+
+    [JsonPropertyName("quick_swap")]
+    public bool QuickSwap { get; set; } = false;
+
     [JsonPropertyName("position_x")]
     public int PositionX { get; set; } = 100;
 
@@ -48,9 +60,9 @@ public sealed class WidgetInfo
     [JsonPropertyName("description")]
     public string Description { get; set; } = "";
 
-    public string State => IsLoaded ? "Loaded" : "Available";
+    public string State => IsLoaded ? (Enabled ? "Running" : "Disabled") : "Available";
 
-    public bool IsActive => IsLoaded;
+    public bool IsActive => IsLoaded && Enabled;
 }
 
 public sealed class DiscoverWidgetsResponse

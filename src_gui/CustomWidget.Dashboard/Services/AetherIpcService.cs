@@ -1,4 +1,4 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
+﻿// Copyright (c) Aether Platform. Licensed under the MIT License.
 
 using System.Text.Json;
 using CustomWidget.Dashboard.Models;
@@ -256,4 +256,44 @@ public sealed class AetherIpcService
         string json = JsonSerializer.Serialize(cmd);
         return await SendRawCommandAsync(json);
     }
+    // -- Widget Config Commands -------------------------------------------------
+
+    /// <summary>Returns the full descriptor list of all registered widgets.</summary>
+    public async Task<string> ListWidgetsAsync()
+        => await SendRawCommandAsync("\"ListWidgets\"");
+
+    /// <summary>Updates display options for a specific widget.</summary>
+    public async Task<string> UpdateWidgetDisplayOptionsAsync(
+        string widgetId, double? opacity = null, double? scale = null,
+        bool? locked = null, bool? enabled = null)
+    {
+        var payload = new { UpdateWidgetDisplayOptions = new { widget_id = widgetId, opacity, scale, locked, enabled } };
+        return await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+    }
+
+    /// <summary>Swaps two widgets by "position" or "configuration".</summary>
+    public async Task<string> QuickSwapWidgetAsync(string fromId, string toId, string mode = "position")
+    {
+        var payload = new { QuickSwapWidget = new { from_id = fromId, to_id = toId, mode } };
+        return await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+    }
+
+    /// <summary>Enables a disabled widget.</summary>
+    public async Task<string> EnableWidgetAsync(string widgetId)
+        => await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(new { EnableWidget = new { widget_id = widgetId } }));
+
+    /// <summary>Disables a widget without unloading it.</summary>
+    public async Task<string> DisableWidgetAsync(string widgetId)
+        => await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(new { DisableWidget = new { widget_id = widgetId } }));
+
+    /// <summary>Sets the opacity of a widget [0.0-1.0].</summary>
+    public async Task<string> SetWidgetOpacityAsync(string widgetId, double opacity)
+    {
+        var payload = new { SetWidgetOpacity = new { widget_id = widgetId, opacity = (float)Math.Clamp(opacity, 0.0, 1.0) } };
+        return await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+    }
+
+    /// <summary>Resets a widget to its default display options.</summary>
+    public async Task<string> ResetWidgetConfigAsync(string widgetId)
+        => await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(new { ResetWidgetConfig = new { widget_id = widgetId } }));
 }
