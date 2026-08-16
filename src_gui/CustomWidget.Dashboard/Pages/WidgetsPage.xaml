@@ -5,10 +5,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     NavigationCacheMode="Enabled">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource AetherPagePadding}">
-        <StackPanel Spacing="24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel Spacing="20">
 
-            <!-- ══════ Header ══════ -->
+            <!-- ══════ Header Bar ══════ -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -16,87 +16,129 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Spacing="4">
-                    <TextBlock Text="Widgets" FontSize="{StaticResource AetherFontSizeTitle}"
-                               FontWeight="Bold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
-                    <TextBlock Text="Manage installed widgets — load, unload, and configure"
-                               FontSize="{StaticResource AetherFontSizeBody}"
-                               Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                    <TextBlock Text="Widget &amp; Plugin Manager" FontSize="26" FontWeight="Bold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                    <TextBlock Text="Automatically scan folders, inspect plugin manifests, and manage active desktop widgets." FontSize="14" Foreground="{StaticResource AetherTextSecondaryBrush}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button x:Name="DesktopWidgetBtn" Content="🖥️  Toggle Desktop Overlay Widget" Click="DesktopWidgetBtn_Click"
-                            Style="{StaticResource AccentButtonStyle}"
-                            Padding="16,10,16,10" CornerRadius="6" />
-                    <Button x:Name="LoadBtn" Content="📂  Load Widget" Click="LoadBtn_Click"
-                            Padding="16,10,16,10" CornerRadius="6" />
-                    <Button x:Name="ReloadBtn" Content="🔄  Reload All" Click="ReloadBtn_Click"
-                            Padding="16,10,16,10" CornerRadius="6" />
+                    <Button x:Name="DiscoverBtn" Content="🔍  Auto-Discover Plugins" Click="DiscoverBtn_Click" Style="{StaticResource AccentButtonStyle}" Padding="14,8,14,8" CornerRadius="6" />
+                    <Button x:Name="LoadBtn" Content="📂  Load Custom TOML..." Click="LoadBtn_Click" Padding="14,8,14,8" CornerRadius="6" />
+                    <Button x:Name="ReloadBtn" Content="🔄  Reload All" Click="ReloadBtn_Click" Padding="14,8,14,8" CornerRadius="6" />
                 </StackPanel>
             </Grid>
 
-            <!-- ══════ Status Message ══════ -->
-            <TextBlock x:Name="StatusText" Text="" FontSize="13"
-                       Foreground="{StaticResource AetherTextSecondaryBrush}" />
+            <!-- ══════ Status Bar & Search Box ══════ -->
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="320" />
+                </Grid.ColumnDefinitions>
 
-            <!-- ══════ Widget List ══════ -->
-            <ListView x:Name="WidgetList" SelectionMode="None">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource AetherMetricCard}" Margin="0,0,0,8" Padding="16,14,16,14">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Grid.Column="0" Text="" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBox x:Name="SearchBox" Grid.Column="1" PlaceholderText="Search plugins by name, ID, author..." TextChanged="SearchBox_TextChanged" Header="" />
+            </Grid>
 
-                                <!-- Widget icon -->
-                                <FontIcon Grid.Column="0" Glyph="&#xE74C;" FontSize="24"
-                                          Foreground="{StaticResource AetherAccentBrush}"
-                                          Margin="0,0,16,0" VerticalAlignment="Center" />
+            <!-- ══════ Pivot Tabs: Discovered Library vs Active Running ══════ -->
+            <Pivot x:Name="MainPivot">
+                <!-- Tab 1: Discovered Plugins Library -->
+                <PivotItem Header="Discovered Plugins Library">
+                    <StackPanel Spacing="16" Margin="0,16,0,0">
+                        <ListView x:Name="DiscoveredList" SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource AetherMetricCard}" Margin="0,0,0,10" Padding="16,14,16,14">
+                                        <Grid ColumnSpacing="16">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-                                <!-- Widget info -->
-                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15"
-                                               Foreground="{StaticResource AetherTextPrimaryBrush}" />
-                                    <TextBlock Text="{Binding Id}" FontSize="12"
-                                               Foreground="{StaticResource AetherTextDimBrush}"
-                                               IsTextSelectionEnabled="True" />
-                                </StackPanel>
+                                            <!-- Plugin Icon -->
+                                            <FontIcon Grid.Column="0" Glyph="&#xE74C;" FontSize="28" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
 
-                                <!-- State badge -->
-                                <Border Grid.Column="2" CornerRadius="4" Padding="10,4,10,4"
-                                        Background="{StaticResource AetherSuccessBrush}" Opacity="0.15"
-                                        VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <TextBlock Text="{Binding State}" FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource AetherSuccessBrush}" />
-                                </Border>
+                                            <!-- Plugin Information -->
+                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                                                    <Border CornerRadius="4" Padding="6,2,6,2" Background="{StaticResource AetherAccentBrush}" Opacity="0.15">
+                                                        <TextBlock Text="{Binding Version}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AetherAccentBrush}" />
+                                                    </Border>
+                                                </StackPanel>
 
-                                <!-- Action buttons -->
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <Button Content="🔒 Lock/Unlock" Tag="{Binding Id}" Click="LockBtn_Click"
-                                            Padding="10,6,10,6" CornerRadius="4" ToolTipService.ToolTip="Toggle drag lock state for this widget" />
-                                    <Button Content="📍 Reset Pos" Tag="{Binding Id}" Click="ResetPosBtn_Click"
-                                            Padding="10,6,10,6" CornerRadius="4" ToolTipService.ToolTip="Reset widget screen position to default (100, 100)" />
-                                    <Button Content="Unload" Tag="{Binding Id}" Click="UnloadBtn_Click"
-                                            Padding="12,6,12,6" CornerRadius="4" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+                                                <TextBlock Text="{Binding ManifestPath}" FontSize="12" FontFamily="Consolas" Foreground="{StaticResource AetherTextDimBrush}" IsTextSelectionEnabled="True" />
+                                                <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                                            </StackPanel>
 
-            <!-- ══════ Empty State ══════ -->
-            <StackPanel x:Name="EmptyState" Spacing="12" HorizontalAlignment="Center" Padding="0,40,0,40">
-                <FontIcon Glyph="&#xE74C;" FontSize="48" Foreground="{StaticResource AetherTextDimBrush}" />
-                <TextBlock Text="No widgets loaded" FontSize="18" FontWeight="SemiBold"
-                           Foreground="{StaticResource AetherTextSecondaryBrush}" HorizontalAlignment="Center" />
-                <TextBlock Text="Load a widget manifest (.toml) or start the engine to see built-in widgets."
-                           FontSize="13" Foreground="{StaticResource AetherTextDimBrush}"
-                           HorizontalAlignment="Center" TextAlignment="Center" />
-            </StackPanel>
+                                            <!-- Status Badge -->
+                                            <Border Grid.Column="2" CornerRadius="4" Padding="10,4,10,4" Background="{StaticResource AetherSuccessBrush}" Opacity="0.15" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding State}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AetherSuccessBrush}" />
+                                            </Border>
+
+                                            <!-- Load / Unload Action Button -->
+                                            <Button Grid.Column="3" Content="{Binding IsLoaded, Converter={StaticResource BoolToTextConverter}}" Tag="{Binding}" Click="ToggleLoad_Click" Style="{StaticResource AccentButtonStyle}" Padding="16,8,16,8" CornerRadius="6" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!-- Empty State for Discovered Library -->
+                        <StackPanel x:Name="DiscoveredEmptyState" Spacing="12" HorizontalAlignment="Center" Padding="0,40,0,40" Visibility="Collapsed">
+                            <FontIcon Glyph="&#xE74C;" FontSize="48" Foreground="{StaticResource AetherTextDimBrush}" />
+                            <TextBlock Text="No plugin manifests found on disk" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="Click 'Auto-Discover Plugins' above or check your crates/ directory." FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </PivotItem>
+
+                <!-- Tab 2: Active / Running Desktop Widgets -->
+                <PivotItem Header="Active Running Widgets">
+                    <StackPanel Spacing="16" Margin="0,16,0,0">
+                        <ListView x:Name="RunningList" SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource AetherMetricCard}" Margin="0,0,0,8" Padding="16,14,16,14">
+                                        <Grid ColumnSpacing="16">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <FontIcon Grid.Column="0" Glyph="&#xE819;" FontSize="24" Foreground="{StaticResource AetherSuccessBrush}" VerticalAlignment="Center" />
+
+                                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                                                <TextBlock Text="{Binding Id}" FontSize="12" Foreground="{StaticResource AetherTextDimBrush}" IsTextSelectionEnabled="True" />
+                                            </StackPanel>
+
+                                            <Border Grid.Column="2" CornerRadius="4" Padding="10,4,10,4" Background="{StaticResource AetherSuccessBrush}" Opacity="0.15" VerticalAlignment="Center">
+                                                <TextBlock Text="RUNNING" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AetherSuccessBrush}" />
+                                            </Border>
+
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Button Content="🔒 Lock Drag" Tag="{Binding Id}" Click="LockBtn_Click" Padding="10,6,10,6" CornerRadius="4" />
+                                                <Button Content="📍 Reset Pos" Tag="{Binding Id}" Click="ResetPosBtn_Click" Padding="10,6,10,6" CornerRadius="4" />
+                                                <Button Content="Unload" Tag="{Binding Id}" Click="UnloadBtn_Click" Padding="12,6,12,6" CornerRadius="4" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!-- Empty State for Running Widgets -->
+                        <StackPanel x:Name="RunningEmptyState" Spacing="12" HorizontalAlignment="Center" Padding="0,40,0,40" Visibility="Collapsed">
+                            <FontIcon Glyph="&#xE74C;" FontSize="48" Foreground="{StaticResource AetherTextDimBrush}" />
+                            <TextBlock Text="No active widgets running" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource AetherTextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="Switch to 'Discovered Plugins Library' and click 'Load Widget'." FontSize="13" Foreground="{StaticResource AetherTextDimBrush}" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </PivotItem>
+            </Pivot>
 
         </StackPanel>
     </ScrollViewer>

@@ -1,6 +1,6 @@
 # Theme Engine Specification (`theme.json`)
 
-The **Phase 9 Theme Engine** provides declarative design token management allowing widget designers to customize platform styling through JSON schemas. All themes support **Hot Reloading** without restarting the host daemon process or terminating sandboxed widget plugins.
+The **Aether 7.4 Theme Engine** provides declarative 12-category design token management, theme inheritance (`extends`), `MaterialEngine` surfaces (`Mica`, `Acrylic`, `Glass`), dynamic WCAG contrast validation, and centralized accessibility overrides (`High Contrast`, `Reduce Motion`). All themes support **Hot Reloading** without restarting the host daemon process or terminating sandboxed widget plugins.
 
 ---
 
@@ -14,6 +14,16 @@ The **Phase 9 Theme Engine** provides declarative design token management allowi
     "author": "Design Studio",
     "version": "1.0.0",
     "description": "High-contrast neon theme for night setups"
+  },
+  "extends": "theme.base.dark",
+  "tokens": {
+    "colors": {
+      "accent": "#FF007F",
+      "background": "#0D0221E6"
+    },
+    "spacing": {
+      "md": 12.0
+    }
   },
   "colors": {
     "theme.accent": "#FF007F",

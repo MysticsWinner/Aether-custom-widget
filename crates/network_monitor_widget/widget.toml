@@ -1,0 +1,27 @@
+[metadata]
+id = "widget.network_monitor"
+name = "Network I/O & Ping Monitor"
+author = "Aether Network Team"
+version = "1.0.0"
+description = "Real-time network download/upload throughput gauges and latency tracking"
+update_interval_ms = 500
+
+[performance]
+target_cpu = 0.05
+target_memory_mb = 12
+target_fps = 10
+material_cost = "low"
+animation_cost = "low"
+
+[layout]
+width = 300.0
+height = 160.0
+padding = 10.0
+corner_radius = 10.0
+
+[[elements]]
+id = "recv_text"
+element_type = "text"
+binding = "net.recv_rate"
+font_size = 14.0
+color_token = "theme.accent"

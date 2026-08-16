@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 ipc_protocol = { path = "../ipc_protocol" }
 widget_sdk = { path = "../widget_sdk" }
+widget_parser = { path = "../widget_parser" }
 thiserror.workspace = true
 tracing.workspace = true
 anyhow.workspace = true

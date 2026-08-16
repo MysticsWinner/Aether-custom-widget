@@ -83,11 +83,20 @@ impl Default for AnimationConfig {
     }
 }
 
+use crate::tokens::DesignTokens;
+use crate::material::MaterialSpec;
+
 /// Comprehensive `theme.json` Schema supporting:
-/// theme.json, fonts, icons, widgets, layouts, animations.
+/// theme.json, tokens, materials, typography, motion, accessibility, theme inheritance (extends).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ThemeSchema {
     pub metadata: ThemeMetadata,
+    #[serde(default)]
+    pub extends: Option<String>,
+    #[serde(default)]
+    pub tokens: Option<DesignTokens>,
+    #[serde(default)]
+    pub materials: Option<HashMap<String, MaterialSpec>>,
     pub colors: HashMap<String, String>,
     pub fonts: HashMap<String, FontConfig>,
     pub icons: HashMap<String, String>,
@@ -122,6 +131,9 @@ impl Default for ThemeSchema {
 
         Self {
             metadata: ThemeMetadata::default(),
+            extends: None,
+            tokens: Some(DesignTokens::default()),
+            materials: None,
             colors,
             fonts,
             icons,

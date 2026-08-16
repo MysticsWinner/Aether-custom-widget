@@ -45,8 +45,12 @@ Aether v0.6.0 delivers real-time system diagnostics, process management, log str
 ---
 
 ## 🛠️ Verification & Test Metrics
-- **Workspace Test Suite**: **121/121 tests passing** (100% pass rate across unit, integration, interface, and system tests).
-- **Workspace Build**: Zero compilation warnings / zero errors on Windows 11 (`x86_64` & `ARM64`).
+- **Workspace Test Suite**: **121/121 tests passing** (100% pass rate across unit, integration, interface, system, and benchmark tests).
+- **Real-World Black-Box 20x Lifecycle Stress Test**: Verified **20/20 PASS (100% pass rate)** for repeated `LoadWidget` $\rightarrow$ `GetStatus` presence check $\rightarrow$ `UnloadWidget` $\rightarrow$ `GetStatus` removal check cycles across all widgets (`weather_widget`, `network_monitor_widget`, `ai_assistant_widget`).
+- **Widget Visibility & Rendering Fixes**: Resolved `DEF-AETH-001` and `DEF-AETH-002` (making desktop overlay window visible for ALL loaded widgets and preventing `perf_monitor` unload from hiding other widgets). Added granular stage-by-stage `[WIDGET_LIFECYCLE]` logging.
+- **Workspace Build**: Zero compilation errors across all 28 Rust crates and C# WinUI 3 dashboard (`src_gui/CustomWidget.Dashboard`) on Windows 11 (`x86_64` & `ARM64`).
+
+
 
 ---
 

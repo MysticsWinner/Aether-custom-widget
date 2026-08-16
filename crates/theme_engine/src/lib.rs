@@ -3,13 +3,25 @@
 //! Provides dynamic theme token resolution driven by declarative `theme.json` files
 //! supporting colors, fonts, icons, widgets, layouts, and animations—with live Hot Reloading without host restart.
 
+pub mod accessibility;
+pub mod dynamic_color;
 pub mod hot_reload;
+pub mod material;
+pub mod motion;
 pub mod resolver;
 pub mod schema;
+pub mod tokens;
+pub mod typography;
 
+pub use accessibility::{AccessibilityConfig, AccessibilityEngine};
+pub use dynamic_color::{DynamicColorEngine, DynamicPalette};
 pub use hot_reload::ThemeWatcher;
+pub use material::{MaterialContext, MaterialEngine, MaterialSpec, MaterialType};
+pub use motion::{MotionEngine, MotionLevel, MotionSpec};
 pub use resolver::{DynamicThemeStore, ThemeBenchmark, ThemeResolver};
 pub use schema::{AnimationConfig, FontConfig, LayoutConfig, ThemeMetadata, ThemeSchema};
+pub use tokens::DesignTokens;
+pub use typography::{TypographyEngine, TypographyRole, TypographySpec};
 
 use serde::{Deserialize, Serialize};
 

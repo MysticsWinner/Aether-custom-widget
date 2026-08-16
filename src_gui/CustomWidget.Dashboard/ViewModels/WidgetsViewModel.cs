@@ -9,8 +9,8 @@ using CustomWidget.Dashboard.Services;
 namespace CustomWidget.Dashboard.ViewModels;
 
 /// <summary>
-/// ViewModel for the Widgets management page — lists installed widgets and provides load/unload controls.
-/// Widget data comes from real IPC GetStatus responses.
+/// ViewModel for the Widgets management page — lists discovered plugin manifests and running widgets.
+/// Dynamically queries the Core Engine IPC daemon for real filesystem discovery and status.
 /// </summary>
 public partial class WidgetsViewModel : ObservableObject
 {
@@ -20,8 +20,10 @@ public partial class WidgetsViewModel : ObservableObject
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private bool _isConnected;
+    [ObservableProperty] private string _searchQuery = "";
 
     public ObservableCollection<WidgetInfo> Widgets { get; } = new();
+    public ObservableCollection<WidgetInfo> DiscoveredWidgets { get; } = new();
 
     public WidgetsViewModel(AetherIpcService ipc, TelemetryPollerService poller)
     {
@@ -31,30 +33,97 @@ public partial class WidgetsViewModel : ObservableObject
         _poller.OnNewSample += _ =>
         {
             IsConnected = _ipc.IsConnected;
-            RefreshWidgetList();
+            RefreshRunningWidgets();
         };
+
+        _ = DiscoverWidgetsAsync();
     }
 
-    private void RefreshWidgetList()
+    partial void OnSearchQueryChanged(string value)
+    {
+        // Triggers UI refresh for filtered view
+        _ = DiscoverWidgetsAsync();
+    }
+
+    [RelayCommand]
+    public async Task DiscoverWidgetsAsync()
+    {
+        IsBusy = true;
+        StatusMessage = "Scanning filesystem for widget.toml manifests...";
+        try
+        {
+            var list = await _ipc.DiscoverWidgetsAsync();
+            DiscoveredWidgets.Clear();
+
+            string query = SearchQuery.Trim().ToLowerInvariant();
+
+            foreach (var w in list)
+            {
+                if (string.IsNullOrEmpty(query) ||
+                    w.Name.ToLowerInvariant().Contains(query) ||
+                    w.Author.ToLowerInvariant().Contains(query) ||
+                    w.Id.ToLowerInvariant().Contains(query))
+                {
+                    DiscoveredWidgets.Add(w);
+                }
+            }
+
+            StatusMessage = $"✓ Found {list.Count} plugin manifest(s) on disk.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Discovery failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void RefreshRunningWidgets()
     {
         if (_poller.LastStatus is not { } status) return;
 
-        // Only update if the list actually changed
+        var activeIds = status.ActiveWidgets.ToHashSet();
+
+        // Update running widgets list
         var currentIds = Widgets.Select(w => w.Id).ToHashSet();
-        var newIds = status.ActiveWidgets.ToHashSet();
-
-        if (currentIds.SetEquals(newIds)) return;
-
-        Widgets.Clear();
-        foreach (var widgetId in status.ActiveWidgets)
+        if (!currentIds.SetEquals(activeIds))
         {
-            Widgets.Add(new WidgetInfo
+            Widgets.Clear();
+            foreach (var widgetId in status.ActiveWidgets)
             {
-                Id = widgetId,
-                Name = FormatWidgetName(widgetId),
-                State = "Loaded",
-            });
+                Widgets.Add(new WidgetInfo
+                {
+                    Id = widgetId,
+                    Name = FormatWidgetName(widgetId),
+                    IsLoaded = true,
+                });
+            }
         }
+
+        // Cross-reference running status with discovered widgets list
+        foreach (var dw in DiscoveredWidgets)
+        {
+            dw.IsLoaded = activeIds.Contains(dw.Id);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ToggleWidgetLoadAsync(WidgetInfo? widget)
+    {
+        if (widget is null || string.IsNullOrWhiteSpace(widget.ManifestPath)) return;
+
+        if (widget.IsLoaded)
+        {
+            await UnloadWidgetAsync(widget.Id);
+        }
+        else
+        {
+            await LoadWidgetAsync(widget.ManifestPath);
+        }
+
+        await DiscoverWidgetsAsync();
     }
 
     [RelayCommand]
@@ -67,9 +136,16 @@ public partial class WidgetsViewModel : ObservableObject
         try
         {
             string result = await _ipc.LoadWidgetAsync(manifestPath);
-            StatusMessage = result.Contains("\"status\":\"ok\"") || result.Contains("\"status\": \"ok\"")
+            bool success = result.Contains("\"status\":\"ok\"") || result.Contains("\"status\": \"ok\"");
+            StatusMessage = success
                 ? $"✓ Widget loaded: {manifestPath}"
                 : $"✗ Load failed: {result}";
+
+            if (success)
+            {
+                await Task.Delay(300);
+                await DiscoverWidgetsAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -95,11 +171,12 @@ public partial class WidgetsViewModel : ObservableObject
             if (success)
             {
                 StatusMessage = $"✓ Widget unloaded: {widgetId}";
-                // Optimistically remove from the local list immediately —
-                // the poller will confirm on the next tick.
                 var widget = Widgets.FirstOrDefault(w => w.Id == widgetId);
                 if (widget is not null)
                     Widgets.Remove(widget);
+
+                await Task.Delay(300);
+                await DiscoverWidgetsAsync();
             }
             else
             {
@@ -125,14 +202,8 @@ public partial class WidgetsViewModel : ObservableObject
         {
             await _ipc.ReloadAllAsync();
             StatusMessage = "✓ All widgets reloaded.";
-            // Force an immediate status poll so the widget list refreshes without waiting.
-            // We do this by briefly resetting the tracked state so the next sample triggers a full refresh.
-            var previousIds = Widgets.Select(w => w.Id).ToHashSet();
-            _ = Task.Delay(800).ContinueWith(_ =>
-            {
-                // After 800ms the poller will have fired a new sample—
-                // the RefreshWidgetList() callback will automatically update the UI.
-            });
+            await Task.Delay(500);
+            await DiscoverWidgetsAsync();
         }
         finally
         {
@@ -189,7 +260,6 @@ public partial class WidgetsViewModel : ObservableObject
 
     private static string FormatWidgetName(string id)
     {
-        // Convert "aether.builtin.perf_monitor" → "Perf Monitor"
         var parts = id.Split('.');
         var name = parts.Length > 0 ? parts[^1] : id;
         return name.Replace("_", " ")

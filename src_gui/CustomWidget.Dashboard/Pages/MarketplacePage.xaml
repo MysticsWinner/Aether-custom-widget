@@ -1,0 +1,110 @@
+<!-- Copyright (c) Aether Platform. Licensed under the MIT License. -->
+<Page
+    x:Class="CustomWidget.Dashboard.Pages.MarketplacePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    NavigationCacheMode="Enabled">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel Spacing="20">
+
+            <!-- ══════ Header Bar ══════ -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Widget Marketplace" FontSize="26" FontWeight="Bold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                        <Border Background="{StaticResource AetherSuccessBrush}" Opacity="0.2" CornerRadius="10" Padding="8,2,8,2" VerticalAlignment="Center">
+                            <TextBlock Text="🔒 Ed25519 Verified" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AetherSuccessBrush}" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="Discover, verify digital signatures, and install 3rd-party widget packages (.cwp archives)." FontSize="14" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button x:Name="RefreshBtn" Content="🔄 Refresh Catalog" Click="RefreshBtn_Click" Style="{StaticResource AccentButtonStyle}" Padding="14,8,14,8" CornerRadius="6" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ══════ Search & Category Filter Bar ══════ -->
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="200" />
+                </Grid.ColumnDefinitions>
+
+                <TextBox x:Name="SearchBox" Grid.Column="0" PlaceholderText="Search marketplace by name, author, capabilities..." TextChanged="SearchBox_TextChanged" />
+                <ComboBox x:Name="CategoryCombo" Grid.Column="1" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="CategoryCombo_SelectionChanged">
+                    <ComboBoxItem Content="All Categories" />
+                    <ComboBoxItem Content="Monitoring" />
+                    <ComboBoxItem Content="Utilities" />
+                    <ComboBoxItem Content="Media" />
+                    <ComboBoxItem Content="Clock" />
+                    <ComboBoxItem Content="Productivity" />
+                </ComboBox>
+            </Grid>
+
+            <!-- Status bar -->
+            <TextBlock x:Name="StatusText" Text="Loading verified package catalog..." FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+
+            <!-- ══════ Package Catalog Grid / ListView ══════ -->
+            <ListView x:Name="CatalogList" SelectionMode="None">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource AetherMetricCard}" Margin="0,0,0,12" Padding="18,16,18,16">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Icon -->
+                                <FontIcon Grid.Column="0" Glyph="&#xE74C;" FontSize="32" Foreground="{StaticResource AetherAccentBrush}" VerticalAlignment="Center" />
+
+                                <!-- Main Package Details -->
+                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                                        <Border CornerRadius="4" Padding="6,2,6,2" Background="{StaticResource AetherAccentBrush}" Opacity="0.15">
+                                            <TextBlock Text="{Binding Version}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AetherAccentBrush}" />
+                                        </Border>
+                                        <Border CornerRadius="4" Padding="6,2,6,2" Background="{StaticResource AetherSuccessBrush}" Opacity="0.15">
+                                            <TextBlock Text="✓ Signed" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AetherSuccessBrush}" />
+                                        </Border>
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding Description}" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" TextWrapping="Wrap" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                                        <TextBlock Text="{Binding AuthorText}" FontSize="11" Foreground="{StaticResource AetherTextDimBrush}" />
+                                        <TextBlock Text="{Binding CapabilitiesText}" FontSize="11" FontFamily="Consolas" Foreground="{StaticResource AetherAccentBrush}" />
+                                        <TextBlock Text="{Binding DownloadsText}" FontSize="11" Foreground="{StaticResource AetherTextDimBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Rating Badge -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <FontIcon Glyph="&#xE735;" FontSize="14" Foreground="#FFD700" />
+                                        <TextBlock Text="{Binding RatingText}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Category}" FontSize="11" Foreground="{StaticResource AetherTextDimBrush}" HorizontalAlignment="Right" />
+                                </StackPanel>
+
+                                <!-- Action Button -->
+                                <Button Grid.Column="3" Content="{Binding ButtonText}" Tag="{Binding}" Click="InstallBtn_Click" Style="{StaticResource AccentButtonStyle}" Padding="16,8,16,8" CornerRadius="6" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

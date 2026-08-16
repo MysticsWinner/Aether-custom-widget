@@ -26,6 +26,9 @@ members = [
     "crates/observability",
     "crates/dev_tools",
     "crates/enterprise",
+    "crates/weather_widget",
+    "crates/network_monitor_widget",
+    "crates/ai_assistant_widget",
     "tests",
 ]
 

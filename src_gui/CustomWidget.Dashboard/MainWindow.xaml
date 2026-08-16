@@ -52,9 +52,45 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 
+                <NavigationViewItem x:Name="NavTokens" Tag="Tokens" Content="Design Tokens">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="FontColor" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItem x:Name="NavProfiles" Tag="Profiles" Content="Desktop Profiles">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Account" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItem x:Name="NavAiComposer" Tag="AiComposer" Content="AI Composer">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Edit" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
                 <NavigationViewItem x:Name="NavWidgets" Tag="Widgets" Content="Widgets">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="AllApps" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItem x:Name="NavMarketplace" Tag="Marketplace" Content="Marketplace">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Shop" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItem x:Name="NavSnapshots" Tag="Snapshots" Content="Snapshots &amp; Recovery">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Save" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItem x:Name="NavSecurity" Tag="Security" Content="Security &amp; Sandbox">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Permissions" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
 

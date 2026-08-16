@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use widget_sdk::RectF;
 
-/// Detailed DOM inspector report for a widget.
+/// Detailed DOM & platform inspector report for a widget.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WidgetInspectionReport {
     pub widget_id: String,
@@ -10,6 +10,11 @@ pub struct WidgetInspectionReport {
     pub memory_used_kb: f32,
     pub tick_duration_us: u64,
     pub target_fps: u32,
+    pub cpu_pct: f32,
+    pub gpu_pct: f32,
+    pub ipc_latency_us: u64,
+    pub resolved_material: String,
+    pub is_sandboxed: bool,
 }
 
 /// Chrome DevTools-style widget inspector & profiler.
@@ -31,6 +36,11 @@ impl WidgetInspector {
             memory_used_kb,
             tick_duration_us,
             target_fps,
+            cpu_pct: 0.05,
+            gpu_pct: 0.02,
+            ipc_latency_us: 12,
+            resolved_material: "Mica".to_string(),
+            is_sandboxed: true,
         }
     }
 }

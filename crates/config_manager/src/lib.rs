@@ -1,4 +1,6 @@
 pub mod backup;
+pub mod context_aware;
+pub mod desktop_profiles;
 pub mod manager;
 pub mod migration;
 pub mod snapshot;
@@ -7,6 +9,8 @@ pub mod types;
 pub mod validator;
 
 pub use backup::ConfigBackupRotator;
+pub use context_aware::{ContextAwareEngine, ContextSignal};
+pub use desktop_profiles::{DesktopProfile, ProfileManager, ProfileType};
 pub use manager::ConfigManager;
 pub use migration::{Migration, MigrationEngine};
 pub use snapshot::SnapshotManager;

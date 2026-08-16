@@ -6,8 +6,10 @@
 
 ## 1. Automated QA Checklist
 
-- [x] **Workspace Unit Tests**: All 87 unit and doc tests pass cleanly via `cargo test --workspace`.
+- [x] **Workspace Unit Tests**: All 268 Rust unit/integration tests pass cleanly via `cargo test --workspace`.
 - [x] **Compilation**: `cargo check --workspace` finishes with zero compilation errors.
+- [x] **WinUI 3 GUI Build Verification**: `dotnet build src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj` succeeds cleanly with 0 warnings/errors.
+- [x] **WinUI 3 GUI Unit Tests**: All 13 C# MSTest unit tests pass cleanly via `dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`.
 - [x] **IPC Named Pipe**: Named Pipe server binds to `\\.\pipe\CustomWidgetEngineControlPipe` without privilege escalation errors.
 - [x] **Telemetry Sampling**: CPU percentage and RAM usage update continuously without numerical overflow or panic.
 

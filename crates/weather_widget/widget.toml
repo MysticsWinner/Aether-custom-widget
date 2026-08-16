@@ -1,0 +1,27 @@
+[metadata]
+id = "widget.weather_pro"
+name = "Weather Overlay Pro"
+author = "Aether Design Team"
+version = "1.0.0"
+description = "Live weather, temperature, humidity, and 5-day forecast overlay card"
+update_interval_ms = 60000
+
+[performance]
+target_cpu = 0.02
+target_memory_mb = 10
+target_fps = 1
+material_cost = "low"
+animation_cost = "low"
+
+[layout]
+width = 320.0
+height = 180.0
+padding = 12.0
+corner_radius = 12.0
+
+[[elements]]
+id = "temp_text"
+element_type = "text"
+binding = "env.temperature"
+font_size = 32.0
+color_token = "theme.text_primary"

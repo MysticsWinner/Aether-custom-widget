@@ -104,4 +104,30 @@ mod tests {
         let resolved = CrdtResolver::resolve(item1, item2.clone());
         assert_eq!(resolved.payload, "config_v2");
     }
+
+    #[test]
+    fn test_crdt_resolution_for_74_profiles_and_themes() {
+        let mut clock_dev1 = VectorClock::new();
+        clock_dev1.increment("desktop_pc");
+
+        let mut clock_dev2 = VectorClock::new();
+        clock_dev2.increment("surface_laptop");
+
+        let profile_sync_item1 = CrdtItem {
+            item_id: "profile.gaming".to_string(),
+            payload: serde_json::json!({"name": "Gaming Mode", "target_fps": 60}),
+            vector_clock: clock_dev1,
+            timestamp_ms: 5000,
+        };
+
+        let profile_sync_item2 = CrdtItem {
+            item_id: "profile.gaming".to_string(),
+            payload: serde_json::json!({"name": "Gaming Mode Expressive", "target_fps": 120}),
+            vector_clock: clock_dev2,
+            timestamp_ms: 6000,
+        };
+
+        let resolved = CrdtResolver::resolve(profile_sync_item1, profile_sync_item2.clone());
+        assert_eq!(resolved.payload["target_fps"], 120);
+    }
 }

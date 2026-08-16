@@ -172,4 +172,88 @@ public sealed class AetherIpcService
         var cmdJson = $"{{\"type\": \"ToggleWidgetLock\", \"payload\": {payload}}}";
         return await SendRawCommandAsync(cmdJson);
     }
+
+    /// <summary>
+    /// Sends <c>DiscoverWidgets</c> command to recursively scan widget directories on disk.
+    /// Returns the full list of discovered widget plugins and their metadata.
+    /// </summary>
+    public async Task<List<WidgetInfo>> DiscoverWidgetsAsync(List<string>? searchPaths = null)
+    {
+        try
+        {
+            var cmd = new { DiscoverWidgets = new { search_paths = searchPaths } };
+            string cmdJson = JsonSerializer.Serialize(cmd);
+            string responseJson = await SendRawCommandAsync(cmdJson);
+
+            if (string.IsNullOrWhiteSpace(responseJson) || responseJson.Contains("\"status\": \"error\""))
+                return new List<WidgetInfo>();
+
+            var resp = JsonSerializer.Deserialize<DiscoverWidgetsResponse>(responseJson);
+            return resp?.DiscoveredWidgets ?? new List<WidgetInfo>();
+        }
+        catch
+        {
+            return new List<WidgetInfo>();
+        }
+    }
+
+    /// <summary>
+    /// Queries the marketplace catalog for widget packages matching search query and category filters.
+    /// </summary>
+    public async Task<string> SearchMarketplaceAsync(string query, string? category = null)
+    {
+        var cmd = new { SearchMarketplace = new { query, category = category ?? "all" } };
+        string json = JsonSerializer.Serialize(cmd);
+        return await SendRawCommandAsync(json);
+    }
+
+    /// <summary>
+    /// Creates a transactional system configuration snapshot.
+    /// </summary>
+    public async Task<string> CreateSnapshotAsync(string name)
+    {
+        var cmd = new { CreateSnapshot = new { name } };
+        string json = JsonSerializer.Serialize(cmd);
+        return await SendRawCommandAsync(json);
+    }
+
+    /// <summary>
+    /// Fetches all system configuration snapshots.
+    /// </summary>
+    public async Task<string> ListSnapshotsAsync()
+    {
+        var cmd = new { ListSnapshots = new { } };
+        string json = JsonSerializer.Serialize(cmd);
+        return await SendRawCommandAsync(json);
+    }
+
+    /// <summary>
+    /// Restores a system configuration snapshot by snapshot ID.
+    /// </summary>
+    public async Task<string> RestoreSnapshotAsync(string snapshotId)
+    {
+        var cmd = new { RestoreSnapshot = new { id = snapshotId } };
+        string json = JsonSerializer.Serialize(cmd);
+        return await SendRawCommandAsync(json);
+    }
+
+    /// <summary>
+    /// Deletes a system configuration snapshot by snapshot ID.
+    /// </summary>
+    public async Task<string> DeleteSnapshotAsync(string snapshotId)
+    {
+        var cmd = new { DeleteSnapshot = new { id = snapshotId } };
+        string json = JsonSerializer.Serialize(cmd);
+        return await SendRawCommandAsync(json);
+    }
+
+    /// <summary>
+    /// Fetches security sandbox audit logs and process capability states.
+    /// </summary>
+    public async Task<string> GetSecurityAuditLogsAsync()
+    {
+        var cmd = new { GetSecurityAuditLogs = new { } };
+        string json = JsonSerializer.Serialize(cmd);
+        return await SendRawCommandAsync(json);
+    }
 }

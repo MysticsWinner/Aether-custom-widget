@@ -8,7 +8,7 @@ namespace CustomWidget.Dashboard.Services;
 /// Manages the lifecycle of the Aether core engine daemon process.
 /// Can start, stop, and monitor the <c>core_engine</c> Rust binary.
 /// </summary>
-public sealed class ProcessManagerService
+public sealed class ProcessManagerService : IDisposable
 {
     private Process? _engineProcess;
     private readonly string _workspaceRoot;
@@ -166,29 +166,25 @@ public sealed class ProcessManagerService
     }
 
     /// <summary>
-    /// Stops the core engine daemon gracefully.
+    /// Stops the core engine daemon gracefully and kills entire process tree.
     /// </summary>
     public async Task StopEngineAsync()
     {
-        // Try to stop our managed process
         if (_engineProcess is not null && !_engineProcess.HasExited)
         {
             try
             {
-                // Send Ctrl+C signal via GenerateConsoleCtrlEvent is complex on Windows;
-                // fallback to Kill for reliability
                 _engineProcess.Kill(entireProcessTree: true);
                 await _engineProcess.WaitForExitAsync();
             }
-            catch { /* Already exited */ }
+            catch { }
             finally
             {
                 _engineProcess = null;
             }
-            return;
         }
 
-        // Kill any externally-launched core_engine processes
+        // Kill any remaining core_engine processes on the system
         foreach (var proc in Process.GetProcessesByName("core_engine"))
         {
             try
@@ -196,7 +192,7 @@ public sealed class ProcessManagerService
                 proc.Kill(entireProcessTree: true);
                 await proc.WaitForExitAsync();
             }
-            catch { /* Access denied or already exited */ }
+            catch { }
         }
     }
 
@@ -208,5 +204,14 @@ public sealed class ProcessManagerService
         await StopEngineAsync();
         await Task.Delay(1000); // Wait for pipe cleanup
         return await StartEngineAsync();
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            StopEngineAsync().GetAwaiter().GetResult();
+        }
+        catch { }
     }
 }

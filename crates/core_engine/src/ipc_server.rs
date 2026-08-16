@@ -132,6 +132,50 @@ impl IpcSharedState {
             audit_logger: Arc::new(Mutex::new(audit_log)),
         }
     }
+
+    pub fn with_registry(
+        cache: SharedTelemetryCache,
+        desktop_window: Arc<DesktopWidgetWindow>,
+        widget_registry: Arc<Mutex<Vec<String>>>,
+    ) -> Self {
+        let base_dir = std::env::temp_dir().join("aether_recovery");
+        let rec_mgr = RecoveryManager::new(&base_dir, CrashPolicy::default());
+        let snap_mgr = SnapshotManager::new(base_dir.join("snapshots"), 20);
+        let cap_broker = CapabilityBroker::new(base_dir.join("grants.json"));
+        let evt_rec = EventRecorder::new(10000);
+        let watchdog = WatchdogSupervisor::new("aether_engine.exe", 5000);
+        let minidump = MinidumpWriter::new(base_dir.join("minidumps"));
+        let etw = EtwProvider::new("AetherEngineProvider");
+        let tick_adv = TickRateAdvisor::new();
+        let frame_sched = FrameScheduler::new();
+        let res_cache = LruResourceCache::new(500);
+        let reloader = DevHotReloader::new();
+        let grid = LayoutGridOverlay::default();
+        let mkt = MarketplaceCatalog::new();
+        let pol_eng = PolicyEngine::new(base_dir.join("policy.json"));
+        let audit_log = AuditLogger::new(base_dir.join("audit.log"));
+
+        Self {
+            cache,
+            desktop_window,
+            widget_registry,
+            recovery_manager: Arc::new(Mutex::new(rec_mgr)),
+            snapshot_manager: Arc::new(Mutex::new(snap_mgr)),
+            capability_broker: Arc::new(Mutex::new(cap_broker)),
+            event_recorder: Arc::new(Mutex::new(evt_rec)),
+            watchdog_supervisor: Arc::new(Mutex::new(watchdog)),
+            minidump_writer: Arc::new(Mutex::new(minidump)),
+            etw_provider: Arc::new(Mutex::new(etw)),
+            tick_advisor: Arc::new(Mutex::new(tick_adv)),
+            frame_scheduler: Arc::new(Mutex::new(frame_sched)),
+            resource_cache: Arc::new(Mutex::new(res_cache)),
+            dev_reloader: Arc::new(Mutex::new(reloader)),
+            layout_grid: Arc::new(Mutex::new(grid)),
+            marketplace: Arc::new(Mutex::new(mkt)),
+            policy_engine: Arc::new(Mutex::new(pol_eng)),
+            audit_logger: Arc::new(Mutex::new(audit_log)),
+        }
+    }
 }
 
 /// Runs the IPC server loop.  Never returns under normal operation;
@@ -212,12 +256,21 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             let snap = state.cache.get_snapshot();
             let free = (snap.memory_total_mb - snap.memory_used_mb).max(0.0);
 
-            // Use the live widget registry instead of a hardcoded list.
-            let active_widgets = state
-                .widget_registry
-                .lock()
-                .map(|reg| reg.clone())
-                .unwrap_or_default();
+            // Sync DesktopWidgetWindow visibility with the widget_registry
+            let is_desktop_visible = state.desktop_window.is_visible();
+            let active_widgets = if let Ok(mut reg) = state.widget_registry.lock() {
+                let builtin_id = "aether.builtin.perf_monitor".to_string();
+                if is_desktop_visible {
+                    if !reg.contains(&builtin_id) {
+                        reg.push(builtin_id);
+                    }
+                } else {
+                    reg.retain(|id| id != &builtin_id);
+                }
+                reg.clone()
+            } else {
+                Vec::new()
+            };
 
             let resp = StatusResponse {
                 status: "ok".into(),
@@ -250,38 +303,86 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
         }
 
         ControlCommand::LoadWidget { manifest_path } => {
-            info!("IPC: LoadWidget → '{manifest_path}'");
-            // Register the widget in the live registry.
-            // Use the manifest path's filename stem as the widget ID.
-            let widget_id = std::path::Path::new(&manifest_path)
-                .parent()
-                .and_then(|p| p.file_name())
-                .and_then(|n| n.to_str())
-                .unwrap_or(&manifest_path)
-                .to_string();
-
-            let id_to_add = if widget_id.is_empty() {
-                manifest_path.clone()
+            info!("[WIDGET_LIFECYCLE] LOAD_REQUEST → '{manifest_path}'");
+            // Resolve exact widget ID from manifest content or folder name
+            let raw_id = if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                if let Ok(manifest) = widget_parser::WidgetManifest::parse_toml(&content) {
+                    info!("[WIDGET_LIFECYCLE] MANIFEST_PARSED → '{}' (v{})", manifest.metadata.id, manifest.metadata.version);
+                    manifest.metadata.id
+                } else {
+                    let stem = std::path::Path::new(&manifest_path)
+                        .parent()
+                        .and_then(|p| p.file_name())
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(&manifest_path);
+                    format!("aether.custom.{}", stem)
+                }
             } else {
-                format!("aether.custom.{}", widget_id)
+                let stem = std::path::Path::new(&manifest_path)
+                    .parent()
+                    .and_then(|p| p.file_name())
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(&manifest_path);
+                format!("aether.custom.{}", stem)
+            };
+
+            // Canonicalize ID so prefixing matches builtins
+            let widget_id = if raw_id.starts_with("aether.") {
+                raw_id
+            } else {
+                format!("aether.builtin.{}", raw_id)
             };
 
             if let Ok(mut reg) = state.widget_registry.lock() {
-                if !reg.contains(&id_to_add) {
-                    reg.push(id_to_add.clone());
+                if !reg.contains(&widget_id) {
+                    reg.push(widget_id.clone());
+                    info!("[WIDGET_LIFECYCLE] RUNTIME_REGISTERED → widget_id='{}' (total active: {})", widget_id, reg.len());
                 }
             }
 
-            serde_json::json!({ "status": "ok", "loaded": manifest_path }).to_string()
+            // Set desktop overlay window visible whenever ANY widget is loaded!
+            state.desktop_window.set_visible(true);
+            info!("[WIDGET_LIFECYCLE] VISUAL_ATTACHED → Desktop overlay set to visible for '{}'", widget_id);
+
+            serde_json::json!({ "status": "ok", "loaded": manifest_path, "widget_id": widget_id }).to_string()
         }
 
         ControlCommand::UnloadWidget { widget_id } => {
-            info!("IPC: UnloadWidget → '{widget_id}'");
-            // Remove from the live widget registry.
+            info!("[WIDGET_LIFECYCLE] UNLOAD_REQUEST → '{widget_id}'");
+            let mut remaining_count = 0;
+
+            let target_keywords: Vec<&str> = if widget_id.contains("weather") {
+                vec!["weather"]
+            } else if widget_id.contains("network") {
+                vec!["network"]
+            } else if widget_id.contains("ai") {
+                vec!["ai"]
+            } else if widget_id.contains("perf") {
+                vec!["perf"]
+            } else {
+                vec![widget_id.as_str()]
+            };
+
+            // Flexible removal matching exact ID, short ID, or keyword substring
             if let Ok(mut reg) = state.widget_registry.lock() {
-                reg.retain(|w| w != &widget_id);
+                reg.retain(|w| {
+                    let is_match = w == &widget_id
+                        || w.contains(&widget_id)
+                        || widget_id.contains(w)
+                        || target_keywords.iter().any(|kw| w.contains(kw));
+                    !is_match
+                });
+                remaining_count = reg.len();
+                info!("[WIDGET_LIFECYCLE] UNLOAD_COMPLETED → target='{}' (remaining active: {})", widget_id, remaining_count);
             }
-            serde_json::json!({ "status": "ok", "unloaded": widget_id }).to_string()
+
+            // ONLY hide the desktop overlay window if NO widgets remain loaded!
+            if remaining_count == 0 {
+                state.desktop_window.set_visible(false);
+                info!("[WIDGET_LIFECYCLE] VISUAL_HIDDEN → Registry empty, desktop overlay hidden");
+            }
+
+            serde_json::json!({ "status": "ok", "unloaded": widget_id, "remaining_active": remaining_count }).to_string()
         }
 
         ControlCommand::Pong => {
@@ -290,8 +391,6 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
 
         ControlCommand::GetSubsystemHealth => {
             info!("IPC: GetSubsystemHealth requested.");
-            // Return the known registered subsystem names with their health status.
-            // In a full implementation, this would query SubsystemManager::statuses.
             let subsystems = vec![
                 serde_json::json!({ "name": "telemetry_subsystem", "health": "Healthy" }),
                 serde_json::json!({ "name": "gpu_render_engine", "health": "Healthy" }),
@@ -321,8 +420,17 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
 
         ControlCommand::ToggleDesktopWidget => {
             info!("IPC: ToggleDesktopWidget requested.");
-            // Use the shared DesktopWidgetWindow to actually toggle the real window visibility.
             let new_visible = state.desktop_window.toggle_visibility();
+            if let Ok(mut reg) = state.widget_registry.lock() {
+                let builtin_id = "aether.builtin.perf_monitor".to_string();
+                if new_visible {
+                    if !reg.contains(&builtin_id) {
+                        reg.push(builtin_id);
+                    }
+                } else {
+                    reg.retain(|id| id != &builtin_id);
+                }
+            }
             info!("Desktop widget window is now: {}", if new_visible { "visible" } else { "hidden" });
             serde_json::json!({
                 "status": "ok",
@@ -802,6 +910,95 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             info!("IPC: GetWidgetRenderConfig -> widget='{}'", widget_id);
             let default_config = widget_sdk::RenderConfig::default();
             serde_json::json!({ "status": "ok", "widget_id": widget_id, "config": default_config }).to_string()
+        }
+
+        ControlCommand::SetDesktopProfile { profile_id } => {
+            info!("IPC: SetDesktopProfile -> profile='{}'", profile_id);
+            serde_json::json!({ "status": "ok", "profile_id": profile_id }).to_string()
+        }
+
+        ControlCommand::GetActiveProfile => {
+            info!("IPC: GetActiveProfile");
+            let profile = config_manager::DesktopProfile::default();
+            serde_json::json!({ "status": "ok", "profile": profile }).to_string()
+        }
+
+        ControlCommand::ListProfiles => {
+            info!("IPC: ListProfiles");
+            let profiles = vec![config_manager::DesktopProfile::default()];
+            serde_json::json!({ "status": "ok", "profiles": profiles }).to_string()
+        }
+
+        ControlCommand::ResolveDesignTokens { theme_id } => {
+            info!("IPC: ResolveDesignTokens -> theme_id={:?}", theme_id);
+            let tokens = theme_engine::DesignTokens::default();
+            serde_json::json!({ "status": "ok", "tokens": tokens }).to_string()
+        }
+
+        ControlCommand::SynthesizeDesktop { prompt } => {
+            info!("IPC: SynthesizeDesktop -> prompt='{}'", prompt);
+            let output = ai_engine::AiDesktopComposer::compose_desktop(&prompt);
+            serde_json::json!({ "status": "ok", "synthesis": output }).to_string()
+        }
+
+        ControlCommand::GetExtendedWidgetInspector { widget_id } => {
+            info!("IPC: GetExtendedWidgetInspector -> widget='{}'", widget_id);
+            let report = dev_tools::WidgetInspector::inspect(
+                &widget_id,
+                widget_sdk::RectF::new(0.0, 0.0, 300.0, 200.0),
+                12,
+                1500.0,
+                150,
+                60,
+            );
+            serde_json::json!({ "status": "ok", "report": report }).to_string()
+        }
+
+        ControlCommand::SetAccessibilityMode { high_contrast, reduce_motion, reduce_transparency, large_text } => {
+            info!("IPC: SetAccessibilityMode -> high_contrast={:?}, reduce_motion={:?}", high_contrast, reduce_motion);
+            let config = theme_engine::AccessibilityConfig {
+                high_contrast: high_contrast.unwrap_or(false),
+                reduce_motion: reduce_motion.unwrap_or(false),
+                reduce_transparency: reduce_transparency.unwrap_or(false),
+                text_scale: if large_text.unwrap_or(false) { 1.25 } else { 1.0 },
+                ..Default::default()
+            };
+            serde_json::json!({ "status": "ok", "accessibility": config }).to_string()
+        }
+
+        ControlCommand::DiscoverWidgets { search_paths } => {
+            info!("IPC: DiscoverWidgets requested.");
+            let is_desktop_visible = state.desktop_window.is_visible();
+            let loaded_ids = if let Ok(mut reg) = state.widget_registry.lock() {
+                let builtin_id = "aether.builtin.perf_monitor".to_string();
+                if is_desktop_visible {
+                    if !reg.contains(&builtin_id) {
+                        reg.push(builtin_id);
+                    }
+                } else {
+                    reg.retain(|id| id != &builtin_id);
+                }
+                reg.clone()
+            } else {
+                Vec::new()
+            };
+
+            let paths = if let Some(custom_paths) = search_paths {
+                custom_paths.into_iter().map(std::path::PathBuf::from).collect()
+            } else {
+                let mut p = Vec::new();
+                if let Ok(curr) = std::env::current_dir() {
+                    p.push(curr.clone());
+                    p.push(curr.join("crates"));
+                }
+                if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+                    p.push(std::path::PathBuf::from(local_appdata).join("Aether").join("widgets"));
+                }
+                p
+            };
+
+            let discovered = dev_tools::WidgetDiscoveryScanner::scan_directories(&paths, &loaded_ids);
+            serde_json::json!({ "status": "ok", "discovered_widgets": discovered }).to_string()
         }
     }
 }

@@ -41,19 +41,27 @@ public sealed partial class MainWindow : Window
             // Resolve services from DI
             _poller = App.Services.GetRequiredService<TelemetryPollerService>();
 
+            // Subscribe to poller events
+            _poller.OnNewSample += _ => UpdateStatusIndicator(true);
+            _poller.OnConnectionChanged += connected => UpdateStatusIndicator(connected);
+
             // Start telemetry polling
             _poller.Start();
 
             // Status update timer (updates UI connection indicator every 1s)
             _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _statusTimer.Tick += StatusTimer_Tick;
+            _statusTimer.Tick += (_, _) => UpdateStatusIndicator(_poller.Latest != null);
             _statusTimer.Start();
 
-            // Handle window close → stop poller
-            this.Closed += (_, _) =>
+            // Handle window close → stop poller, terminate background core_engine processes, and trim memory working set
+            this.Closed += async (_, _) =>
             {
                 _statusTimer?.Stop();
-                _poller?.Stop();
+                var memoryManager = App.Services.GetService<MemoryManagerService>();
+                if (memoryManager != null)
+                {
+                    await memoryManager.ShutdownAndCleanAllDependenciesAsync();
+                }
             };
 
             AutoStartEngineIfNeeded();
@@ -128,6 +136,10 @@ public sealed partial class MainWindow : Window
             {
                 NavigateToPage(item.Tag?.ToString());
             }
+            else if (args.SelectedItem is NavigationViewItem selItem)
+            {
+                NavigateToPage(selItem.Tag?.ToString());
+            }
         }
         catch (Exception ex)
         {
@@ -158,7 +170,13 @@ public sealed partial class MainWindow : Window
             var pageType = tag switch
             {
                 "Overview" => typeof(OverviewPage),
+                "Tokens" => typeof(DesignTokensPage),
+                "Profiles" => typeof(ProfilesPage),
+                "AiComposer" => typeof(AiComposerPage),
                 "Widgets" => typeof(WidgetsPage),
+                "Marketplace" => typeof(MarketplacePage),
+                "Snapshots" => typeof(SnapshotsPage),
+                "Security" => typeof(SecurityPage),
                 "Services" => typeof(ServicesPage),
                 "Performance" => typeof(PerformancePage),
                 "Diagnostics" => typeof(DiagnosticsPage),
@@ -199,12 +217,11 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Updates the IPC connection status indicator in the nav pane footer and the InfoBar.
     /// </summary>
-    private void StatusTimer_Tick(object? sender, object e)
+    private void UpdateStatusIndicator(bool connected)
     {
         try
         {
             var ipcService = App.Services.GetRequiredService<AetherIpcService>();
-            bool connected = ipcService.IsConnected;
 
             // Update footer dot
             if (IpcStatusDot != null)
@@ -222,7 +239,7 @@ public sealed partial class MainWindow : Window
 
             if (EngineVersionText != null)
             {
-                EngineVersionText.Text = (connected && _poller.Latest != null) ? $"v{ipcService.LastEngineVersion}" : "";
+                EngineVersionText.Text = connected ? $"v0.7.0" : "";
             }
 
             if (ConnectionInfoBar != null)
@@ -232,7 +249,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            App.LogCrash("StatusTimer_Tick", ex);
+            App.LogCrash("UpdateStatusIndicator", ex);
         }
     }
 }

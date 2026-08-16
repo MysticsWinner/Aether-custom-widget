@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Models;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -9,7 +10,7 @@ using Windows.Storage.Pickers;
 namespace CustomWidget.Dashboard.Pages;
 
 /// <summary>
-/// Widgets management page — load/unload widgets via IPC.
+/// Widgets management page — auto-discovers plugins from folders and provides 1-click loading/unloading.
 /// </summary>
 public sealed partial class WidgetsPage : Page
 {
@@ -21,7 +22,8 @@ public sealed partial class WidgetsPage : Page
         this.InitializeComponent();
         _vm = App.Services.GetRequiredService<WidgetsViewModel>();
 
-        WidgetList.ItemsSource = _vm.Widgets;
+        DiscoveredList.ItemsSource = _vm.DiscoveredWidgets;
+        RunningList.ItemsSource = _vm.Widgets;
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _refreshTimer.Tick += RefreshUI;
@@ -33,8 +35,30 @@ public sealed partial class WidgetsPage : Page
     private void RefreshUI(object? sender, object e)
     {
         StatusText.Text = _vm.StatusMessage;
-        EmptyState.Visibility = _vm.Widgets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        WidgetList.Visibility = _vm.Widgets.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        DiscoveredEmptyState.Visibility = _vm.DiscoveredWidgets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        DiscoveredList.Visibility = _vm.DiscoveredWidgets.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        RunningEmptyState.Visibility = _vm.Widgets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RunningList.Visibility = _vm.Widgets.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void DiscoverBtn_Click(object sender, RoutedEventArgs e)
+    {
+        await _vm.DiscoverWidgetsAsync();
+    }
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _vm.SearchQuery = SearchBox.Text;
+    }
+
+    private async void ToggleLoad_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is WidgetInfo widget)
+        {
+            await _vm.ToggleWidgetLoadCommand.ExecuteAsync(widget);
+        }
     }
 
     private async void LoadBtn_Click(object sender, RoutedEventArgs e)
@@ -45,7 +69,6 @@ public sealed partial class WidgetsPage : Page
             picker.FileTypeFilter.Add(".toml");
             picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
 
-            // Get the window handle for the picker
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.Current
                 .GetType().GetProperty("_mainWindow",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
@@ -64,11 +87,10 @@ public sealed partial class WidgetsPage : Page
         }
         catch
         {
-            // Fallback: use a simple input dialog if the picker fails
             var dialog = new ContentDialog
             {
-                Title = "Load Widget",
-                Content = new TextBox { PlaceholderText = "Enter widget.toml path...", Name = "PathBox" },
+                Title = "Load Widget Manifest",
+                Content = new TextBox { PlaceholderText = "Enter full path to widget.toml...", Name = "PathBox" },
                 PrimaryButtonText = "Load",
                 CloseButtonText = "Cancel",
                 XamlRoot = this.XamlRoot,
@@ -83,12 +105,6 @@ public sealed partial class WidgetsPage : Page
                 }
             }
         }
-    }
-
-    private async void DesktopWidgetBtn_Click(object sender, RoutedEventArgs e)
-    {
-        var ipc = App.Services.GetRequiredService<CustomWidget.Dashboard.Services.AetherIpcService>();
-        await ipc.ToggleDesktopWidgetAsync();
     }
 
     private void ReloadBtn_Click(object sender, RoutedEventArgs e)

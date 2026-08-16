@@ -1,0 +1,14 @@
+[package]
+name = "network_monitor_widget"
+version = "0.6.0"
+edition = "2021"
+description = "Built-in Network I/O Throughput & Ping Latency Widget Plugin for Aether Platform"
+
+[dependencies]
+widget_sdk = { path = "../widget_sdk" }
+system_providers = { path = "../system_providers" }
+theme_engine = { path = "../theme_engine" }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

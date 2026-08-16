@@ -28,15 +28,14 @@
 | **`system_providers::GpuProvider`** | ✅ **Completed** | Included | **Real Win32 API**: DXGI video memory usage queries via `IDXGIFactory1::QueryVideoMemoryInfo`. |
 | **`system_providers::NetProvider`** | ✅ **Completed** | Included | **Real Win32 API**: Network octet throughput queries via `GetIfTable2` (`MIB_IF_TABLE2`). |
 | **`system_providers::SharedCache`** | ✅ **Completed** | Included | Thread-safe `Arc<RwLock<TelemetrySnapshot>>` ("Collect Once, Publish Everywhere"). |
-| **`widget_sdk`** | ✅ **Completed** | 8 tests | `WidgetLifecycle` trait, `BatchRenderCanvas`, easing/spring physics, `SettingsStore`. |
-| **`perf_monitor_widget`** | ✅ **Completed** | 6 tests | Built-in glassmorphism card widget emitting real CPU/RAM draw command batches. |
-| **`ipc_protocol`** | ✅ **Completed** | 6 tests | JSON serialization for `ControlCommand` (positions, locks, diagnostics, services, logs), `MetricPayload`, and `RingBuffer`. |
-| **`widget_parser`** | ✅ **Completed** | 2 tests | TOML manifest parsing (`WidgetManifest`, `WidgetElement`, `LayoutSpec`). |
-| **`theme_engine`** | ✅ **Completed** | 5 tests | Token resolver, dynamic `DwmGetColorizationColor` Win32 accent sync (`sync_windows_system_accent`), hot-swap. |
-| **`plugin_runtime`** | ✅ **Completed** | 5 tests | SemVer check, AppContainer PID supervision, Windows Job Object resource quotas (`configure_job_object_limits`), clean unloading. |
-| **`package_manager`** | ✅ **Completed** | 4 tests | NPM-style package installer, Ed25519 cryptographic signature verification. |
-| **`cloud_sync`** | ✅ **Completed** | 5 tests | Vector clock & LWW CRDT resolver, offline queue persistence, layout position sync. |
-| **`ai_engine`** | ✅ **Completed** | 6 tests | Synthetic layout/theme/widget generation with binding synthesis, voice intent parser, workflow engine. |
+| **`theme_engine`** | ✅ **Completed** | 13 tests | Token resolver, 12-category `DesignTokens` system, `MaterialEngine` glass/Mica/Acrylic fallback, `DynamicColorEngine` WCAG APCA contrast guard, `TypographyEngine`, `MotionEngine`, `AccessibilityEngine`, hot-swap. |
+| **`widget_sdk`** | ✅ **Completed** | 18 tests | `WidgetLifecycle` trait, `BatchRenderCanvas`, easing/spring physics, `SettingsStore`, `Signal<T>` reactive bindings, `AdaptiveRefreshScheduler`, `PerformanceBudget` & `BudgetEvaluator`. |
+| **`config_manager`** | ✅ **Completed** | 9 tests | Transactional atomic writes, 5-gen backup rotation, schema migration, snapshot manager, `ProfileManager` atomic switching (`Gaming`, `Coding`, `Streaming`, `Work`, `Minimal`, `Travel`, `Custom`), `ContextAwareEngine` auto-triggers. |
+| **`widget_parser`** | ✅ **Completed** | 3 tests | TOML manifest parsing (`WidgetManifest`, `WidgetElement`), `DeclarativeWidgetSpec` manifest-driven static widgets. |
+| **`ai_engine`** | ✅ **Completed** | 10 tests | Synthetic layout/theme/widget generation, voice intent parser, workflow engine, `AiDesktopComposer` intent synthesis with mandatory capability validation gate. |
+| **`package_manager`** | ✅ **Completed** | 5 tests | NPM-style package installer, Ed25519 signature verification, `PublisherMetadata` trust & performance tier classification. |
+| **`cloud_sync`** | ✅ **Completed** | 6 tests | Vector clock & LWW CRDT resolver, offline queue persistence, 7.4 theme/profile CRDT synchronization. |
+| **`dev_tools`** | ✅ **Completed** | 4 tests | `DevHotReloader`, `LayoutGridOverlay`, `aether_cli`, extended 7.4 `WidgetInspector` DOM & platform profiler. |
 | **`production_engine`** | ✅ **Completed** | 6 tests | Security audit suite, high-frequency stress testing harness, auto-updater framework. |
 | **`installer`** | ✅ **Completed** | 3 tests | Setup wizard, directory deployment (`%LOCALAPPDATA%\Aether\bin`), uninstall entries. |
 | **`dashboard_tui`** | ✅ **Completed** | Executable | Full Ratatui terminal UI connecting live to Named Pipe with animated gauges. |
@@ -70,12 +69,15 @@
 | Subsystem / Page | Status | Implementation Notes |
 |---|---|---|
 | **App Shell & Entry** | ✅ **Completed** | `App.xaml` / `.cs` with dependency injection, global exception handlers, dark theme. |
-| **MainWindow Shell** | ✅ **Completed** | `MainWindow.xaml` NavigationView with 7 pages, Mica backdrop, live IPC status. |
+| **MainWindow Shell** | ✅ **Completed** | `MainWindow.xaml` NavigationView with 13 pages, Mica backdrop, live IPC status. |
 | **Overview Page** | ✅ **Completed** | 4 live metric gauge cards (CPU, GPU, RAM, NET), engine action buttons (Reload, Theme, Ping). |
+| **Widgets Page** | ✅ **Completed** | Widget listing, load/unload controls, position drag Lock/Unlock controls (`SetWidgetLock`), Reset Position (`SetWidgetPosition`), IPC list refresh. |
+| **Marketplace Page** | ✅ **Completed** | `MarketplacePage.xaml` / `MarketplaceViewModel.cs` cryptographically verified widget package store, Ed25519 signature validation, capability inspector, 1-click install. |
+| **Snapshots Page** | ✅ **Completed** | `SnapshotsPage.xaml` / `SnapshotsViewModel.cs` transactional configuration snapshot backups, 1-click restore, deletion, and export/import. |
+| **Security Page** | ✅ **Completed** | `SecurityPage.xaml` / `SecurityViewModel.cs` AppContainer sandbox process boundary visualizer, capability token manifest table, Job Object resource limits, and audit log stream. |
 | **Diagnostics Page** | ✅ **Completed** | `DiagnosticsPage.xaml` / `DiagnosticsPage.xaml.cs` with real-time CPU/RAM timeline charts, Process Manager (`ProcessManagerService`), and Event Log Stream (`LogCollectorService`). |
 | **Settings Page** | ✅ **Completed** | Theme mode selection (live WinUI 3 `ElementTheme` + IPC sync), polling interval slider, feature toggle switches. |
 | **About Page** | ✅ **Completed** | `AboutPage.xaml` / `AboutViewModel.cs` with GitHub repository link (`https://github.com/MysticsWinner/Aether-custom-widget`), authors/contributors credits, architecture overview, license details. |
-| **Widgets Page** | ✅ **Completed** | Widget listing, load/unload controls, position drag Lock/Unlock controls (`SetWidgetLock`), Reset Position (`SetWidgetPosition`), IPC list refresh. |
 | **NamedPipeClient** | ✅ **Completed** | Async `NamedPipeClientStream` wrapper with timeout and reconnection logic. |
 
 ---

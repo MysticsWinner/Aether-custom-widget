@@ -23,8 +23,9 @@
 #>
 
 param(
-    [switch]$DaemonOnly,    # Only start the core engine (no TUI)
-    [switch]$DashboardOnly  # Only start the TUI (daemon already running)
+    [switch]$DaemonOnly,    # Only start the core engine
+    [switch]$IncludeTui,    # Optional: start TUI tester helper
+    [switch]$DashboardOnly  # Only start the TUI tester helper
 )
 
 $ProjectRoot = $PSScriptRoot
@@ -35,8 +36,8 @@ $PsExe = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "
 function Write-Banner {
     Write-Host ""
     Write-Host "  +--------------------------------------------------------------+" -ForegroundColor Cyan
-    Write-Host "  |  *  Aether -- Next-Gen Windows Desktop Customization         |" -ForegroundColor Cyan
-    Write-Host "  |      Phase 16 Production Release Candidate (v0.6.0)         |" -ForegroundColor Cyan
+    Write-Host "  |  *  Aether 7.4 -- Next-Gen Desktop Customization Platform   |" -ForegroundColor Cyan
+    Write-Host "  |      Design System + Adaptive Visual Platform (v0.7.0)      |" -ForegroundColor Cyan
     Write-Host "  +--------------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
 }
@@ -49,22 +50,21 @@ function Start-CoreEngine {
     Start-Process $PsExe -ArgumentList @(
         "-NoExit",
         "-Command",
-        "cd '$ProjectRoot'; Write-Host '  [Core Engine]' -ForegroundColor Cyan; cargo run -p core_engine"
+        "cd '$ProjectRoot'; Write-Host '  [Core Engine Host]' -ForegroundColor Cyan; cargo run -p core_engine"
     ) -WindowStyle Normal
 }
 
-function Start-Dashboard {
-    Write-Host "  -> Starting Aether TUI Dashboard..." -ForegroundColor Magenta
-    Write-Host "    Connecting to IPC pipe (will retry until core engine is ready)..." -ForegroundColor DarkGray
+function Start-TuiTester {
+    Write-Host "  -> Starting Decoupled TUI Tester Helper..." -ForegroundColor Magenta
+    Write-Host "    Connecting to IPC pipe for bug testing..." -ForegroundColor DarkGray
     Write-Host ""
 
-    # Wait a moment for the daemon to start before opening the dashboard
     Start-Sleep -Seconds 3
 
     Start-Process $PsExe -ArgumentList @(
         "-NoExit",
         "-Command",
-        "cd '$ProjectRoot'; Write-Host '  [TUI Dashboard]' -ForegroundColor Magenta; cargo run -p dashboard_tui"
+        "cd '$ProjectRoot'; Write-Host '  [TUI Tester Helper]' -ForegroundColor Magenta; cargo run -p dashboard_tui"
     ) -WindowStyle Normal
 }
 
@@ -95,27 +95,23 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "  [OK] Workspace compiles cleanly." -ForegroundColor Green
 Write-Host ""
 
-if ($DaemonOnly) {
-    Start-CoreEngine
-    Write-Host "  Core Engine started. Connect the dashboard separately with:" -ForegroundColor Cyan
-    Write-Host "  cargo run -p dashboard_tui" -ForegroundColor White
+if ($DashboardOnly) {
+    Start-TuiTester
 }
-elseif ($DashboardOnly) {
-    Start-Dashboard
+elseif ($IncludeTui) {
+    Start-CoreEngine
+    Start-TuiTester
 }
 else {
-    # Start both
+    # Default: launch core daemon runtime
     Start-CoreEngine
-    Start-Dashboard
 
-    Write-Host "  [OK] Both components launched in separate windows." -ForegroundColor Green
+    Write-Host "  [OK] Core Daemon launched in background." -ForegroundColor Green
     Write-Host ""
     Write-Host "  USAGE:" -ForegroundColor Yellow
-    Write-Host "    Core Engine window -> press Ctrl+C to shut down the daemon" -ForegroundColor DarkGray
-    Write-Host "    Dashboard window   -> press 'q' or Ctrl+C to close the TUI" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  WinUI 3 Dashboard (Aether Studio):" -ForegroundColor Yellow
-    Write-Host "    cd src_gui\CustomWidget.Dashboard" -ForegroundColor DarkGray
-    Write-Host "    dotnet run -p:Platform=x64" -ForegroundColor DarkGray
+    Write-Host "    WinUI 3 Management Dashboard (Aether Studio):" -ForegroundColor DarkGray
+    Write-Host "      cd src_gui\CustomWidget.Dashboard && dotnet run -p:Platform=x64" -ForegroundColor White
+    Write-Host "    Decoupled TUI Tester Helper (Optional Bug Testing):" -ForegroundColor DarkGray
+    Write-Host "      cargo run -p dashboard_tui" -ForegroundColor White
     Write-Host ""
 }

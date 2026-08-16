@@ -95,17 +95,37 @@ public partial class App : Application
         services.AddSingleton<TelemetryPollerService>();
         services.AddSingleton<ProcessManagerService>();
         services.AddSingleton<LogCollectorService>();
+        services.AddSingleton<MemoryManagerService>();
 
         // ── ViewModels (transient — new instance per page navigation) ──
         services.AddTransient<OverviewViewModel>();
         services.AddTransient<WidgetsViewModel>();
+        services.AddTransient<MarketplaceViewModel>();
+        services.AddTransient<SnapshotsViewModel>();
+        services.AddTransient<SecurityViewModel>();
         services.AddTransient<ServicesViewModel>();
         services.AddTransient<PerformanceViewModel>();
         services.AddTransient<DiagnosticsViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<AboutViewModel>();
+        services.AddTransient<DesignTokensViewModel>();
+        services.AddTransient<ProfilesViewModel>();
+        services.AddTransient<AiComposerViewModel>();
 
-        return services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
+
+        // Attach fallback ProcessExit handler for process termination
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            try
+            {
+                var mem = provider.GetService<MemoryManagerService>();
+                mem?.ShutdownAndCleanAllDependenciesAsync().GetAwaiter().GetResult();
+            }
+            catch { }
+        };
+
+        return provider;
     }
 }
 

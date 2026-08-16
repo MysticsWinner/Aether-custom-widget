@@ -9,13 +9,11 @@ use core_engine::{
     RedundancySupervisor, RenderSubsystem, TelemetrySubsystem, ThemeEngineSubsystem,
 };
 use package_manager::PackageManagerBenchmark;
-use perf_monitor_widget::PerfMonitorWidget;
 use plugin_runtime::PluginSandboxBenchmark;
 use production_engine::MasterReleaseSuite;
 use system_providers::TelemetryBenchmark;
 use theme_engine::{ThemeBenchmark, ThemeResolver};
 use widget_sdk::SdkBenchmark;
-use widget_sdk::lifecycle::{TickContext, WidgetLifecycle};
 use tokio::time::{interval, Duration};
 use tracing::info;
 
@@ -116,45 +114,25 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── 7. PerfMonitor Widget task (500 ms update interval) ──────────────────
-    {
-        let widget_cache = shared_cache.clone();
-        tokio::spawn(async move {
-            let mut widget = PerfMonitorWidget::new(widget_cache);
-            widget.on_load().unwrap_or_else(|e| tracing::error!("{e:?}"));
-            widget.on_mount().unwrap_or_else(|e| tracing::error!("{e:?}"));
-
-            let mut frame: u64 = 0;
-            let mut ticker = interval(Duration::from_millis(500));
-            loop {
-                ticker.tick().await;
-                frame += 1;
-                let ctx = TickContext {
-                    timestamp_ms: frame * 500,
-                    delta_time_ms: 500.0,
-                    frame_index: frame,
-                };
-                if let Err(e) = widget.on_update(&ctx) {
-                    tracing::error!("[PerfMonitorWidget] tick error: {e:?}");
-                }
-            }
-        });
-    }
-
     // Spawn Desktop Overlay Widget Window (WorkerW / DirectComposition Layer)
     // NOTE: Created outside blocks so it can be shared with the IPC server.
     let desktop_window = Arc::new(core_engine::DesktopWidgetWindow::new());
-    desktop_window.spawn_overlay(shared_cache.clone());
+    let initial_widgets = if desktop_window.is_visible() {
+        vec!["aether.builtin.perf_monitor".to_string()]
+    } else {
+        vec![]
+    };
+    let widget_registry = Arc::new(std::sync::Mutex::new(initial_widgets));
+    desktop_window.spawn_overlay(shared_cache.clone(), widget_registry.clone());
 
     // ── 8. IPC Named Pipe Server task ────────────────────────────────────────
     {
         let ipc_cache = shared_cache.clone();
         let ipc_desktop_window = desktop_window.clone();
-        let ipc_state = core_engine::ipc_server::IpcSharedState::new(
+        let ipc_state = core_engine::ipc_server::IpcSharedState::with_registry(
             ipc_cache,
             ipc_desktop_window,
-            // Built-in perf_monitor widget is always loaded
-            vec!["aether.builtin.perf_monitor".to_string()],
+            widget_registry,
         );
         tokio::spawn(async move {
             if let Err(e) = core_engine::ipc_server::run_ipc_server(ipc_state).await {

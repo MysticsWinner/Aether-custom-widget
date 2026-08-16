@@ -34,6 +34,11 @@ impl DesktopWidgetWindow {
         self.visible.load(Ordering::Relaxed)
     }
 
+    pub fn set_visible(&self, visible: bool) {
+        self.visible.store(visible, Ordering::Relaxed);
+        info!("Desktop Widget Window visibility set to: {}", visible);
+    }
+
     pub fn toggle_visibility(&self) -> bool {
         let prev = self.visible.fetch_xor(true, Ordering::Relaxed);
         let new_state = !prev;
@@ -57,20 +62,20 @@ impl DesktopWidgetWindow {
         self.position_store.toggle_locked(widget_id)
     }
 
-    /// Spawns the transparent desktop overlay window bound to shared telemetry cache.
-    pub fn spawn_overlay(&self, cache: SharedTelemetryCache) {
+    /// Spawns the transparent desktop overlay window bound to shared telemetry cache and live widget registry.
+    pub fn spawn_overlay(&self, cache: SharedTelemetryCache, registry: Arc<std::sync::Mutex<Vec<String>>>) {
         let visible_flag = self.visible.clone();
         let pos_store = self.position_store.clone();
         tokio::task::spawn_blocking(move || {
             #[cfg(windows)]
             {
-                if let Err(e) = run_desktop_window_loop(cache, visible_flag, pos_store) {
+                if let Err(e) = run_desktop_window_loop(cache, visible_flag, pos_store, registry) {
                     tracing::error!("Desktop widget window loop exited: {:?}", e);
                 }
             }
             #[cfg(not(windows))]
             {
-                let _ = (cache, visible_flag, pos_store);
+                let _ = (cache, visible_flag, pos_store, registry);
             }
         });
     }
@@ -87,6 +92,7 @@ fn run_desktop_window_loop(
     cache: SharedTelemetryCache,
     visible: Arc<AtomicBool>,
     pos_store: WidgetPositionStore,
+    registry: Arc<std::sync::Mutex<Vec<String>>>,
 ) -> anyhow::Result<()> {
     use windows::core::w;
     use windows::Win32::Foundation::{COLORREF, HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
@@ -207,6 +213,16 @@ fn run_desktop_window_loop(
                     (x, y)
                 };
 
+                let active_ids = registry.lock().map(|r| r.clone()).unwrap_or_default();
+                let has_perf = active_ids.iter().any(|id| id.contains("perf_monitor"));
+                let has_weather = active_ids.iter().any(|id| id.contains("weather"));
+                let has_net = active_ids.iter().any(|id| id.contains("network_monitor"));
+                let has_ai = active_ids.iter().any(|id| id.contains("ai_assistant"));
+
+                // Calculate card layout height based on active widgets
+                let card_count = (has_perf as i32) + (has_weather as i32) + (has_net as i32) + (has_ai as i32);
+                let dynamic_height = if card_count == 0 { 110 } else { card_count * 210 + 20 };
+
                 // Render GDI / Layered Window Card
                 let snap = cache.get_snapshot();
                 let screen_dc = GetDC(hwnd);
@@ -217,7 +233,7 @@ fn run_desktop_window_loop(
                     bmiHeader: BITMAPINFOHEADER {
                         biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
                         biWidth: width,
-                        biHeight: -height, // top-down DIB
+                        biHeight: -dynamic_height, // top-down DIB
                         biPlanes: 1,
                         biBitCount: 32,
                         biCompression: BI_RGB.0,
@@ -230,86 +246,174 @@ fn run_desktop_window_loop(
                 let hbmp = CreateDIBSection(screen_dc, &mut bmi, DIB_RGB_COLORS, &mut bits, None, 0)?;
                 let old_bmp = SelectObject(mem_dc, hbmp);
 
-                // Draw Glassmorphism Dark Card Background (#0F172A with alpha)
-                let pixel_slice = std::slice::from_raw_parts_mut(bits as *mut u32, (width * height) as usize);
+                // Fill Glassmorphism Dark Card Background (#0F172A with alpha)
+                let pixel_slice = std::slice::from_raw_parts_mut(bits as *mut u32, (width * dynamic_height) as usize);
                 for p in pixel_slice.iter_mut() {
                     *p = 0xD80F172A; 
                 }
 
-                // Draw title and telemetry gauges
                 SetBkMode(mem_dc, TRANSPARENT);
                 let hfont = CreateFontW(14, 0, 0, 0, FW_BOLD.0 as i32, 0, 0, 0, 0, 0, 0, 0, 0, w!("Segoe UI"));
                 let old_font = SelectObject(mem_dc, hfont);
-
-                SetTextColor(mem_dc, COLORREF(0x0000D4F5)); // Cyan title
-                let lock_indicator = if pos_store.is_locked("perf_monitor_widget") { " [LOCKED]" } else { " [DRAG TO MOVE]" };
-                let title = format!("AETHER PERFORMANCE MONITOR{}", lock_indicator);
-                let mut r_title = RECT { left: 16, top: 12, right: width - 16, bottom: 32 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut title.encode_utf16().collect::<Vec<u16>>(), &mut r_title, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
-
-                // CPU Line
                 let sub_font = CreateFontW(12, 0, 0, 0, FW_SEMIBOLD.0 as i32, 0, 0, 0, 0, 0, 0, 0, 0, w!("Segoe UI"));
-                SelectObject(mem_dc, sub_font);
 
-                SetTextColor(mem_dc, COLORREF(0x00FFFFFF));
-                let cpu_str = format!("CPU Utilization: {:.1}%", snap.cpu_usage_pct);
-                let mut r_cpu = RECT { left: 16, top: 38, right: width - 16, bottom: 56 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut cpu_str.encode_utf16().collect::<Vec<u16>>(), &mut r_cpu, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                let mut cur_y_offset = 12;
 
-                // CPU Bar
-                let cpu_bar_width = ((width - 32) as f32 * (snap.cpu_usage_pct / 100.0)).clamp(0.0, (width - 32) as f32) as i32;
-                let brush_cpu = CreateSolidBrush(COLORREF(0x0000D4F5));
-                let rect_cpu_bar = RECT { left: 16, top: 58, right: 16 + cpu_bar_width, bottom: 64 };
-                FillRect(mem_dc, &rect_cpu_bar, brush_cpu);
-                let _ = DeleteObject(brush_cpu);
+                if card_count == 0 {
+                    SetTextColor(mem_dc, COLORREF(0x0000D4F5));
+                    let mut r_title = RECT { left: 16, top: cur_y_offset, right: width - 16, bottom: cur_y_offset + 20 };
+                    let title = "AETHER ENGINE — DESKTOP OVERLAY".to_string();
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut title.encode_utf16().collect::<Vec<u16>>(), &mut r_title, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
 
-                // GPU Line
-                let gpu_str = format!("GPU Utilization: {:.1}%", snap.gpu_usage_pct);
-                let mut r_gpu = RECT { left: 16, top: 72, right: width - 16, bottom: 90 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut gpu_str.encode_utf16().collect::<Vec<u16>>(), &mut r_gpu, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    SelectObject(mem_dc, sub_font);
+                    SetTextColor(mem_dc, COLORREF(0x0094A3B8));
+                    let mut r_sub = RECT { left: 16, top: cur_y_offset + 24, right: width - 16, bottom: cur_y_offset + 60 };
+                    let sub = "No active widgets loaded.\nSwitch to Dashboard Library to load widgets.".to_string();
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut sub.encode_utf16().collect::<Vec<u16>>(), &mut r_sub, windows::Win32::Graphics::Gdi::DT_TOP);
+                }
 
-                // GPU Bar
-                let gpu_bar_width = ((width - 32) as f32 * (snap.gpu_usage_pct / 100.0)).clamp(0.0, (width - 32) as f32) as i32;
-                let brush_gpu = CreateSolidBrush(COLORREF(0x00EC4899));
-                let rect_gpu_bar = RECT { left: 16, top: 92, right: 16 + gpu_bar_width, bottom: 98 };
-                FillRect(mem_dc, &rect_gpu_bar, brush_gpu);
-                let _ = DeleteObject(brush_gpu);
+                // 1. Performance Monitor Card
+                if has_perf {
+                    SetTextColor(mem_dc, COLORREF(0x0000D4F5)); // Cyan
+                    let lock_indicator = if pos_store.is_locked("perf_monitor_widget") { " [LOCKED]" } else { " [DRAG TO MOVE]" };
+                    let title = format!("AETHER PERFORMANCE MONITOR{}", lock_indicator);
+                    let mut r_title = RECT { left: 16, top: cur_y_offset, right: width - 16, bottom: cur_y_offset + 20 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut title.encode_utf16().collect::<Vec<u16>>(), &mut r_title, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
 
-                // RAM Line
-                let ram_used_gb = snap.memory_used_mb / 1024.0;
-                let ram_total_gb = snap.memory_total_mb / 1024.0;
-                let ram_pct = if snap.memory_total_mb > 0.0 { (snap.memory_used_mb / snap.memory_total_mb) * 100.0 } else { 0.0 };
-                let ram_str = format!("RAM Memory: {:.1} / {:.1} GB ({:.0}%)", ram_used_gb, ram_total_gb, ram_pct);
-                let mut r_ram = RECT { left: 16, top: 106, right: width - 16, bottom: 124 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut ram_str.encode_utf16().collect::<Vec<u16>>(), &mut r_ram, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    SelectObject(mem_dc, sub_font);
+                    SetTextColor(mem_dc, COLORREF(0x00FFFFFF));
 
-                // RAM Bar
-                let ram_bar_width = ((width - 32) as f32 * (ram_pct / 100.0)).clamp(0.0, (width - 32) as f32) as i32;
-                let brush_ram = CreateSolidBrush(COLORREF(0x0010B981));
-                let rect_ram_bar = RECT { left: 16, top: 126, right: 16 + ram_bar_width, bottom: 132 };
-                FillRect(mem_dc, &rect_ram_bar, brush_ram);
-                let _ = DeleteObject(brush_ram);
+                    // CPU
+                    let cpu_str = format!("CPU Utilization: {:.1}%", snap.cpu_usage_pct);
+                    let mut r_cpu = RECT { left: 16, top: cur_y_offset + 24, right: width - 16, bottom: cur_y_offset + 40 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut cpu_str.encode_utf16().collect::<Vec<u16>>(), &mut r_cpu, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    let cpu_bar_width = ((width - 32) as f32 * (snap.cpu_usage_pct / 100.0)).clamp(0.0, (width - 32) as f32) as i32;
+                    let brush_cpu = CreateSolidBrush(COLORREF(0x0000D4F5));
+                    let rect_cpu_bar = RECT { left: 16, top: cur_y_offset + 42, right: 16 + cpu_bar_width, bottom: cur_y_offset + 48 };
+                    FillRect(mem_dc, &rect_cpu_bar, brush_cpu);
+                    let _ = DeleteObject(brush_cpu);
 
-                // Network Line
-                let net_str = format!("Network: {:.1} KB/s", snap.net_recv_bytes_per_sec as f32 / 1024.0);
-                let mut r_net = RECT { left: 16, top: 140, right: width - 16, bottom: 158 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut net_str.encode_utf16().collect::<Vec<u16>>(), &mut r_net, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    // GPU
+                    let gpu_str = format!("GPU Utilization: {:.1}%", snap.gpu_usage_pct);
+                    let mut r_gpu = RECT { left: 16, top: cur_y_offset + 54, right: width - 16, bottom: cur_y_offset + 70 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut gpu_str.encode_utf16().collect::<Vec<u16>>(), &mut r_gpu, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    let gpu_bar_width = ((width - 32) as f32 * (snap.gpu_usage_pct / 100.0)).clamp(0.0, (width - 32) as f32) as i32;
+                    let brush_gpu = CreateSolidBrush(COLORREF(0x00EC4899));
+                    let rect_gpu_bar = RECT { left: 16, top: cur_y_offset + 72, right: 16 + gpu_bar_width, bottom: cur_y_offset + 78 };
+                    FillRect(mem_dc, &rect_gpu_bar, brush_gpu);
+                    let _ = DeleteObject(brush_gpu);
 
-                // Extended Telemetry Line: Apps, Battery %, Volume %
-                let bat_str = if snap.is_charging { format!("{}%", snap.battery_charge_pct) } else { format!("{}%", snap.battery_charge_pct) };
-                let ext_str = format!("Apps: {} | Battery: {} | Vol: {}%", snap.open_apps_count, bat_str, snap.master_volume_pct as u32);
-                let mut r_ext = RECT { left: 16, top: 158, right: width - 16, bottom: 176 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut ext_str.encode_utf16().collect::<Vec<u16>>(), &mut r_ext, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    // RAM
+                    let ram_used_gb = snap.memory_used_mb / 1024.0;
+                    let ram_total_gb = snap.memory_total_mb / 1024.0;
+                    let ram_pct = if snap.memory_total_mb > 0.0 { (snap.memory_used_mb / snap.memory_total_mb) * 100.0 } else { 0.0 };
+                    let ram_str = format!("RAM Memory: {:.1} / {:.1} GB ({:.0}%)", ram_used_gb, ram_total_gb, ram_pct);
+                    let mut r_ram = RECT { left: 16, top: cur_y_offset + 84, right: width - 16, bottom: cur_y_offset + 100 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut ram_str.encode_utf16().collect::<Vec<u16>>(), &mut r_ram, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    let ram_bar_width = ((width - 32) as f32 * (ram_pct / 100.0)).clamp(0.0, (width - 32) as f32) as i32;
+                    let brush_ram = CreateSolidBrush(COLORREF(0x0010B981));
+                    let rect_ram_bar = RECT { left: 16, top: cur_y_offset + 102, right: 16 + ram_bar_width, bottom: cur_y_offset + 108 };
+                    FillRect(mem_dc, &rect_ram_bar, brush_ram);
+                    let _ = DeleteObject(brush_ram);
 
-                // Status footer
-                SetTextColor(mem_dc, COLORREF(0x0094A3B8));
-                let footer_str = format!("Aether Engine v0.7.0 • Pos ({}, {}) • GPUs: {}", cur_x, cur_y, snap.total_gpu_count);
-                let mut r_footer = RECT { left: 16, top: 186, right: width - 16, bottom: 204 };
-                windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut footer_str.encode_utf16().collect::<Vec<u16>>(), &mut r_footer, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                    // Network & Extended
+                    let net_str = format!("Network: {:.1} KB/s", snap.net_recv_bytes_per_sec as f32 / 1024.0);
+                    let mut r_net = RECT { left: 16, top: cur_y_offset + 114, right: width - 16, bottom: cur_y_offset + 130 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut net_str.encode_utf16().collect::<Vec<u16>>(), &mut r_net, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    let bat_str = format!("{}%", snap.battery_charge_pct);
+                    let ext_str = format!("Apps: {} | Battery: {} | Vol: {}%", snap.open_apps_count, bat_str, snap.master_volume_pct as u32);
+                    let mut r_ext = RECT { left: 16, top: cur_y_offset + 132, right: width - 16, bottom: cur_y_offset + 148 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut ext_str.encode_utf16().collect::<Vec<u16>>(), &mut r_ext, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    // Footer
+                    SetTextColor(mem_dc, COLORREF(0x0094A3B8));
+                    let footer_str = format!("Aether Engine v0.7.0 • Pos ({}, {}) • GPUs: {}", cur_x, cur_y, snap.total_gpu_count);
+                    let mut r_footer = RECT { left: 16, top: cur_y_offset + 154, right: width - 16, bottom: cur_y_offset + 170 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut footer_str.encode_utf16().collect::<Vec<u16>>(), &mut r_footer, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    cur_y_offset += 190;
+                }
+
+                // 2. Weather Widget Card
+                if has_weather {
+                    SelectObject(mem_dc, hfont);
+                    SetTextColor(mem_dc, COLORREF(0x00F59E0B)); // Amber / Sun Gold
+                    let title = "AETHER WEATHER MONITOR".to_string();
+                    let mut r_title = RECT { left: 16, top: cur_y_offset, right: width - 16, bottom: cur_y_offset + 20 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut title.encode_utf16().collect::<Vec<u16>>(), &mut r_title, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    SelectObject(mem_dc, sub_font);
+                    SetTextColor(mem_dc, COLORREF(0x00FFFFFF));
+
+                    let temp_str = "Location: Seattle, WA • Temp: 23.5°C (74°F) Sunny".to_string();
+                    let mut r_temp = RECT { left: 16, top: cur_y_offset + 24, right: width - 16, bottom: cur_y_offset + 40 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut temp_str.encode_utf16().collect::<Vec<u16>>(), &mut r_temp, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    let env_str = "Humidity: 62% • Wind: 12 km/h NW • UV Index: 4 (Moderate)".to_string();
+                    let mut r_env = RECT { left: 16, top: cur_y_offset + 44, right: width - 16, bottom: cur_y_offset + 60 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut env_str.encode_utf16().collect::<Vec<u16>>(), &mut r_env, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    let bar_w = (width - 32) as i32;
+                    let brush_w = CreateSolidBrush(COLORREF(0x00F59E0B));
+                    let rect_w_bar = RECT { left: 16, top: cur_y_offset + 66, right: 16 + (bar_w * 62 / 100), bottom: cur_y_offset + 72 };
+                    FillRect(mem_dc, &rect_w_bar, brush_w);
+                    let _ = DeleteObject(brush_w);
+
+                    cur_y_offset += 190;
+                }
+
+                // 3. Network Monitor Card
+                if has_net {
+                    SelectObject(mem_dc, hfont);
+                    SetTextColor(mem_dc, COLORREF(0x003B82F6)); // Blue
+                    let title = "AETHER NETWORK MONITOR".to_string();
+                    let mut r_title = RECT { left: 16, top: cur_y_offset, right: width - 16, bottom: cur_y_offset + 20 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut title.encode_utf16().collect::<Vec<u16>>(), &mut r_title, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    SelectObject(mem_dc, sub_font);
+                    SetTextColor(mem_dc, COLORREF(0x00FFFFFF));
+
+                    let rx_str = format!("Download Speed: {:.1} KB/s", snap.net_recv_bytes_per_sec as f32 / 1024.0);
+                    let mut r_rx = RECT { left: 16, top: cur_y_offset + 24, right: width - 16, bottom: cur_y_offset + 40 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut rx_str.encode_utf16().collect::<Vec<u16>>(), &mut r_rx, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    let tx_str = format!("Upload Speed: {:.1} KB/s", snap.net_sent_bytes_per_sec as f32 / 1024.0);
+                    let mut r_tx = RECT { left: 16, top: cur_y_offset + 44, right: width - 16, bottom: cur_y_offset + 60 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut tx_str.encode_utf16().collect::<Vec<u16>>(), &mut r_tx, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    let net_bar_w = ((width - 32) as f32 * ((snap.net_recv_bytes_per_sec as f32 / 102400.0).clamp(0.05, 1.0))) as i32;
+                    let brush_n = CreateSolidBrush(COLORREF(0x003B82F6));
+                    let rect_n_bar = RECT { left: 16, top: cur_y_offset + 66, right: 16 + net_bar_w, bottom: cur_y_offset + 72 };
+                    FillRect(mem_dc, &rect_n_bar, brush_n);
+                    let _ = DeleteObject(brush_n);
+
+                    cur_y_offset += 190;
+                }
+
+                // 4. AI Assistant Card
+                if has_ai {
+                    SelectObject(mem_dc, hfont);
+                    SetTextColor(mem_dc, COLORREF(0x008B5CF6)); // Purple
+                    let title = "AETHER AI ASSISTANT".to_string();
+                    let mut r_title = RECT { left: 16, top: cur_y_offset, right: width - 16, bottom: cur_y_offset + 20 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut title.encode_utf16().collect::<Vec<u16>>(), &mut r_title, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    SelectObject(mem_dc, sub_font);
+                    SetTextColor(mem_dc, COLORREF(0x00FFFFFF));
+
+                    let ai_str = "Status: Workstation Optimized • Desktop Profile: Coding".to_string();
+                    let mut r_ai = RECT { left: 16, top: cur_y_offset + 24, right: width - 16, bottom: cur_y_offset + 40 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut ai_str.encode_utf16().collect::<Vec<u16>>(), &mut r_ai, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+
+                    let rec_str = "AI Recommendation: Zero telemetry bottlenecks. Render loop: 60 FPS.".to_string();
+                    let mut r_rec = RECT { left: 16, top: cur_y_offset + 44, right: width - 16, bottom: cur_y_offset + 60 };
+                    windows::Win32::Graphics::Gdi::DrawTextW(mem_dc, &mut rec_str.encode_utf16().collect::<Vec<u16>>(), &mut r_rec, windows::Win32::Graphics::Gdi::DT_SINGLELINE);
+                }
 
                 // Present layered transparent window
                 let mut pt_dst = POINT { x: cur_x, y: cur_y };
-                let mut size_dst = SIZE { cx: width, cy: height };
+                let mut size_dst = SIZE { cx: width, cy: dynamic_height };
                 let mut pt_src = POINT { x: 0, y: 0 };
                 let mut blend = windows::Win32::Graphics::Gdi::BLENDFUNCTION {
                     BlendOp: windows::Win32::Graphics::Gdi::AC_SRC_OVER as u8,

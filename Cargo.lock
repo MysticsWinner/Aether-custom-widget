@@ -23,6 +23,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ai_assistant_widget"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "config_manager",
+ "serde",
+ "serde_json",
+ "system_providers",
+ "theme_engine",
+ "tracing",
+ "widget_sdk",
+]
+
+[[package]]
 name = "ai_engine"
 version = "0.6.0"
 dependencies = [
@@ -380,6 +394,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "widget_parser",
  "widget_sdk",
 ]
 
@@ -767,6 +782,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "network_monitor_widget"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "system_providers",
+ "theme_engine",
+ "tracing",
+ "widget_sdk",
+]
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -857,6 +885,7 @@ dependencies = [
  "serde",
  "serde_json",
  "system_providers",
+ "theme_engine",
  "tracing",
  "widget_sdk",
 ]
@@ -1595,6 +1624,19 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "weather_widget"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "system_providers",
+ "theme_engine",
+ "tracing",
+ "widget_sdk",
 ]
 
 [[package]]

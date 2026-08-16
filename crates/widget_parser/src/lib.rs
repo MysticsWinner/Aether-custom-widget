@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod declarative;
+
+pub use declarative::{DeclarativeBinding, DeclarativeWidgetSpec};
+
 #[derive(Error, Debug)]
 pub enum ParserError {
     #[error("Failed to parse widget TOML manifest: {0}")]

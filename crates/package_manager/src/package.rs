@@ -38,6 +38,14 @@ pub struct WidgetPackage {
     pub requested_capabilities: Vec<String>,
     #[serde(default)]
     pub publisher: PublisherMetadata,
+    #[serde(default = "default_performance_tier")]
+    pub performance_tier: String,
+    #[serde(default)]
+    pub crash_rate: f32,
+}
+
+fn default_performance_tier() -> String {
+    "Verified Fast".to_string()
 }
 
 impl WidgetPackage {
@@ -61,6 +69,8 @@ impl WidgetPackage {
                 author: author_str,
                 ..Default::default()
             },
+            performance_tier: "Verified Fast".to_string(),
+            crash_rate: 0.0,
         }
     }
 }

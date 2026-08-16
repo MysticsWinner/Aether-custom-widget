@@ -115,6 +115,45 @@ pub enum ControlCommand {
     SetWidgetRenderConfig { widget_id: String, config_json: String },
     /// Query target widget rendering & display config
     GetWidgetRenderConfig { widget_id: String },
+    /// Switch active desktop profile by ID
+    SetDesktopProfile { profile_id: String },
+    /// Query active desktop profile details
+    GetActiveProfile,
+    /// List all available desktop profiles
+    ListProfiles,
+    /// Resolve current theme design tokens JSON
+    ResolveDesignTokens { theme_id: Option<String> },
+    /// Synthesize complete desktop layout and theme from natural language prompt
+    SynthesizeDesktop { prompt: String },
+    /// Query extended 7.4 widget inspector report
+    GetExtendedWidgetInspector { widget_id: String },
+    /// Update global platform accessibility overrides
+    SetAccessibilityMode {
+        high_contrast: Option<bool>,
+        reduce_motion: Option<bool>,
+        reduce_transparency: Option<bool>,
+        large_text: Option<bool>,
+    },
+    /// Recursively scan directories for widget.toml manifests and return metadata list
+    DiscoverWidgets { search_paths: Option<Vec<String>> },
+}
+
+/// Metadata payload for a discovered widget plugin manifest scanned from disk.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DiscoveredWidgetInfo {
+    pub id: String,
+    pub name: String,
+    pub author: String,
+    pub version: String,
+    pub update_interval_ms: u64,
+    pub manifest_path: String,
+    pub folder_path: String,
+    pub is_loaded: bool,
+    pub is_locked: bool,
+    pub position_x: i32,
+    pub position_y: i32,
+    pub target_fps: u32,
+    pub description: String,
 }
 
 /// Telemetry metrics payload exchanged via Shared Memory Ring Buffer
@@ -254,6 +293,59 @@ mod tests {
         let json3 = serde_json::to_string(&toggle_cmd).unwrap();
         let decoded3: ControlCommand = serde_json::from_str(&json3).unwrap();
         assert_eq!(decoded3, toggle_cmd);
+    }
+
+    #[test]
+    fn test_74_control_command_serialization() {
+        let cmd = ControlCommand::SetDesktopProfile {
+            profile_id: "profile.gaming".to_string(),
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        let decoded: ControlCommand = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, cmd);
+
+        let synth_cmd = ControlCommand::SynthesizeDesktop {
+            prompt: "cyberpunk workstation".to_string(),
+        };
+        let json_synth = serde_json::to_string(&synth_cmd).unwrap();
+        let decoded_synth: ControlCommand = serde_json::from_str(&json_synth).unwrap();
+        assert_eq!(decoded_synth, synth_cmd);
+    }
+
+    #[test]
+    fn test_marketplace_snapshot_security_serialization() {
+        let search_cmd = ControlCommand::SearchMarketplace {
+            query: "monitoring".to_string(),
+        };
+        let json_search = serde_json::to_string(&search_cmd).unwrap();
+        let decoded_search: ControlCommand = serde_json::from_str(&json_search).unwrap();
+        assert_eq!(decoded_search, search_cmd);
+
+        let snap_cmd = ControlCommand::CreateSnapshot {
+            name: "Baseline".to_string(),
+        };
+        let json_snap = serde_json::to_string(&snap_cmd).unwrap();
+        let decoded_snap: ControlCommand = serde_json::from_str(&json_snap).unwrap();
+        assert_eq!(decoded_snap, snap_cmd);
+
+        let list_snap = ControlCommand::ListSnapshots;
+        let json_list = serde_json::to_string(&list_snap).unwrap();
+        let decoded_list: ControlCommand = serde_json::from_str(&json_list).unwrap();
+        assert_eq!(decoded_list, list_snap);
+
+        let restore_snap = ControlCommand::RestoreSnapshot {
+            snapshot_id: "snap-01".to_string(),
+        };
+        let json_restore = serde_json::to_string(&restore_snap).unwrap();
+        let decoded_restore: ControlCommand = serde_json::from_str(&json_restore).unwrap();
+        assert_eq!(decoded_restore, restore_snap);
+
+        let delete_snap = ControlCommand::DeleteSnapshot {
+            snapshot_id: "snap-01".to_string(),
+        };
+        let json_del = serde_json::to_string(&delete_snap).unwrap();
+        let decoded_del: ControlCommand = serde_json::from_str(&json_del).unwrap();
+        assert_eq!(decoded_del, delete_snap);
     }
 }
 

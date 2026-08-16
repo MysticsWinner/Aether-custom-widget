@@ -84,10 +84,12 @@ After every prompt, update the documents in docs/ accordingly, dont remove conte
 
 ### Required steps for every prompt:
 1. **Write tests** alongside (or before) the implementation -- never skip them.
-2. **Run `cargo test --workspace`** to verify ALL tests pass, not just new ones.
-3. **Run `cargo check --workspace`** to confirm zero compilation errors.
-4. **Report the test count** in every response (e.g. "87/87 tests pass").
-5. **Do not mark a task done** until `cargo test` exits with code 0.
+2. **Run `cargo test --workspace`** to verify ALL Rust backend tests pass, not just new ones.
+3. **Run `cargo check --workspace`** to confirm zero Rust compilation errors.
+4. **Run `dotnet build src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj`** to confirm zero C# WinUI 3 build errors.
+5. **Run `dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`** to verify GUI ViewModel & IPC tests pass.
+6. **Report the test count** in every response (e.g. "268 Rust tests + 10 C# GUI tests pass").
+7. **Do not mark a task done** until `cargo test` and `dotnet test` exit with code 0.
 
 ### Minimum test coverage per change type:
 

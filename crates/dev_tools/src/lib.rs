@@ -1,9 +1,11 @@
 pub mod cli;
+pub mod discovery;
 pub mod hot_reload;
 pub mod inspector;
 pub mod layout_grid;
 
 pub use cli::{AetherCli, CliCommand};
+pub use discovery::WidgetDiscoveryScanner;
 pub use hot_reload::DevHotReloader;
 pub use inspector::{WidgetInspectionReport, WidgetInspector};
 pub use layout_grid::LayoutGridOverlay;

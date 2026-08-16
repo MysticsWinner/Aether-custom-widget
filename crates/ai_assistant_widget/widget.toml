@@ -1,0 +1,27 @@
+[metadata]
+id = "widget.ai_assistant"
+name = "AI Workstation Assistant"
+author = "Aether AI Team"
+version = "1.0.0"
+description = "Active desktop profile status, context trigger indicators, and AI optimization advisor"
+update_interval_ms = 1000
+
+[performance]
+target_cpu = 0.03
+target_memory_mb = 15
+target_fps = 5
+material_cost = "low"
+animation_cost = "low"
+
+[layout]
+width = 340.0
+height = 190.0
+padding = 12.0
+corner_radius = 12.0
+
+[[elements]]
+id = "profile_text"
+element_type = "text"
+binding = "ai.profile_name"
+font_size = 18.0
+color_token = "theme.accent"

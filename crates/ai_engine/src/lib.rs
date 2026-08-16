@@ -5,6 +5,7 @@
 //! AI Widget Generation, and Workflow Automation.
 
 pub mod benchmark;
+pub mod composer;
 pub mod generators;
 pub mod performance_advisor;
 pub mod voice;
@@ -13,6 +14,7 @@ pub mod widget_synthesizer;
 pub mod workflow;
 
 pub use benchmark::AiEngineBenchmark;
+pub use composer::{AiDesktopComposer, ComposerOutput};
 pub use generators::{LayoutGenerator, ThemeGenerator, WidgetGenerator};
 pub use performance_advisor::{AiPerformanceAdvisor, PerformanceRecommendation};
 pub use voice::VoiceIntentParser;

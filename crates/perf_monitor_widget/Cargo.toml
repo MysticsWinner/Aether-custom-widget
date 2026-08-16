@@ -9,6 +9,7 @@ description = "Aether built-in performance monitor widget — CPU%, GPU%, RAM us
 [dependencies]
 widget_sdk      = { path = "../widget_sdk" }
 system_providers = { path = "../system_providers" }
+theme_engine     = { path = "../theme_engine" }
 tracing         = { workspace = true }
 anyhow          = { workspace = true }
 serde           = { workspace = true }

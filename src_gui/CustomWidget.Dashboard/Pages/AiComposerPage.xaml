@@ -1,0 +1,78 @@
+<!-- Copyright (c) Aether Platform. Licensed under the MIT License. -->
+<Page
+    x:Class="CustomWidget.Dashboard.Pages.AiComposerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    NavigationCacheMode="Enabled">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel Spacing="20">
+            <!-- Header Bar -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="AI Desktop Composer" FontSize="26" FontWeight="Bold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                    <TextBlock Text="Synthesize complete workstation themes, layouts, and materials via natural language." FontSize="14" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+                </StackPanel>
+
+                <Button x:Name="PresetBtn" Grid.Column="1" Content="✨ Presets" Style="{StaticResource AccentButtonStyle}" Padding="14,8,14,8" CornerRadius="6" VerticalAlignment="Center">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="Futuristic Cyberpunk Neon" Click="Preset_Click" Tag="Futuristic Cyberpunk Neon Workstation with glowing gauges" />
+                            <MenuFlyoutItem Text="Minimalist Battery Saver Clock" Click="Preset_Click" Tag="Minimalist battery saver clock setup with dark solid surface" />
+                            <MenuFlyoutItem Text="Aero Glass Audio Studio" Click="Preset_Click" Tag="Aero translucent glass audio visualizer desktop setup" />
+                            <MenuFlyoutItem Text="High Performance Gaming HUD" Click="Preset_Click" Tag="High performance 120fps gaming HUD with compact metrics" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+
+            <!-- Natural Language Prompt Bar Card -->
+            <Border Style="{StaticResource AetherMetricCard}" Padding="18">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Natural Language Prompt" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="PromptInput" Grid.Column="0" PlaceholderText="e.g., Make my desktop look like a futuristic cyberpunk workstation while keeping resource usage low." KeyDown="PromptInput_KeyDown" />
+                        <Button x:Name="SynthesizeBtn" Grid.Column="1" Content="✨ Synthesize Setup" Click="Synthesize_Click" Style="{StaticResource AccentButtonStyle}" Padding="16,8,16,8" CornerRadius="6" />
+                    </Grid>
+
+                    <!-- Quick Preset Chips -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                        <TextBlock Text="Quick Prompts:" FontSize="12" Foreground="{StaticResource AetherTextDimBrush}" VerticalAlignment="Center" />
+                        <Button Content="Cyberpunk Neon" Click="PresetChip_Click" Tag="Futuristic Cyberpunk Neon Workstation" Padding="8,4,8,4" CornerRadius="4" />
+                        <Button Content="Minimal Dark" Click="PresetChip_Click" Tag="Minimalist battery saver clock setup" Padding="8,4,8,4" CornerRadius="4" />
+                        <Button Content="Aero Glass Studio" Click="PresetChip_Click" Tag="Aero translucent glass audio desktop" Padding="8,4,8,4" CornerRadius="4" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Status message -->
+            <TextBlock x:Name="StatusText" Text="AI Composer Ready" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" />
+
+            <!-- AI Synthesis Preview Card -->
+            <Border Style="{StaticResource AetherMetricCard}" Padding="18">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="AI Intent Synthesis Preview" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                    <TextBlock x:Name="SummaryText" Text="Enter a prompt above and click Synthesize Setup to generate intent preview." FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" TextWrapping="Wrap" />
+
+                    <StackPanel x:Name="DetailsPanel" Visibility="Collapsed" Spacing="8" Margin="0,8,0,0">
+                        <TextBlock x:Name="ThemeText" Text="Generated Theme: theme.cyberpunk.neon" FontSize="12" FontFamily="Consolas" Foreground="{StaticResource AetherAccentBrush}" />
+                        <TextBlock x:Name="MaterialText" Text="Recommended Material: Glass (Blur radius: 20px)" FontSize="12" FontFamily="Consolas" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                        <TextBlock x:Name="PerfText" Text="Predicted Resource Footprint: 0.08% CPU | 18 MB RAM" FontSize="12" FontFamily="Consolas" Foreground="{StaticResource AetherSuccessBrush}" />
+                        <TextBlock x:Name="SecurityGateText" Text="Security Capability Gate: PASSED (All permissions verified)" FontSize="12" FontFamily="Consolas" Foreground="{StaticResource AetherSuccessBrush}" />
+
+                        <Button x:Name="ApplyBtn" Content="⚡ Apply Synthesized Setup" Click="ApplySetup_Click" Style="{StaticResource AccentButtonStyle}" Padding="16,8,16,8" CornerRadius="6" Margin="0,8,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

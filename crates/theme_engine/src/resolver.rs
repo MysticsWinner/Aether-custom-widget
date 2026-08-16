@@ -13,6 +13,7 @@ pub trait ThemeResolver: Send + Sync {
     fn resolve_layout(&self, token: &str) -> LayoutConfig;
     fn resolve_animation(&self, token: &str) -> AnimationConfig;
     fn hot_swap_schema(&self, new_schema: ThemeSchema);
+    fn detect_cycle(&self, parent_id: &str, child_id: &str) -> bool;
 }
 
 /// In-Memory Atomic Theme Store supporting microsecond token resolution and zero-downtime hot reloading.
@@ -89,6 +90,10 @@ impl ThemeResolver for DynamicThemeStore {
             *lock = new_schema;
             info!("Theme successfully hot-swapped to: '{}' (No restart required!)", name);
         }
+    }
+
+    fn detect_cycle(&self, parent_id: &str, child_id: &str) -> bool {
+        parent_id == child_id
     }
 }
 

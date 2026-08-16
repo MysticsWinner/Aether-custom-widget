@@ -13,10 +13,19 @@ use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
 use widget_sdk::render_config::RenderConfig;
 use widget_sdk::rendering::{BatchRenderCanvas, RenderCanvas};
 
+use theme_engine::{MaterialSpec, MaterialType};
+use widget_sdk::perf_budget::PerformanceBudget;
+use widget_sdk::reactive::Signal;
+
 /// Performance Monitor Widget — implements the 6-pillar `WidgetLifecycle` SDK.
 pub struct PerfMonitorWidget {
     state: WidgetState,
     cache: SharedTelemetryCache,
+    cpu_signal: Signal<f32>,
+    gpu_signal: Signal<f32>,
+    ram_signal: Signal<f32>,
+    material: MaterialSpec,
+    budget: PerformanceBudget,
     tick_count: u64,
     config: RenderConfig,
 }
@@ -27,6 +36,23 @@ impl PerfMonitorWidget {
         Self {
             state: WidgetState::Unloaded,
             cache,
+            cpu_signal: Signal::new("sys.cpu_usage", 0.0),
+            gpu_signal: Signal::new("sys.gpu_usage", 0.0),
+            ram_signal: Signal::new("sys.memory_used", 0.0),
+            material: MaterialSpec {
+                material_type: MaterialType::Mica,
+                tint_color: "#1E1E1E".to_string(),
+                tint_opacity: 0.85,
+                blur_radius: 30.0,
+                ..Default::default()
+            },
+            budget: PerformanceBudget {
+                target_cpu_pct: 0.08,
+                target_memory_mb: 16.0,
+                target_fps: 30,
+                material_cost: "low".to_string(),
+                animation_cost: "low".to_string(),
+            },
             tick_count: 0,
             config: RenderConfig::default(),
         }
@@ -59,6 +85,10 @@ impl WidgetLifecycle for PerfMonitorWidget {
     fn on_update(&mut self, ctx: &TickContext) -> Result<()> {
         self.tick_count += 1;
         let snap = self.cache.get_snapshot();
+
+        self.cpu_signal.set(snap.cpu_usage_pct);
+        self.gpu_signal.set(snap.gpu_usage_pct);
+        self.ram_signal.set(snap.memory_used_mb);
 
         // Build this frame's draw command list with active RenderConfig
         let mut canvas = BatchRenderCanvas::new();
