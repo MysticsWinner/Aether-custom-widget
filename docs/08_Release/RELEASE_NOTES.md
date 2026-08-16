@@ -1,12 +1,56 @@
-# Aether — Release Notes v0.6.0
+# Aether — Release Notes v0.7.0 (Production Release Candidate)
 
-**Official Release v0.6.0 (Production Release Candidate — Diagnostics & Integration)**  
+**Official Release v0.7.0 (Production Release Candidate — Comprehensive GUI Dashboard & Memory Management)**  
 **Date**: August 2026  
 **Repository**: [https://github.com/MysticsWinner/Aether-custom-widget](https://github.com/MysticsWinner/Aether-custom-widget)
 
 ---
 
-## 🚀 What's New in Version 0.6.0
+## 🚀 What's New in Version 0.7.0
+
+Aether v0.7.0 introduces a complete, production-ready 13-page WinUI 3 management dashboard app, full reactive MVVM architecture via `CommunityToolkit.Mvvm`, automatic dependency process tree termination on app close, working-set memory management via Win32 `SetProcessWorkingSetSize`, an automated C# MSTest unit test suite, and deep IPC protocol integration across all 17 Rust engine crates.
+
+### 🌟 Key Highlights & Features
+
+1. **Complete WinUI 3 13-Page Management Dashboard (`src_gui/CustomWidget.Dashboard`)**:
+   - **Overview Page**: Real-time telemetry gauges (CPU, GPU, RAM, NET), system status cards, quick action controls.
+   - **Design Tokens Inspector Page (`DesignTokensPage` / `DesignTokensViewModel`)**: Interactive resolution and visual inspection of Aether 7.4 12-category semantic design token hierarchy (`Colors`, `Typography`, `Materials`, `Motion`).
+   - **Desktop Profiles Manager Page (`ProfilesPage` / `ProfilesViewModel`)**: Context-aware activity profile switcher (`Coding`, `Gaming`, `Minimalist`, `Battery Saver`, `Creative Studio`) with live target FPS and material specification indicators.
+   - **AI Desktop Composer Page (`AiComposerPage` / `AiComposerViewModel`)**: Natural language workstation layout synthesis with theme extraction (`cyberpunk`, `minimalist`, `aero`), material spec previews, resource footprint estimates, and preset prompt chips.
+   - **Marketplace Package Store (`MarketplacePage` / `MarketplaceViewModel`)**: Cryptographically verified widget package store with Ed25519 signature validation badges, category filtering, live search query filtering, and 1-click Install/Uninstall toggles.
+   - **Snapshots & System Recovery Hub (`SnapshotsPage` / `SnapshotsViewModel`)**: Transactional system configuration snapshot creation, restoration, deletion, and timestamp formatting.
+   - **Security & Sandbox Visualizer (`SecurityPage` / `SecurityViewModel`)**: Real-time AppContainer process boundary monitor, active capability tokens, Job Object resource limits, and security audit log streams.
+   - **Services Page (`ServicesPage` / `ServicesViewModel`)**: Subsystem worker daemon supervisor interface.
+   - **Performance Page (`PerformancePage` / `PerformanceViewModel`)**: Frame timing and memory budget profiling.
+   - **Diagnostics Page (`DiagnosticsPage` / `DiagnosticsViewModel`)**: Interactive IPC command console and raw JSON log viewer.
+   - **Widgets Page (`WidgetsPage` / `WidgetsViewModel`)**: Widget lifecycle manager with position locking and display target pinning.
+   - **Settings & About Pages (`SettingsPage`, `AboutPage`)**: Global telemetry refresh rate adjustments and system information.
+
+2. **Automatic Dependency Shutdown & Memory Management (`MemoryManagerService`)**:
+   - **Automatic Dependency Process Termination**: On app close (`MainWindow.Closed` & `AppDomain.CurrentDomain.ProcessExit`), `ProcessManagerService.StopEngineAsync()` kills `core_engine` daemon processes, cargo hosts, and entire child process trees with `entireProcessTree: true`.
+   - **Physical RAM Working-Set Trimming**: Win32 P/Invoke `SetProcessWorkingSetSize` and forced garbage collection (`GC.Collect()`) reclaim physical RAM back to Windows OS when the app is closed or during periodic 30-second idle cleanups.
+
+3. **C# MSTest GUI Automated Test Suite (`src_gui/CustomWidget.Dashboard.Tests`)**:
+   - Built a dedicated 23-test C# unit test suite targeting `.NET 8` / Windows App SDK, covering all ViewModels, formatted property getters, IPC command serialization, and memory management lifecycle operations.
+
+4. **Multi-Crate Rust Engine Capabilities**:
+   - `theme_engine`: Design token resolution, WCAG 2.1 AA contrast calculations, Material degradation pipelines.
+   - `ai_engine`: AI layout synthesis, voice command intent parsing, workflow automation.
+   - `ipc_protocol`: Typed serde JSON serialization for `SearchMarketplace`, `CreateSnapshot`, `ListSnapshots`, `RestoreSnapshot`, `DeleteSnapshot`, `GetSecurityAuditLogs`, `ResolveDesignTokens`, `SetDesktopProfile`.
+
+---
+
+## 🛠️ Verification & Test Metrics
+
+- **C# GUI Unit Test Suite**: **23 / 23 tests passing** (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`).
+- **Rust Backend Workspace Tests**: **268 / 268 tests passing** (`cargo test --workspace`).
+- **Total Combined Test Suite**: **291 / 291 tests passing (100% pass rate)**.
+- **WinUI 3 GUI Build**: **0 Warnings, 0 Errors** (`dotnet build src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj`).
+- **Rust Compilation**: **0 Errors** (`cargo check --workspace`).
+
+---
+
+## 📜 Historical Release Notes
 
 Aether v0.6.0 delivers real-time system diagnostics, process management, log streaming, expanded IPC control APIs, and a comprehensive end-to-end integration test suite across all 17 workspace crates and WinUI 3 C# management dashboard.
 

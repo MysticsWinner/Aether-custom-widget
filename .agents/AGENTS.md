@@ -50,6 +50,7 @@ After every prompt, update the documents in docs/ accordingly, dont remove conte
 1. **Never skip phases**: Follow the phased architecture roadmap strictly.
 2. **Architecture Prerequisite**: Never implement features whose architecture has not been finalized.
 3. **Comprehensive Deliverables**: Every feature/pull request must include:
+   - Detailed GitHub PR Description (`docs/08_Release/PR_DESCRIPTION.md`) outlining all features added, architecture changes, bug fixes, performance, memory management, and test counts compared to previous commits/PRs.
    - Unit tests
    - Benchmarks
    - Documentation

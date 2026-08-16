@@ -60,7 +60,9 @@
 ---
 
 ## Comprehensive Test Suite Status
-- **Total Test Count**: **184 / 184 tests passing** (100% pass rate).
+- **Rust Backend Workspace Tests**: **268 / 268 tests passing** (`cargo test --workspace`).
+- **WinUI 3 GUI C# MSTest Suite**: **23 / 23 tests passing** (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`).
+- **Total Combined Test Count**: **291 / 291 tests passing** (100% pass rate).
 
 ---
 
@@ -69,15 +71,21 @@
 | Subsystem / Page | Status | Implementation Notes |
 |---|---|---|
 | **App Shell & Entry** | ✅ **Completed** | `App.xaml` / `.cs` with dependency injection, global exception handlers, dark theme. |
-| **MainWindow Shell** | ✅ **Completed** | `MainWindow.xaml` NavigationView with 13 pages, Mica backdrop, live IPC status. |
+| **MainWindow Shell** | ✅ **Completed** | `MainWindow.xaml` NavigationView with 13 pages, Mica backdrop, live IPC status, automatic dependency process tree termination on window close (`MemoryManagerService`). |
 | **Overview Page** | ✅ **Completed** | 4 live metric gauge cards (CPU, GPU, RAM, NET), engine action buttons (Reload, Theme, Ping). |
-| **Widgets Page** | ✅ **Completed** | Widget listing, load/unload controls, position drag Lock/Unlock controls (`SetWidgetLock`), Reset Position (`SetWidgetPosition`), IPC list refresh. |
-| **Marketplace Page** | ✅ **Completed** | `MarketplacePage.xaml` / `MarketplaceViewModel.cs` cryptographically verified widget package store, Ed25519 signature validation, capability inspector, 1-click install. |
-| **Snapshots Page** | ✅ **Completed** | `SnapshotsPage.xaml` / `SnapshotsViewModel.cs` transactional configuration snapshot backups, 1-click restore, deletion, and export/import. |
+| **Design Tokens Page**| ✅ **Completed** | `DesignTokensPage.xaml` / `DesignTokensViewModel.cs` interactive resolution & visual inspection of 12-category design token hierarchy (`Colors`, `Typography`, `Materials`, `Motion`). |
+| **Profiles Page** | ✅ **Completed** | `ProfilesPage.xaml` / `ProfilesViewModel.cs` activity profile switcher (`Coding`, `Gaming`, `Minimalist`, `Battery Saver`, `Creative Studio`) with live target FPS & material spec badges. |
+| **AI Composer Page** | ✅ **Completed** | `AiComposerPage.xaml` / `AiComposerViewModel.cs` natural language workstation layout synthesis with theme recommendations, material spec previews, resource footprints, preset chips. |
+| **Marketplace Page** | ✅ **Completed** | `MarketplacePage.xaml` / `MarketplaceViewModel.cs` cryptographically verified widget package store, Ed25519 signature validation, capability inspector, `FilteredPackages` real-time search and category filtering, 1-click install. |
+| **Snapshots Page** | ✅ **Completed** | `SnapshotsPage.xaml` / `SnapshotsViewModel.cs` transactional configuration snapshot backups, 1-click restore, deletion, invariant timestamp formatting, and export/import. |
 | **Security Page** | ✅ **Completed** | `SecurityPage.xaml` / `SecurityViewModel.cs` AppContainer sandbox process boundary visualizer, capability token manifest table, Job Object resource limits, and audit log stream. |
+| **Services Page** | ✅ **Completed** | `ServicesPage.xaml` / `ServicesViewModel.cs` subsystem worker daemon supervisor interface for dynamic start/stop operations. |
+| **Performance Page** | ✅ **Completed** | `PerformancePage.xaml` / `PerformanceViewModel.cs` frame timing and memory budget profiling. |
 | **Diagnostics Page** | ✅ **Completed** | `DiagnosticsPage.xaml` / `DiagnosticsPage.xaml.cs` with real-time CPU/RAM timeline charts, Process Manager (`ProcessManagerService`), and Event Log Stream (`LogCollectorService`). |
-| **Settings Page** | ✅ **Completed** | Theme mode selection (live WinUI 3 `ElementTheme` + IPC sync), polling interval slider, feature toggle switches. |
-| **About Page** | ✅ **Completed** | `AboutPage.xaml` / `AboutViewModel.cs` with GitHub repository link (`https://github.com/MysticsWinner/Aether-custom-widget`), authors/contributors credits, architecture overview, license details. |
+| **Widgets Page** | ✅ **Completed** | Widget listing, load/unload controls, position drag Lock/Unlock controls (`SetWidgetLock`), Reset Position (`SetWidgetPosition`), IPC list refresh. |
+| **Settings & About**| ✅ **Completed** | Theme mode selection (live WinUI 3 `ElementTheme` + IPC sync), polling interval slider, feature toggle switches, version credits. |
+| **Memory Manager** | ✅ **Completed** | `MemoryManagerService.cs` Win32 `SetProcessWorkingSetSize` RAM working set trimming, forced GC disposal, automatic child process tree shutdown. |
+| **GUI Test Suite** | ✅ **Completed** | `src_gui/CustomWidget.Dashboard.Tests` automated C# MSTest suite with 23 unit tests covering ViewModels, IPC, and memory management. |
 | **NamedPipeClient** | ✅ **Completed** | Async `NamedPipeClientStream` wrapper with timeout and reconnection logic. |
 
 ---
