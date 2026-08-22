@@ -49,6 +49,14 @@ impl NetworkMonitorWidget {
         }
     }
 
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
+
     fn format_rate(bytes_per_sec: u64) -> String {
         if bytes_per_sec >= 1_000_000 {
             format!("{:.1} MB/s", bytes_per_sec as f64 / 1_000_000.0)

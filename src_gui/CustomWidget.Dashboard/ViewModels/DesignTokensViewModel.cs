@@ -34,7 +34,6 @@ public partial class DesignTokensViewModel : ObservableObject
     public DesignTokensViewModel(AetherIpcService ipc)
     {
         _ipc = ipc;
-        _ = ResolveTokensAsync();
     }
 
     [RelayCommand]

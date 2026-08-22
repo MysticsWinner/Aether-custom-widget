@@ -49,7 +49,12 @@ After every prompt, update the documents in docs/ accordingly, dont remove conte
 ## Workflow & Process Governance
 1. **Never skip phases**: Follow the phased architecture roadmap strictly.
 2. **Architecture Prerequisite**: Never implement features whose architecture has not been finalized.
-3. **Comprehensive Deliverables**: Every feature/pull request must include:
+3. **Git Push & Pull Governance**:
+   - **No Automatic Push/Pull**: Do NOT push (`git push`) or pull (`git pull`) to/from GitHub automatically or after every prompt/commit.
+   - **Explicit Triggers Only**: Push or pull to GitHub ONLY when explicitly instructed by the user.
+   - **Detailed Commit/PR Documentation**: When explicitly commanded to push/pull or create a commit/PR, create a comprehensive, detailed PR/Commit document (`docs/08_Release/PR_DESCRIPTION.md`) detailing all changes compared to the last commit/PR across all categories: New Features, Bug Fixes, Quality of Life (QoL) enhancements, Architecture & Design updates, Benchmarks & Performance metrics, Test Count comparison, Security, etc.
+   - **Local Binary Installer Generation**: After pushing/pulling (or upon explicit release request), locally build and execute the installer wizard (`cargo run -p installer`), which packages compiled executables (`core_engine.exe`, `dashboard_tui.exe`, `CustomWidget.Dashboard.exe`, `AetherSetup.exe`) and runtime assets into `%LOCALAPPDATA%\Aether\` — strictly containing compiled binaries and assets with NO source code.
+4. **Comprehensive Deliverables**: Every feature/pull request must include:
    - Detailed GitHub PR Description (`docs/08_Release/PR_DESCRIPTION.md`) outlining all features added, architecture changes, bug fixes, performance, memory management, and test counts compared to previous commits/PRs.
    - Unit tests
    - Benchmarks

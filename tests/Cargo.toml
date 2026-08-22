@@ -16,6 +16,10 @@ path = "system_tests.rs"
 name = "interface_tests"
 path = "interface_tests.rs"
 
+[[test]]
+name = "master_release_audit_tests"
+path = "master_release_audit_tests.rs"
+
 [dependencies]
 # Empty lib, but dependencies are listed in dev-dependencies for tests to use.
 
@@ -42,3 +46,11 @@ cloud_sync = { path = "../crates/cloud_sync" }
 ai_engine = { path = "../crates/ai_engine" }
 production_engine = { path = "../crates/production_engine" }
 perf_monitor_widget = { path = "../crates/perf_monitor_widget" }
+network_monitor_widget = { path = "../crates/network_monitor_widget" }
+weather_widget = { path = "../crates/weather_widget" }
+ai_assistant_widget = { path = "../crates/ai_assistant_widget" }
+dev_tools = { path = "../crates/dev_tools" }
+recovery_manager = { path = "../crates/recovery_manager" }
+capability_broker = { path = "../crates/capability_broker" }
+event_recorder = { path = "../crates/event_recorder" }
+config_manager = { path = "../crates/config_manager" }

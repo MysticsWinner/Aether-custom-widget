@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::config::EngineConfig;
 use crate::event_bus::{CoreEvent, EventBus};
@@ -47,6 +47,11 @@ impl Engine {
     /// Returns a reference to the shared `EventBus`.
     pub fn event_bus(&self) -> Arc<EventBus> {
         self.event_bus.clone()
+    }
+
+    /// Returns the engine configuration.
+    pub fn config(&self) -> &EngineConfig {
+        &self.config
     }
 
     /// Returns the current state of the engine.

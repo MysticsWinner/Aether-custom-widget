@@ -3,7 +3,7 @@ use ai_engine::{VoiceIntentParser, WorkflowAutomationEngine, WorkflowRule};
 use async_trait::async_trait;
 use ipc_protocol::ControlCommand;
 use tracing::info;
-use crate::event_bus::{CoreEvent, EventBus};
+use crate::event_bus::EventBus;
 use crate::subsystems::{Subsystem, SubsystemHealth};
 
 /// Core Engine Subsystem wrapping the Phase 14 AI Subsystem Engine.
@@ -26,6 +26,10 @@ impl AiSubsystem {
             workflow_engine,
             event_bus: None,
         }
+    }
+
+    pub fn workflow_engine(&self) -> &WorkflowAutomationEngine {
+        &self.workflow_engine
     }
 
     pub fn parse_voice_command(&self, utterance: &str) -> Option<ControlCommand> {

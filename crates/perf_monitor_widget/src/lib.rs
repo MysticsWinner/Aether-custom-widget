@@ -65,6 +65,14 @@ impl PerfMonitorWidget {
     pub fn config(&self) -> &RenderConfig {
         &self.config
     }
+
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
 }
 
 impl WidgetLifecycle for PerfMonitorWidget {

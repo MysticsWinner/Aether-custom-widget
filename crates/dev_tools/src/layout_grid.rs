@@ -25,6 +25,14 @@ impl LayoutGridOverlay {
         self.enabled
     }
 
+    pub fn grid_spacing(&self) -> f32 {
+        self.grid_spacing
+    }
+
+    pub fn grid_color(&self) -> Color {
+        self.grid_color
+    }
+
     /// Generates bounding box draw commands for a target widget rectangle.
     pub fn generate_widget_bounds_overlay(&self, bounds: RectF, widget_id: &str) -> Vec<DrawCommand> {
         if !self.enabled {

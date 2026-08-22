@@ -20,7 +20,13 @@ public class DesktopProfileItem : ObservableObject
     public bool IsActive
     {
         get => _isActive;
-        set => SetProperty(ref _isActive, value);
+        set
+        {
+            if (SetProperty(ref _isActive, value))
+            {
+                OnPropertyChanged(nameof(ButtonText));
+            }
+        }
     }
 
     public string ButtonText => IsActive ? "✓ Active Profile" : "Activate Profile";
@@ -45,7 +51,6 @@ public partial class ProfilesViewModel : ObservableObject
     public ProfilesViewModel(AetherIpcService ipc)
     {
         _ipc = ipc;
-        _ = LoadProfilesAsync();
     }
 
     [RelayCommand]

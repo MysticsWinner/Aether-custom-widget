@@ -55,7 +55,6 @@ public partial class MarketplaceViewModel : ObservableObject
     public MarketplaceViewModel(AetherIpcService ipc)
     {
         _ipc = ipc;
-        _ = LoadCatalogAsync();
     }
 
     partial void OnSearchQueryChanged(string value) => FilterCatalog();

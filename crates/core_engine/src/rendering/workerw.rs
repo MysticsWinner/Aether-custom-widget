@@ -1,5 +1,3 @@
-use anyhow::Result;
-
 /// Resolves the WorkerW desktop window handle spawned behind Windows desktop icons via Progman 0x052C message.
 #[cfg(windows)]
 pub fn find_desktop_workerw_hwnd() -> Option<windows::Win32::Foundation::HWND> {

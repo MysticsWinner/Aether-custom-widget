@@ -32,6 +32,7 @@ const POLL_MS: u64 = 500;
 
 // ── IPC response schema ───────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, Default, Deserialize, Clone)]
 struct StatusResponse {
     #[serde(default)]

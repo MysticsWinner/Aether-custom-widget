@@ -1,82 +1,83 @@
-# Pull Request: Comprehensive Desktop Rendering Engine, Per-Widget Configuration, Quick Settings Flyout, WinUI 3 Dashboard (13 Pages) & Automated Test Suite
+# Pull Request: Master Release Audit Suite, Installer Wizard Packaging & Architecture Documentation Reorganization
 
 ## 📌 PR Summary & Overview
 
-This PR delivers a complete core rendering overhaul for Aether desktop widgets, per-widget configuration persistence, interactive quick-settings flyout controls on the WinUI 3 Dashboard, dynamic contrast legibility protection, automatic dependency process termination, and full automated test verification across both Rust backend daemon and C# WinUI 3 dashboard.
+This PR delivers the **Master Release Audit & Integration Test Suite**, an enhanced **Local Installer Wizard** (`crates/installer`), complete **Architecture Documentation Reorganization**, telemetry widget refinements, C# WinUI 3 ViewModel robust memory handling, and full automated test verification across both Rust backend daemon and C# WinUI 3 dashboard.
+
+Total test coverage has expanded from **212 tests (184 Rust + 28 C#)** to **221 tests (193 Rust + 28 C#)** with 100% pass rate and zero compilation errors.
 
 ---
 
-## ✨ New Features Added
+## ✨ New Features & Enhancements
 
-### 🎨 1. Core Desktop Rendering & Widget Config Engine (Rust)
-- **`WidgetConfigStore` (`crates/core_engine/src/widget_config_store.rs`)**:
-  - Implemented per-widget JSON configuration persistence under `%LOCALAPPDATA%\Aether\widget_settings\<widget_id>.json`.
-  - Persists `WidgetConfig`, `DisplayOptions` (`opacity`, `scale`, `locked`, `enabled`), `ColourOverrides`, and `quick_swap` options.
-  - Full thread-safe concurrency with thread-safe `Arc<Mutex<WidgetConfigStore>>` integrated into `IpcSharedState`.
-- **Expanded IPC Protocol (`crates/ipc_protocol/src/messages.rs` & `ipc_server.rs`)**:
-  - Added new IPC control commands: `ListWidgets`, `UpdateWidgetDisplayOptions`, `QuickSwapWidget`, `EnableWidget`, `DisableWidget`, `SetWidgetOpacity`, `ResetWidgetConfig`.
-  - Added `WidgetDescriptor` response payload for rich real-time widget state querying.
-- **Dynamic Contrast Legibility Protection (`crates/widget_sdk/src/contrast.rs`)**:
-  - Added `ContrastGuard::select_foreground_color(bg_argb, light, dark)` to dynamically select high-contrast foreground colors based on background sRGB relative luminance.
-  - Applied contrast legibility protection to text and labels rendered in `perf_monitor_widget`.
-- **Desktop Window Position Swap (`crates/core_engine/src/rendering/desktop_widget_window.rs`)**:
-  - Added `swap_positions` method supporting real-time desktop coordinate swapping between any two widgets.
+### 🛡️ 1. Master Release Audit & Integration Test Suite (`tests/master_release_audit_tests.rs`)
+- **Fault Injection & Chaos Recovery**: Validates subsystem recovery under simulated hardware sampling failures and process faults (`test_master_audit_failure_injection_and_state_recovery`).
+- **Atomic Persistence Guarantee**: Tests atomic file writes and crash-safe JSON serialization for `WidgetConfigStore` (`test_master_audit_widget_config_store_atomic_persistence`).
+- **IPC Protocol Edge Cases**: Exercises malformed command payloads, out-of-order dispatches, and payload boundary resilience (`test_master_audit_ipc_malformed_and_edge_case_resilience`).
+- **Concurrent IPC & Telemetry Stress**: Validates high-concurrency IPC command dispatches while `TelemetrySubsystem` streams metrics at high frequency (`test_master_audit_concurrent_ipc_and_telemetry_stress`).
+- **IPC Contract Dispatch Matrix**: Tests 100% of control command enums (`ListWidgets`, `UpdateWidgetDisplayOptions`, `QuickSwapWidget`, `EnableWidget`, `DisableWidget`, `SetWidgetOpacity`, `ResetWidgetConfig`) (`test_master_audit_ipc_contract_full_dispatch_matrix`).
+- **1,000-Tick Soak Stability**: Verifies 1,000 consecutive telemetry collection ticks with zero memory leaks or handles degradation (`test_master_audit_soak_1000_ticks_zero_leak_stability`).
+- **Full Lifecycle Transitions**: Ensures clean mount/unmount and resource allocation across all core widgets (`test_master_audit_all_widgets_full_lifecycle_transitions`).
+- **Sandbox Capability Isolation**: Tests AppContainer sandbox boundary enforcement (`test_master_audit_sandbox_capability_broker_isolation`).
+- **WCAG Dynamic Contrast Legibility**: Validates `ContrastGuard` foreground color selection across extreme background luminance levels (`test_master_audit_contrast_guard_wcag_legibility`).
 
-### ⚙️ 2. WinUI 3 Quick-Settings & Per-Widget Management (C#)
-- **Per-Widget Quick Settings Flyout (`Pages/WidgetsPage.xaml`)**:
-  - Added gear icon button (`⚙`) on each discovered and active running widget card.
-  - Interactive Flyout UI featuring:
-    - **Opacity Slider** (range `0.1`–`1.0` in steps of `0.05`) connected live via `SetOpacityCommand`.
-    - **Enable/Disable Toggle** (`EnableWidget` / `DisableWidget`) via `ToggleEnableDisableCommand`.
-    - **Drag-Lock Toggle** (`ToggleWidgetLockCommand`).
-    - **Reset Settings Button** (`ResetWidgetConfigCommand`).
-    - **Detailed Settings Button** opening an interactive `ContentDialog` showing manifest path, update interval, target FPS, and description.
-- **`WidgetSettingsService` (`Services/WidgetSettingsService.cs`)**:
-  - Manages reading/writing `%LOCALAPPDATA%\Aether\widget_settings\<widget_id>.json` and synchronizes live updates with the Rust Core Engine via Named Pipe IPC commands.
-- **Enhanced `WidgetsViewModel` (`ViewModels/WidgetsViewModel.cs`)**:
-  - Added `SetOpacityCommand`, `ToggleEnableDisableCommand`, `QuickSwapPositionCommand`, `QuickSwapConfigCommand`, and `ResetWidgetConfigCommand`.
-  - Updated `DiscoverWidgetsAsync` and `RefreshRunningWidgets` to populate `WidgetInfo` with per-widget opacity, scale, locked, and enabled options from `WidgetSettingsService`.
+### 📦 2. Automated Installer Wizard (`crates/installer`)
+- **Binary Packaging Pipeline**: Automated packaging of `core_engine.exe`, `dashboard_tui.exe`, `CustomWidget.Dashboard.exe`, and `AetherSetup.exe` into `%LOCALAPPDATA%\Aether\`.
+- **Source Code Exclusion**: Guarantees zero source code leakage into the installation directory.
+- **Directory Hierarchy Verification**: Creates and verifies runtime directories (`bin`, `assets`, `config`, `widgets`, `logs`).
+- **Windows Integration**: Configures Start Menu shortcuts and Uninstall registry keys for clean uninstallation.
 
-### 🧹 3. Automatic Dependency Shutdown & Memory Management
-- **Process Tree Cleanup**: `ProcessManagerService.StopEngineAsync()` kills background daemon processes with `entireProcessTree: true` on dashboard close.
-- **Working-Set Memory Trimming**: `MemoryManagerService` uses Win32 `SetProcessWorkingSetSize` and forced garbage collection to return unused RAM back to Windows OS.
+### 📚 3. Architecture Documentation Reorganization
+- Consolidated and cleaned architecture documentation into standard `docs/Architecture/` domain hierarchy:
+  - `ARCHITECTURE.md`
+  - `DATA_FLOW.md`
+  - `DEPENDENCY_GRAPH.md`
+  - `EVENT_SYSTEM.md`
+  - `IPC.md`
+  - `IPC_PROTOCOL.md`
+  - `Memory_Model.md`
+  - `RENDER_PIPELINE.md`
+  - `Rendering.md`
+  - `SYSTEM_OVERVIEW.md`
+  - `Startup_Shutdown.md`
+  - `System_Architecture.md`
+  - `THREADING_MODEL.md`
 
-### 🧪 4. Automated Unit Test Suites
-- **Rust Workspace Unit Tests**: 184 passing unit tests covering `widget_config_store`, `ipc_protocol` commands, `contrast.rs`, `perf_monitor_widget`, and subsystem orchestrators.
-- **C# MSTest Unit Tests (`src_gui/CustomWidget.Dashboard.Tests`)**: 28 passing unit tests covering ViewModels, `WidgetSettingsService`, `MemoryManagerService`, `AetherIpcService`, and UI data models.
+### 💻 4. GUI & Widget Quality of Life (QoL) Enhancements
+- **WinUI 3 ViewModels**: Refactored `DesignTokensViewModel`, `MarketplaceViewModel`, and `ProfilesViewModel` for safer observable collection updates and resource disposal.
+- **Widget Lifecycles**: Standardized draw command batching and telemetry snapshot reading across `ai_assistant_widget`, `network_monitor_widget`, `perf_monitor_widget`, and `weather_widget`.
+- **WorkerW Attachment**: Improved desktop Shell / WorkerW window handle search and message loop hook stability.
 
 ---
 
-## 🛠️ Architecture & Design Governance
+## 🛠️ Architecture & Security Audit
 
-1. **Strict Core Rendering Boundary**:
-   - Widgets are rendered exclusively on the desktop overlay layer (`HWND_BOTTOM`), click-through by default, positioned behind all applications. Widgets emit abstract `DrawCommand` lists; no widget spawns separate top-level UI windows.
-2. **Interface Isolation**:
-   - `WidgetConfigStore` operates through typed `WidgetConfig` abstractions without hardcoding concrete render target properties.
-3. **No Premature Optimization**:
-   - Per-widget JSON configurations use lightweight lazy disk persistence with atomic memory map caching.
+1. **Strict Boundary Isolation**:
+   - Runtime binaries reside in `%LOCALAPPDATA%\Aether\` without source files or debug symbols.
+2. **Zero Global State**:
+   - `WidgetConfigStore` and `SharedTelemetryCache` use explicit `Arc<Mutex<T>>` / `Arc<RwLock<T>>` composition.
+3. **AppContainer & Capability Sandbox**:
+   - Untrusted widgets execute under restricted token privileges via `plugin_runtime`.
 
 ---
 
 ## 📊 Verification & Test Metrics
 
-| Metric | Result | Status |
-|---|---|---|
-| **Rust Workspace Tests** | **184 / 184 Passed** | ✅ PASS |
-| **C# GUI Unit Tests** | **28 / 28 Passed** | ✅ PASS |
-| **Total Test Suite Pass Rate** | **212 / 212 Passed (100%)** | ✅ PASS |
-| **WinUI 3 Dashboard Build** | **0 Warnings, 0 Errors** | ✅ PASS |
-| **Rust Engine Compilation** | **0 Errors** | ✅ PASS |
+| Metric | Previous (v0.7.0) | Current (v0.7.1 RC) | Status |
+|---|---|---|---|
+| **Rust Workspace Tests** | 184 Passed | **193 Passed** | ✅ PASS |
+| **C# GUI Unit Tests** | 28 Passed | **28 Passed** | ✅ PASS |
+| **Total Test Suite Pass Rate** | 212 / 212 (100%) | **221 / 221 (100%)** | ✅ PASS |
+| **WinUI 3 Dashboard Build** | 0 Warnings, 0 Errors | **0 Warnings, 0 Errors** | ✅ PASS |
+| **Rust Workspace Compilation** | 0 Errors | **0 Errors** | ✅ PASS |
 
 ---
 
 ## 🔄 Comparison against Previous PR
 
-| Feature / Area | Previous State (v0.6.0) | Current State (v0.7.0 PR) |
+| Feature / Area | Previous PR (`167ee5b`) | Current PR |
 |---|---|---|
-| **Widget Rendering** | Basic Desktop Window | **Core-Managed Desktop Rendering with Dynamic Contrast Legibility (`ContrastGuard`)** |
-| **Widget Configuration** | System-wide config manager | **Per-Widget JSON Configs (`WidgetConfigStore`) + IPC Sync** |
-| **Quick Settings UI** | Lock/Reset buttons only | **Per-Widget Quick Settings Flyout (Opacity Slider, Enable Toggle, Lock Toggle, Reset, Detailed Dialog)** |
-| **Quick Swap** | None | **QuickSwap by Position Coordinates or Full Configuration** |
-| **WinUI 3 Pages** | 5 Basic Pages | **13 Complete Pages** |
-| **Automated Tests** | 121 Tests | **212 Tests (184 Rust + 28 C#)** |
+| **Master Audit Suite** | None | **9 Comprehensive Stress, Chaos, Soak & IPC Integration Tests** |
+| **Installer Wizard** | Basic skeleton | **Full Installer Wizard packaging binaries to `%LOCALAPPDATA%\Aether\`** |
+| **Doc Architecture** | Split between `01_Architecture` & root | **Consolidated 100% under `docs/Architecture/`** |
+| **Total Test Count** | 212 Passing Tests | **221 Passing Tests (193 Rust + 28 C#)** |

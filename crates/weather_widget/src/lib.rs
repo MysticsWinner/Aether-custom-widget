@@ -46,6 +46,18 @@ impl WeatherWidget {
             tick_count: 0,
         }
     }
+
+    pub fn cache(&self) -> &SharedTelemetryCache {
+        &self.cache
+    }
+
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
 }
 
 impl WidgetLifecycle for WeatherWidget {

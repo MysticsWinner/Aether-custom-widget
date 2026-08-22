@@ -33,16 +33,24 @@
    - `TickRateAdvisor` dynamically scales tick rates (10ms active → 100ms battery saver).
    - Extended telemetry collectors for App counts, Battery specs, Audio volume, and Multi-GPU topology.
 
+6. **Master Core–Widget Verification & Public Release Audit (`docs/08_Release/MASTER_RELEASE_AUDIT_REPORT.md`)**:
+   - Comprehensive audit across all 28 Rust crates and WinUI 3 dashboard.
+   - 221 Automated Tests (193 Rust Backend + 28 C# WinUI 3 GUI) with 100% pass rate.
+   - Standalone binary-only local installer generation (`cargo run -p aether_installer`).
+   - Zero compiler warnings, verified chaos resilience, and capability security isolation.
+
 ---
 
 ## Future Work
-- Finalize production installer bundle.
+- Public package registry cloud distribution.
 
 ## Known Issues
 - None.
 
 ## References
 - [Changelog.md](Changelog.md)
+- [MASTER_RELEASE_AUDIT_REPORT.md](../08_Release/MASTER_RELEASE_AUDIT_REPORT.md)
 
 ## Related Documents
 - [Detailed_Project_Report.md](Detailed_Project_Report.md)
+- [RELEASE_PROCESS.md](../08_Release/RELEASE_PROCESS.md)

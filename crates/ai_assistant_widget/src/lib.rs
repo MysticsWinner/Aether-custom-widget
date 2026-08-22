@@ -61,6 +61,18 @@ impl AiAssistantWidget {
     pub fn set_active_profile(&mut self, profile: DesktopProfile) {
         self.active_profile = profile;
     }
+
+    pub fn cache(&self) -> &SharedTelemetryCache {
+        &self.cache
+    }
+
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
 }
 
 impl WidgetLifecycle for AiAssistantWidget {
