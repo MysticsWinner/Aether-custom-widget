@@ -2,8 +2,8 @@
 
 **Purpose**: Documents telemetry collection, IPC command dispatch, and render command pipelines in Aether.  
 **Audience**: Engine Developers, SDK Developers.  
-**Prerequisites**: [System_Architecture.md](System_Architecture.md).  
-**Related Documents**: [IPC.md](IPC.md), [Rendering.md](Rendering.md).  
+**Prerequisites**: [ARCHITECTURE.md](ARCHITECTURE.md).  
+**Related Documents**: [IPC_PROTOCOL.md](IPC_PROTOCOL.md), [CORE_RENDERING.md](CORE_RENDERING.md).  
 **Last Updated**: 2026-08-07  
 **Status**: Active / Specification  
 **Owner**: Core Engine Team  
@@ -53,5 +53,5 @@
 - [crates/ipc_protocol/src/messages.rs](file:///d:/Code/Aether-custom-widget/crates/ipc_protocol/src/messages.rs)
 
 ## Related Documents
-- [IPC.md](IPC.md)
-- [Rendering.md](Rendering.md)
+- [IPC_PROTOCOL.md](IPC_PROTOCOL.md)
+- [CORE_RENDERING.md](CORE_RENDERING.md)

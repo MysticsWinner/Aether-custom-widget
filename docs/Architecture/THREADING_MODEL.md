@@ -2,7 +2,7 @@
 
 **Purpose**: Explains thread allocation, Tokio async execution pool, and lock-free concurrency design in Aether.  
 **Audience**: Core Engine Developers, Concurrency Engineers.  
-**Prerequisites**: [System_Architecture.md](System_Architecture.md).  
+**Prerequisites**: [ARCHITECTURE.md](ARCHITECTURE.md).  
 **Related Documents**: [Memory_Model.md](Memory_Model.md), [Data_Flow.md](Data_Flow.md).  
 **Last Updated**: 2026-08-07  
 **Status**: Active / Technical Specification  
@@ -39,5 +39,5 @@ Aether divides execution across dedicated, isolated thread contexts:
 - [crates/core_engine/src/rendering/desktop_widget_window.rs](file:///d:/Code/Aether-custom-widget/crates/core_engine/src/rendering/desktop_widget_window.rs)
 
 ## Related Documents
-- [System_Architecture.md](System_Architecture.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
 - [Memory_Model.md](Memory_Model.md)

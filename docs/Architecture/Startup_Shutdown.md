@@ -2,8 +2,8 @@
 
 **Purpose**: Documents initialization sequence, subsystem startup order, and graceful reverse shutdown handling.  
 **Audience**: Engine Engineers, System Integrators.  
-**Prerequisites**: [System_Architecture.md](System_Architecture.md).  
-**Related Documents**: [Engine.md](../02_Core/Engine.md).  
+**Prerequisites**: [ARCHITECTURE.md](ARCHITECTURE.md).  
+**Related Documents**: [Engine.md](../Core/Engine.md).  
 **Last Updated**: 2026-08-07  
 **Status**: Active / Technical Specification  
 **Owner**: Core Engine Team  
@@ -36,4 +36,4 @@ On receiving SIGINT/Ctrl+C or IPC `Shutdown` command, `SubsystemManager` iterate
 - [crates/core_engine/src/subsystems.rs](file:///d:/Code/Aether-custom-widget/crates/core_engine/src/subsystems.rs)
 
 ## Related Documents
-- [Engine.md](../02_Core/Engine.md)
+- [Engine.md](../Core/Engine.md)

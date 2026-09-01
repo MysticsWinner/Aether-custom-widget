@@ -3,7 +3,7 @@
 **Purpose**: Explains memory allocation models, buffer pooling, and LRU resource caching in Aether.  
 **Audience**: Performance Engineers, Systems Developers.  
 **Prerequisites**: [Threading_Model.md](Threading_Model.md).  
-**Related Documents**: [Performance.md](../08_Testing/Performance.md).  
+**Related Documents**: [PERFORMANCE_OVERVIEW.md](../Performance/PERFORMANCE_OVERVIEW.md).  
 **Last Updated**: 2026-08-07  
 **Status**: Active / Technical Specification  
 **Owner**: Core Architecture Team  
