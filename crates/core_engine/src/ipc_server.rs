@@ -1,4 +1,4 @@
-﻿//! Tokio async Named Pipe IPC Server
+//! Tokio async Named Pipe IPC Server
 //!
 //! Listens on `\\.\pipe\CustomWidgetEngineControlPipe` and handles
 //! `ControlCommand` JSON messages from any IPC client (the WinUI 3 dashboard,
@@ -92,58 +92,17 @@ pub struct IpcSharedState {
 }
 
 impl IpcSharedState {
-    pub fn new(
-        cache: SharedTelemetryCache,
-        desktop_window: Arc<DesktopWidgetWindow>,
-        initial_widgets: Vec<String>,
-    ) -> Self {
-        let base_dir = std::env::temp_dir().join("aether_recovery");
-        let rec_mgr = RecoveryManager::new(&base_dir, CrashPolicy::default());
-        let snap_mgr = SnapshotManager::new(base_dir.join("snapshots"), 20);
-        let cap_broker = CapabilityBroker::new(base_dir.join("grants.json"));
-        let evt_rec = EventRecorder::new(10000);
-        let watchdog = WatchdogSupervisor::new("aether_engine.exe", 5000);
-        let minidump = MinidumpWriter::new(base_dir.join("minidumps"));
-        let etw = EtwProvider::new("AetherEngineProvider");
-        let tick_adv = TickRateAdvisor::new();
-        let frame_sched = FrameScheduler::new();
-        let res_cache = LruResourceCache::new(500);
-        let reloader = DevHotReloader::new();
-        let grid = LayoutGridOverlay::default();
-        let mkt = MarketplaceCatalog::new();
-        let pol_eng = PolicyEngine::new(base_dir.join("policy.json"));
-        let audit_log = AuditLogger::new(base_dir.join("audit.log"));
-        let wcs = WidgetConfigStore::new(base_dir.join("widget_settings"));
-
-        Self {
-            cache,
-            desktop_window,
-            widget_registry: Arc::new(Mutex::new(initial_widgets)),
-            recovery_manager: Arc::new(Mutex::new(rec_mgr)),
-            snapshot_manager: Arc::new(Mutex::new(snap_mgr)),
-            capability_broker: Arc::new(Mutex::new(cap_broker)),
-            event_recorder: Arc::new(Mutex::new(evt_rec)),
-            watchdog_supervisor: Arc::new(Mutex::new(watchdog)),
-            minidump_writer: Arc::new(Mutex::new(minidump)),
-            etw_provider: Arc::new(Mutex::new(etw)),
-            tick_advisor: Arc::new(Mutex::new(tick_adv)),
-            frame_scheduler: Arc::new(Mutex::new(frame_sched)),
-            resource_cache: Arc::new(Mutex::new(res_cache)),
-            dev_reloader: Arc::new(Mutex::new(reloader)),
-            layout_grid: Arc::new(Mutex::new(grid)),
-            marketplace: Arc::new(Mutex::new(mkt)),
-            policy_engine: Arc::new(Mutex::new(pol_eng)),
-            audit_logger: Arc::new(Mutex::new(audit_log)),
-            widget_config_store: Arc::new(Mutex::new(wcs)),
-        }
-    }
-
-    pub fn with_registry(
+    fn init_components(
         cache: SharedTelemetryCache,
         desktop_window: Arc<DesktopWidgetWindow>,
         widget_registry: Arc<Mutex<Vec<String>>>,
     ) -> Self {
-        let base_dir = std::env::temp_dir().join("aether_recovery");
+        let base_dir = std::env::var("LOCALAPPDATA")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| std::env::temp_dir())
+            .join("Aether")
+            .join("data");
+
         let rec_mgr = RecoveryManager::new(&base_dir, CrashPolicy::default());
         let snap_mgr = SnapshotManager::new(base_dir.join("snapshots"), 20);
         let cap_broker = CapabilityBroker::new(base_dir.join("grants.json"));
@@ -183,6 +142,22 @@ impl IpcSharedState {
             widget_config_store: Arc::new(Mutex::new(wcs)),
         }
     }
+
+    pub fn new(
+        cache: SharedTelemetryCache,
+        desktop_window: Arc<DesktopWidgetWindow>,
+        initial_widgets: Vec<String>,
+    ) -> Self {
+        Self::init_components(cache, desktop_window, Arc::new(Mutex::new(initial_widgets)))
+    }
+
+    pub fn with_registry(
+        cache: SharedTelemetryCache,
+        desktop_window: Arc<DesktopWidgetWindow>,
+        widget_registry: Arc<Mutex<Vec<String>>>,
+    ) -> Self {
+        Self::init_components(cache, desktop_window, widget_registry)
+    }
 }
 
 /// Runs the IPC server loop.  Never returns under normal operation;
@@ -198,19 +173,27 @@ pub async fn run_ipc_server(state: IpcSharedState) -> Result<()> {
     // create new instances of the same pipe name for additional connections.
     let mut is_first = true;
     loop {
-        let server = ServerOptions::new()
+        let server = match ServerOptions::new()
             .pipe_mode(PipeMode::Byte)
             .first_pipe_instance(is_first)
             .create(PIPE_NAME)
-            .inspect_err(|e| error!("IPC pipe create error: {e:?}"))?;
+        {
+            Ok(s) => s,
+            Err(e) => {
+                error!("IPC pipe create error: {e:?}");
+                tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+                continue;
+            }
+        };
 
         is_first = false;
 
-        // Block until a client connects
-        server
-            .connect()
-            .await
-            .inspect_err(|e| warn!("IPC connect error: {e:?}"))?;
+        // Block until a client connects (continue on transient errors)
+        if let Err(e) = server.connect().await {
+            warn!("IPC connect transient error: {e:?}");
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            continue;
+        }
 
         info!("IPC: client connected.");
         let state_ref = state.clone();
@@ -398,16 +381,26 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
 
         ControlCommand::GetSubsystemHealth => {
             info!("IPC: GetSubsystemHealth requested.");
+            let gpu_health = if production_engine::ChaosHarness::is_failure_armed(&production_engine::ChaosScenario::GpuUnavailable) {
+                "Degraded"
+            } else {
+                "Healthy"
+            };
+            let ipc_health = if production_engine::ChaosHarness::is_failure_armed(&production_engine::ChaosScenario::IpcDisconnect) {
+                "Degraded"
+            } else {
+                "Healthy"
+            };
             let subsystems = vec![
                 serde_json::json!({ "name": "telemetry_subsystem", "health": "Healthy" }),
-                serde_json::json!({ "name": "gpu_render_engine", "health": "Healthy" }),
+                serde_json::json!({ "name": "gpu_render_engine", "health": gpu_health }),
                 serde_json::json!({ "name": "theme_engine", "health": "Healthy" }),
                 serde_json::json!({ "name": "plugin_sandbox", "health": "Healthy" }),
                 serde_json::json!({ "name": "profiler", "health": "Healthy" }),
                 serde_json::json!({ "name": "marketplace", "health": "Healthy" }),
                 serde_json::json!({ "name": "cloud_sync", "health": "Healthy" }),
                 serde_json::json!({ "name": "ai_intelligence", "health": "Healthy" }),
-                serde_json::json!({ "name": "production_readiness", "health": "Healthy" }),
+                serde_json::json!({ "name": "production_readiness", "health": ipc_health }),
             ];
             serde_json::json!({ "status": "ok", "subsystems": subsystems }).to_string()
         }

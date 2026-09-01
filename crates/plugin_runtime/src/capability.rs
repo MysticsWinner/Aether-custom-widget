@@ -18,7 +18,7 @@ pub enum PluginCapability {
 }
 
 /// Manifest declaring requested and granted capabilities for a plugin package.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct PermissionManifest {
     pub plugin_id: String,
     pub requested_capabilities: HashSet<PluginCapability>,

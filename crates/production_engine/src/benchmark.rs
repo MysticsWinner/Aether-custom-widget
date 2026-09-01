@@ -13,7 +13,8 @@ impl MasterReleaseSuite {
         info!(" MASTER PRODUCTION RELEASE CANDIDATE VERIFICATION SUITE");
         info!("===========================================================");
 
-        let audit_pass = SecurityAuditor::run_security_audit();
+        let audit_report = SecurityAuditor::run_security_audit();
+        let audit_pass = audit_report.overall_passed;
         let stress_pass = StressTestingHarness::run_stress_test(100, 1000);
 
         let elapsed = start.elapsed();

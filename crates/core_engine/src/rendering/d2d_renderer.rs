@@ -4,6 +4,13 @@ use std::time::Instant;
 use tracing::{debug, info};
 
 /// Direct2D & DirectComposition Hardware GPU Renderer implementation.
+///
+/// # Architecture Note
+/// The Aether rendering subsystem operates in a dual-mode configuration:
+/// 1. **Hardware Pipeline (`Direct2DRenderer`)**: Manages DirectX / Direct2D device contexts,
+///    dirty rectangle tracking (`DirtyRegionTracker`), and frame stats for high-frequency compositing.
+/// 2. **Desktop Overlay (`DesktopWidgetWindow`)**: Renders native transparent layered windows
+///    hooked behind desktop icons via the `WorkerW` / `Progman` hierarchy.
 pub struct Direct2DRenderer {
     initialized: bool,
     refresh_rate: RefreshRate,

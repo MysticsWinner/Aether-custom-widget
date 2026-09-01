@@ -16,11 +16,12 @@ impl ProductionSubsystem {
     }
 
     pub fn run_diagnostics(&self) -> bool {
-        let audit = SecurityAuditor::run_security_audit();
+        let audit_report = SecurityAuditor::run_security_audit();
         let stress = StressTestingHarness::run_stress_test(100, 100);
-        let _ = AutoUpdater::check_for_updates();
+        let updater = AutoUpdater::new(env!("CARGO_PKG_VERSION"));
+        let _ = updater.check_for_updates();
         let docs = DocumentationPortal::build_portal();
-        audit && stress && docs
+        audit_report.overall_passed && stress && docs
     }
 }
 

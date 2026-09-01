@@ -1,4 +1,4 @@
-﻿use layout_engine::WidgetPositionStore;
+use layout_engine::WidgetPositionStore;
 use system_providers::SharedTelemetryCache;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -119,16 +119,15 @@ fn run_desktop_window_loop(
         WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP, WM_NCHITTEST, WM_EXITSIZEMOVE, HTCAPTION,
     };
 
-    static mut GLOBAL_POS_STORE: Option<WidgetPositionStore> = None;
+    static WINDOW_POS_STORE: std::sync::OnceLock<WidgetPositionStore> = std::sync::OnceLock::new();
+    let _ = WINDOW_POS_STORE.set(pos_store.clone());
 
     unsafe {
-        GLOBAL_POS_STORE = Some(pos_store.clone());
-
         let hinstance: HINSTANCE = windows::Win32::System::LibraryLoader::GetModuleHandleW(None)?.into();
         let class_name = w!("AetherDesktopWidgetClass");
 
         unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-            let pos_store_ref = unsafe { (&raw const GLOBAL_POS_STORE).as_ref() }.and_then(|opt| opt.as_ref());
+            let pos_store_ref = WINDOW_POS_STORE.get();
             match msg {
                 WM_NCHITTEST => {
                     if let Some(store) = pos_store_ref {

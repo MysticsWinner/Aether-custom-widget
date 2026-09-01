@@ -1,5 +1,6 @@
 use crate::providers::{
-    CpuProvider, GpuProvider, MemoryProvider, MetricProvider, MetricValue, NetworkProvider,
+    AudioProvider, BatteryProvider, CpuProvider, DisplayTopologyProvider, GpuProvider,
+    MemoryProvider, MetricProvider, MetricValue, NetworkProvider, ProcessMetricsProvider,
 };
 use crate::shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -11,6 +12,10 @@ pub struct TelemetryService {
     memory_provider: Box<dyn MetricProvider>,
     gpu_provider: Box<dyn MetricProvider>,
     network_provider: Box<dyn MetricProvider>,
+    battery_provider: Box<dyn MetricProvider>,
+    audio_provider: Box<dyn MetricProvider>,
+    process_provider: Box<dyn MetricProvider>,
+    display_provider: Box<dyn MetricProvider>,
     cache: SharedTelemetryCache,
 }
 
@@ -22,6 +27,10 @@ impl TelemetryService {
             memory_provider: Box::new(MemoryProvider::new()),
             gpu_provider: Box::new(GpuProvider::new()),
             network_provider: Box::new(NetworkProvider::new()),
+            battery_provider: Box::new(BatteryProvider::new()),
+            audio_provider: Box::new(AudioProvider::new()),
+            process_provider: Box::new(ProcessMetricsProvider::new()),
+            display_provider: Box::new(DisplayTopologyProvider::new()),
             cache,
         }
     }
@@ -50,10 +59,71 @@ impl TelemetryService {
             _ => 0.0,
         };
 
-        let net_val = match self.network_provider.sample()? {
-            MetricValue::BytesPerSec(v) => v,
-            _ => 0,
+        let (net_rx, net_tx) = match self.network_provider.sample()? {
+            MetricValue::NetworkStats {
+                rx_bytes_per_sec,
+                tx_bytes_per_sec,
+            } => (rx_bytes_per_sec, tx_bytes_per_sec),
+            MetricValue::BytesPerSec(v) => (v, v / 4), // legacy fallback
+            _ => (0, 0),
         };
+
+        let (bat_pct, bat_secs, is_charging) = match self.battery_provider.sample()? {
+            MetricValue::BatteryStats {
+                charge_pct,
+                remaining_secs,
+                is_charging,
+            } => (charge_pct, remaining_secs, is_charging),
+            _ => (100.0, 0, true),
+        };
+
+        let (vol_pct, is_muted) = match self.audio_provider.sample()? {
+            MetricValue::AudioStats {
+                master_volume_pct,
+                is_muted,
+            } => (master_volume_pct, is_muted),
+            _ => (75.0, false),
+        };
+
+        let (open_apps, browser_tabs, audio_apps, gaming_apps, dev_apps, other_apps) =
+            match self.process_provider.sample()? {
+                MetricValue::ProcessStats {
+                    open_apps_count,
+                    browser_tabs_count,
+                    audio_playing_apps_count,
+                    gaming_apps_count,
+                    dev_suite_apps_count,
+                    other_apps_count,
+                } => (
+                    open_apps_count,
+                    browser_tabs_count,
+                    audio_playing_apps_count,
+                    gaming_apps_count,
+                    dev_suite_apps_count,
+                    other_apps_count,
+                ),
+                _ => (5, 12, 1, 0, 2, 2),
+            };
+
+        let (total_gpus, int_gpus, ded_gpus, total_displays, ext_displays, virt_displays) =
+            match self.display_provider.sample()? {
+                MetricValue::DisplayTopologyStats {
+                    total_gpu_count,
+                    integrated_gpu_count,
+                    dedicated_gpu_count,
+                    total_display_count,
+                    external_display_count,
+                    virtual_display_count,
+                } => (
+                    total_gpu_count,
+                    integrated_gpu_count,
+                    dedicated_gpu_count,
+                    total_display_count,
+                    external_display_count,
+                    virtual_display_count,
+                ),
+                _ => (1, 1, 0, 1, 0, 0),
+            };
 
         let snapshot = TelemetrySnapshot {
             timestamp_ms: now_ms,
@@ -61,25 +131,25 @@ impl TelemetryService {
             memory_used_mb: mem_used,
             memory_total_mb: mem_total,
             gpu_usage_pct: gpu_val,
-            net_recv_bytes_per_sec: net_val,
-            net_sent_bytes_per_sec: net_val / 4,
-            open_apps_count: 5,
-            browser_tabs_count: 12,
-            audio_playing_apps_count: 1,
-            gaming_apps_count: 0,
-            dev_suite_apps_count: 2,
-            other_apps_count: 2,
-            master_volume_pct: 75.0,
-            is_muted: false,
-            battery_charge_pct: 85.0,
-            battery_remaining_secs: 14400,
-            is_charging: true,
-            total_gpu_count: 2,
-            integrated_gpu_count: 1,
-            dedicated_gpu_count: 1,
-            total_display_count: 2,
-            external_display_count: 1,
-            virtual_display_count: 0,
+            net_recv_bytes_per_sec: net_rx,
+            net_sent_bytes_per_sec: net_tx,
+            open_apps_count: open_apps,
+            browser_tabs_count: browser_tabs,
+            audio_playing_apps_count: audio_apps,
+            gaming_apps_count: gaming_apps,
+            dev_suite_apps_count: dev_apps,
+            other_apps_count: other_apps,
+            master_volume_pct: vol_pct,
+            is_muted,
+            battery_charge_pct: bat_pct,
+            battery_remaining_secs: bat_secs,
+            is_charging,
+            total_gpu_count: total_gpus,
+            integrated_gpu_count: int_gpus,
+            dedicated_gpu_count: ded_gpus,
+            total_display_count: total_displays,
+            external_display_count: ext_displays,
+            virtual_display_count: virt_displays,
             custom_metrics: Default::default(),
         };
 
@@ -143,6 +213,7 @@ mod tests {
         assert!(snapshot.cpu_usage_pct >= 0.0);
         assert_eq!(cache.update_count(), 1);
         assert_eq!(cache.get_snapshot(), snapshot);
+        assert!(snapshot.total_display_count >= 1);
     }
 
     #[test]

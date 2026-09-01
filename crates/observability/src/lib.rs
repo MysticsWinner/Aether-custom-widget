@@ -6,7 +6,7 @@ pub mod prometheus;
 pub use correlation::TraceContext;
 pub use etw::{EtwEvent, EtwProvider};
 pub use minidump::MinidumpWriter;
-pub use prometheus::PrometheusExporter;
+pub use prometheus::{PrometheusExporter, PrometheusHttpServer};
 
 #[cfg(test)]
 mod tests {

@@ -1,7 +1,8 @@
 use crate::heartbeat::WatchdogHeartbeat;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use tracing::{error, info};
+use std::process::Command;
+use tracing::{error, info, warn};
 
 /// Watchdog subsystem status summary.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -57,6 +58,32 @@ impl WatchdogSupervisor {
             restart_count = self.restart_count,
             "Restarting Aether core engine process"
         );
+
+        // Attempt actual process spawning if executable exists
+        let path = std::path::Path::new(&self.engine_binary_path);
+        if path.exists() {
+            match Command::new(path).spawn() {
+                Ok(child) => {
+                    info!(
+                        "Successfully spawned replacement engine process with PID {}",
+                        child.id()
+                    );
+                    self.heartbeat.engine_pid = Some(child.id());
+                }
+                Err(e) => {
+                    error!(
+                        "Failed to spawn replacement engine process at {:?}: {}",
+                        path, e
+                    );
+                }
+            }
+        } else {
+            warn!(
+                "Engine binary path '{:?}' not found on disk; registered restart intent #{}",
+                path, self.restart_count
+            );
+        }
+
         // Reset heartbeat timer after triggering restart
         self.heartbeat.last_heartbeat_ms = 0;
         Ok(())
@@ -68,6 +95,38 @@ impl WatchdogSupervisor {
             engine_pid: self.heartbeat.engine_pid,
             last_heartbeat_ms: self.heartbeat.last_heartbeat_ms,
             restart_count: self.restart_count,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_watchdog_supervisor_restart_logic() {
+        let mut supervisor = WatchdogSupervisor::new("mock_engine.exe", 5000);
+        supervisor.record_heartbeat(1234, 1000);
+        assert!(supervisor.check_health(2000).unwrap());
+
+        // Simulate heartbeat timeout at 7000ms (> 5000ms delta)
+        assert!(!supervisor.check_health(7000).unwrap());
+        assert_eq!(supervisor.status().restart_count, 1);
+    }
+
+    #[test]
+    fn test_watchdog_real_process_spawning() {
+        #[cfg(windows)]
+        let exe = "C:\\Windows\\System32\\cmd.exe";
+        #[cfg(not(windows))]
+        let exe = "/bin/sh";
+
+        if std::path::Path::new(exe).exists() {
+            let mut supervisor = WatchdogSupervisor::new(exe, 1000);
+            supervisor.record_heartbeat(9999, 1000);
+            let result = supervisor.restart_engine();
+            assert!(result.is_ok());
+            assert!(supervisor.status().engine_pid.is_some());
         }
     }
 }

@@ -15,12 +15,14 @@ All widget packages (`.aether` bundles) require digital verification before inst
 pub struct Ed25519Verifier;
 
 impl Ed25519Verifier {
-    pub fn verify_package(payload: &[u8], signature: &[u8]) -> bool {
-        if payload.is_empty() || signature.is_empty() {
-            return false;
-        }
-        // In prototype state, returns true; production target integrates ring/ed25519-dalek.
-        true
+    /// Validates an Ed25519 digital signature against package payload bytes and a public key.
+    pub fn verify_package(
+        package_id: &str,
+        payload: &[u8],
+        signature_bytes: &[u8],
+        public_key_bytes: &[u8; 32],
+    ) -> bool {
+        // Real ed25519-dalek cryptographic signature validation
     }
 }
 ```

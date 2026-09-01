@@ -8,7 +8,7 @@ pub mod types;
 pub use manager::{CrashRecoveryAction, RecoveryManager};
 pub use policy::CrashPolicy;
 pub use quarantine::QuarantineStore;
-pub use rollback::RollbackCoordinator;
+pub use rollback::{RollbackCoordinator, WidgetVersionBackup};
 pub use safe_mode::SafeModeGuard;
 pub use types::{CrashRecord, LaunchMode, QuarantineRecord};
 

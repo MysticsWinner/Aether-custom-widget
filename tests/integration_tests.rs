@@ -199,7 +199,7 @@ async fn test_07_ai_voice_intent_and_workflow_automation_integration() {
 
 #[tokio::test]
 async fn test_08_production_stress_and_master_release_integration() {
-    assert!(SecurityAuditor::run_security_audit());
+    assert!(SecurityAuditor::run_security_audit().overall_passed);
     assert!(StressTestingHarness::run_stress_test(100, 1000));
     assert!(MasterReleaseSuite::run_release_audit());
 }
