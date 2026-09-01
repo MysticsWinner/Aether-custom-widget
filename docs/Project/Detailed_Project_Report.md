@@ -9,12 +9,11 @@
 **Owner**: Principal Software Architect & Technical Documentation Lead  
 
 ---
+## Executive Summary
 
-## Executive Summary
+Aether is an enterprise-class, hardware-accelerated, zero-trust desktop customization platform engineered specifically for **Windows 11 (`x86_64` & `ARM64`)**. The platform spans **31 Rust workspace crates**, a **WinUI 3 C# management app (`CustomWidget.Dashboard`)**, **Ratatui TUI dashboard (`dashboard_tui`)**, **C++ Win32 WorkerW desktop hook DLLs**, multi-language SDKs (**Rust**, **C# .NET 8**, **TypeScript**, **Lua 5.4**, **WebAssembly**), and a **14-domain documentation system**.
 
-Aether is an enterprise-class, hardware-accelerated, zero-trust desktop customization platform engineered specifically for **Windows 11 (`x86_64` & `ARM64`)**. The platform spans **28 Rust workspace crates**, a **WinUI 3 C# management app (`CustomWidget.Dashboard`)**, **Ratatui TUI dashboard (`dashboard_tui`)**, **C++ Win32 WorkerW desktop hook DLLs**, multi-language SDKs (**Rust**, **C# .NET 8**, **TypeScript**, **Lua 5.4**), and a **14-domain documentation system**.
-
-The workspace compiles cleanly with **0 errors and 0 warnings** across all crates and C# projects. The workspace test harness verifies **268 out of 268 automated tests passing** (240 Rust tests + 28 C# GUI tests) with 100% success rate.
+The workspace compiles cleanly with **0 errors and 0 warnings** across all crates and C# projects. The workspace test harness verifies **333 out of 333 automated tests passing** (303 Rust tests + 30 C# GUI tests) with 100% success rate.
 
 Aether enforces the core architecture principle: **"Collect Once, Publish Everywhere"**. Hardware metrics are sampled once per 10ms cycle by `system_providers` and cached in lock-free `SharedTelemetryCache`. Widgets emit `DrawCommand` batches rendered via DirectComposition and Direct2D onto transparent layered desktop windows without repeated Windows API calls.
 
@@ -31,45 +30,50 @@ Aether enforces the core architecture principle: **"Collect Once, Publish Everyw
 
 ---
 
-## 1. Repository Structure & Workspace Crates (28 Member Crates)
+## 1. Repository Structure & Workspace Crates (33 Member Crates)
 
 ```
 Aether-custom-widget\
-├── Cargo.toml                      # Workspace Manifest (28 member crates)
+├── Cargo.toml                      # Workspace Manifest (33 member crates)
 ├── README.md                       # Master Documentation Portal
 ├── .agents/AGENTS.md               # Project Governance & Testing Rules
 ├── crates/
 │   ├── ai_assistant_widget/        # AI desktop assistant widget (3 tests)
 │   ├── ai_engine/                  # AI layout synthesizer & wallpaper theme generator (10 tests)
 │   ├── animation_engine/           # Easing curves & spring physics engine (1 test)
+│   ├── audio_visualizer_widget/    # WASAPI FFT audio spectrum & SMTC widget (3 tests)
 │   ├── capability_broker/          # Sandboxing permission broker & WidgetFirewall (7 tests)
 │   ├── cloud_sync/                 # CRDT offline config synchronization (6 tests)
-│   ├── config_manager/             # Transactional atomic config & 5-gen backups (9 tests)
-│   ├── core_engine/                # Async host daemon, IPC server, subsystem orchestrator (58 tests)
+│   ├── config_manager/             # Transactional atomic config & 5-gen backups (11 tests)
+│   ├── core_engine/                # Async host daemon, IPC server, particles, scheduler (74 tests)
+│   ├── crypto_stocks_widget/       # Real-time financial & crypto ticker widget (2 tests)
 │   ├── dashboard_tui/              # Animated Ratatui terminal dashboard (1 test)
-│   ├── dev_tools/                  # File-watcher hot-reloader & Chrome DOM inspector (5 tests)
+│   ├── dev_tools/                  # File-watcher hot-reloader, inspector & aether CLI (7 tests)
+│   ├── dock_launcher_widget/       # Dynamic desktop dock & app launcher widget (3 tests)
 │   ├── enterprise/                 # Group Policy engine & SHA-256 audit logger (4 tests)
 │   ├── event_recorder/             # Time-travel event stream recorder & replayer (2 tests)
+│   ├── hardware_pro_widget/        # Dedicated GPU VRAM & CPU topology matrix widget (2 tests)
 │   ├── installer/                  # Local setup wizard & binary packager (5 tests)
-│   ├── ipc_protocol/               # Named pipe IPC messages & shared ring buffer (8 tests)
+│   ├── ipc_protocol/               # Named pipe IPC messages & shared ring buffer (9 tests)
 │   ├── layout_engine/              # Flexbox layout engine (4 tests)
-│   ├── lua_runtime/                # Sandboxed Lua 5.4 plugin host (3 tests)
+│   ├── lua_runtime/                # Sandboxed Lua 5.4 plugin host with live HCR (4 tests)
 │   ├── network_monitor_widget/     # Network adapter throughput widget (3 tests)
-│   ├── observability/              # Prometheus exporter, minidump writer & ETW provider (4 tests)
+│   ├── observability/              # Prometheus exporter, minidump & flight recorder (6 tests)
 │   ├── package_manager/            # npm-style installer & Ed25519 verifier (5 tests)
 │   ├── perf_monitor_widget/        # Built-in performance card renderer (6 tests)
-│   ├── plugin_runtime/             # AppContainer sandbox supervisor & integrity guard (7 tests)
+│   ├── plugin_runtime/             # AppContainer & Wasm linear memory sandbox (9 tests)
 │   ├── production_engine/          # Security auditor, stress harness & auto-updater (7 tests)
 │   ├── recovery_manager/           # Crash recovery manager & Safe Mode sentinel (6 tests)
-│   ├── system_providers/           # Hardware collectors, adaptive tick advisor & cache (11 tests)
+│   ├── system_providers/           # Hardware collectors, GPU, WASAPI audio & crypto (22 tests)
 │   ├── theme_engine/               # JSON theme parser, hot-swapper & token resolver (13 tests)
 │   ├── watchdog/                   # Heartbeat supervisor daemon (2 tests)
+│   ├── weather_particles_widget/   # Ambient weather & atmospheric particle widget (2 tests)
 │   ├── weather_widget/             # Multi-city weather forecast widget (3 tests)
 │   ├── widget_parser/              # TOML widget manifest parser & validator (3 tests)
-│   └── widget_sdk/                 # Standardized 6-pillar widget API & scheduler (22 tests)
+│   └── widget_sdk/                 # Standardized 6-pillar widget API, SVG & FrameArena (28 tests)
 ├── docs/                           # 14-domain documentation system
-├── src_gui/CustomWidget.Dashboard/ # WinUI 3 C# Desktop Management Dashboard (28 tests)
-└── tests/                          # Integration, Interface & System Test Suites (23 tests)
+├── src_gui/CustomWidget.Dashboard/ # WinUI 3 C# Desktop Management Dashboard (30 tests)
+└── tests/                          # Integration, Interface & System Test Suites (31 tests)
 ```
 
 ---

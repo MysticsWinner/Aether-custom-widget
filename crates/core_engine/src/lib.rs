@@ -1,4 +1,4 @@
-﻿//! Next-Gen Windows Desktop Customization Platform - Core Engine Library
+//! Next-Gen Windows Desktop Customization Platform - Core Engine Library
 //!
 //! Provides the event-driven, multi-threaded, native host daemon infrastructure
 //! responsible for system event routing, task scheduling, lifecycle management,
@@ -43,6 +43,6 @@ pub use rendering::{
     RectF, RefreshRate, RenderBenchmarkResult,
 };
 pub use subsystems::{RenderSubsystem, Subsystem, SubsystemHealth, SubsystemManager};
-pub use task_scheduler::TaskScheduler;
+pub use task_scheduler::{AdaptivePowerGovernor, PowerProfile, TaskScheduler};
 pub use telemetry_subsystem::TelemetrySubsystem;
 pub use theme_subsystem::ThemeEngineSubsystem;

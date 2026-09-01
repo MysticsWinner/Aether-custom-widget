@@ -203,3 +203,156 @@ async fn test_08_production_stress_and_master_release_integration() {
     assert!(StressTestingHarness::run_stress_test(100, 1000));
     assert!(MasterReleaseSuite::run_release_audit());
 }
+
+#[tokio::test]
+async fn test_09_gpu_d3dkmt_and_wasapi_audio_telemetry_flow() {
+    use system_providers::{SharedTelemetryCache, TelemetryService};
+
+    let cache = SharedTelemetryCache::new();
+    let mut service = TelemetryService::new(cache.clone());
+
+    let snapshot = service.collect_once().expect("Single-pass telemetry collection should succeed");
+    assert!(snapshot.cpu_usage_pct >= 0.0);
+    assert!(!snapshot.gpu_telemetry.adapter_name.is_empty());
+    assert_eq!(snapshot.audio_spectrum.fft_bins_16.len(), 16);
+    assert_eq!(snapshot.cpu_topology.per_core_usage_pct.len(), snapshot.cpu_topology.logical_core_count as usize);
+
+    // Verify cache read matches snapshot
+    assert_eq!(cache.get_gpu_telemetry().adapter_name, snapshot.gpu_telemetry.adapter_name);
+    assert_eq!(cache.get_audio_spectrum().fft_bins_16.len(), 16);
+}
+
+#[tokio::test]
+async fn test_10_interactive_hit_testing_and_svg_path_vector_rendering() {
+    use widget_sdk::{BatchRenderCanvas, Color, HitTarget, HitTestTree, RectF, RenderCanvas, SvgPathData};
+
+    let mut hit_tree = HitTestTree::new();
+    hit_tree.register_target(HitTarget::new("play_button", RectF::new(50.0, 100.0, 40.0, 40.0)));
+    hit_tree.register_target(HitTarget::new("waveform_area", RectF::new(0.0, 0.0, 400.0, 80.0)));
+
+    let hit = hit_tree.hit_test(60.0, 110.0).expect("Hit target expected");
+    assert_eq!(hit.element_id, "play_button");
+
+    let svg = "M 0 0 L 50 50 Q 75 10 100 80 Z";
+    let path_data = SvgPathData::parse(svg).expect("SVG path parsing expected to succeed");
+    assert_eq!(path_data.segments.len(), 4);
+
+    let mut canvas = BatchRenderCanvas::new();
+    canvas.draw_path(svg, Some(Color::rgb(0.0, 1.0, 0.8)), None, 1.5);
+    assert_eq!(canvas.commands().len(), 1);
+}
+
+#[tokio::test]
+async fn test_11_wasm_plugin_sandboxed_lifecycle_and_memory_isolation() {
+    use plugin_runtime::{WasmModuleSpec, WasmPluginEngine};
+
+    let mut engine = WasmPluginEngine::new();
+    let spec = WasmModuleSpec {
+        module_id: "media_spectrum_visualizer".to_string(),
+        version: "1.0.0".to_string(),
+        max_memory_pages: 16,
+        exported_functions: vec!["on_load".to_string(), "on_update".to_string(), "on_event".to_string()],
+    };
+
+    assert!(engine.load_module(spec).is_ok());
+    let res = engine.invoke_function("media_spectrum_visualizer", "on_update").expect("Invocation should succeed");
+    assert!(res.success);
+    assert_eq!(res.function_name, "on_update");
+}
+
+#[tokio::test]
+async fn test_12_context_aware_profile_automation_and_rollback() {
+    use config_manager::{ContextAwareEngine, ContextSignal};
+
+    let mut engine = ContextAwareEngine::new();
+    assert_eq!(engine.active_profile_id(), "profile.default");
+
+    let game_signal = ContextSignal {
+        is_fullscreen: true,
+        ..Default::default()
+    };
+    let switched = engine.update_context(&game_signal);
+    assert_eq!(switched, Some("profile.gaming".to_string()));
+    assert_eq!(engine.active_profile_id(), "profile.gaming");
+
+    let restored = engine.rollback_profile();
+    assert_eq!(restored, Some("profile.default".to_string()));
+    assert_eq!(engine.active_profile_id(), "profile.default");
+}
+
+#[tokio::test]
+async fn test_13_crypto_financial_and_network_diagnostics_integration() {
+    use crypto_stocks_widget::CryptoStocksWidget;
+    use system_providers::{CryptoFinancialProvider, NetworkDiagnosticsProvider, SharedTelemetryCache, TelemetrySnapshot};
+    use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
+
+    let mut crypto_prov = CryptoFinancialProvider::new();
+    let mut net_prov = NetworkDiagnosticsProvider::new();
+    let cache = SharedTelemetryCache::new();
+
+    let assets = crypto_prov.sample_all().expect("Crypto assets sampled");
+    let net_diag = net_prov.sample().expect("Network diagnostics sampled");
+
+    let mut snap = TelemetrySnapshot::default();
+    snap.crypto_assets = assets;
+    snap.network_diagnostics = net_diag;
+    cache.update_snapshot(snap);
+
+    let mut widget = CryptoStocksWidget::new(cache.clone());
+    assert!(widget.on_load().is_ok());
+    assert!(widget.on_mount().is_ok());
+
+    let ctx = TickContext {
+        tick_number: 1,
+        delta_ms: 16.6,
+        system_time_ms: 1000,
+    };
+    assert!(widget.on_update(&ctx).is_ok());
+    assert_eq!(widget.state(), WidgetState::Mounted);
+    assert_eq!(widget.selected_symbol(), "BTC");
+
+    assert!(widget.on_unmount().is_ok());
+    assert!(widget.on_unload().is_ok());
+}
+
+#[tokio::test]
+async fn test_14_ambient_weather_particles_and_frame_arena_integration() {
+    use core_engine::rendering::virtual_desktops::{DpiMonitorScale, VirtualDesktopManager, VirtualDesktopPinning};
+    use observability::FlightRecorder;
+    use weather_particles_widget::WeatherParticlesWidget;
+    use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
+    use widget_sdk::FrameArena;
+
+    let recorder = FlightRecorder::new(100);
+    recorder.record("WEATHER", "Mounting weather particles widget", "INFO");
+
+    let cache = system_providers::SharedTelemetryCache::new();
+    let mut widget = WeatherParticlesWidget::new(cache);
+    assert!(widget.on_load().is_ok());
+    assert!(widget.on_mount().is_ok());
+
+    let arena = FrameArena::with_capacity(16384);
+    let _draw_buf = arena.alloc(2048, 8).expect("Allocation should succeed in frame arena");
+    assert_eq!(arena.used_bytes(), 2048);
+
+    let ctx = TickContext {
+        tick_number: 1,
+        delta_ms: 16.6,
+        system_time_ms: 1000,
+    };
+    assert!(widget.on_update(&ctx).is_ok());
+    assert!(widget.active_particles_count() > 0);
+
+    arena.reset();
+    assert_eq!(arena.used_bytes(), 0);
+
+    let v_desktop = VirtualDesktopManager::new(VirtualDesktopPinning::PinnedGlobally, 96);
+    assert_eq!(v_desktop.pinning(), &VirtualDesktopPinning::PinnedGlobally);
+    assert_eq!(v_desktop.dpi_scale().effective_dpi, 96);
+
+    assert!(widget.on_unmount().is_ok());
+    assert!(widget.on_unload().is_ok());
+    assert_eq!(recorder.count(), 1);
+}
+
+

@@ -1,3 +1,8 @@
+use crate::providers::cpu_topology::CpuTopologyTelemetry;
+use crate::providers::crypto_financial::CryptoAssetTelemetry;
+use crate::providers::gpu_d3dkmt::GpuTelemetry;
+use crate::providers::network_diagnostics::NetworkDiagnosticsTelemetry;
+use crate::providers::wasapi_audio::{AudioSpectrumTelemetry, MediaPlaybackTelemetry};
 use ipc_protocol::MetricPayload;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -34,6 +39,14 @@ pub struct TelemetrySnapshot {
     pub total_display_count: u32,
     pub external_display_count: u32,
     pub virtual_display_count: u32,
+    // Extended Phase 1 Deep Hardware & Audio Telemetry
+    pub gpu_telemetry: GpuTelemetry,
+    pub cpu_topology: CpuTopologyTelemetry,
+    pub audio_spectrum: AudioSpectrumTelemetry,
+    pub media_playback: MediaPlaybackTelemetry,
+    // Extended Financial & Network Telemetry
+    pub crypto_assets: Vec<CryptoAssetTelemetry>,
+    pub network_diagnostics: NetworkDiagnosticsTelemetry,
     pub custom_metrics: HashMap<String, f64>,
 }
 
@@ -64,6 +77,12 @@ impl Default for TelemetrySnapshot {
             total_display_count: 2,
             external_display_count: 1,
             virtual_display_count: 0,
+            gpu_telemetry: GpuTelemetry::default(),
+            cpu_topology: CpuTopologyTelemetry::default(),
+            audio_spectrum: AudioSpectrumTelemetry::default(),
+            media_playback: MediaPlaybackTelemetry::default(),
+            crypto_assets: Vec::new(),
+            network_diagnostics: NetworkDiagnosticsTelemetry::default(),
             custom_metrics: HashMap::new(),
         }
     }
@@ -96,21 +115,27 @@ impl From<MetricPayload> for TelemetrySnapshot {
             total_display_count: payload.total_display_count,
             external_display_count: payload.external_display_count,
             virtual_display_count: payload.virtual_display_count,
+            gpu_telemetry: GpuTelemetry::default(),
+            cpu_topology: CpuTopologyTelemetry::default(),
+            audio_spectrum: AudioSpectrumTelemetry::default(),
+            media_playback: MediaPlaybackTelemetry::default(),
+            crypto_assets: Vec::new(),
+            network_diagnostics: NetworkDiagnosticsTelemetry::default(),
             custom_metrics: HashMap::new(),
         }
     }
 }
 
-/// Central Shared Telemetry Cache.
-/// Implements "Collect Once, Publish Everywhere" - consumers read from cache; widgets never query Windows APIs directly.
-#[derive(Clone)]
+/// Thread-safe in-memory cache holding the latest system telemetry snapshot.
+/// Implements "Collect Once, Publish Everywhere" core architectural principle.
+#[derive(Debug, Clone)]
 pub struct SharedTelemetryCache {
     snapshot: Arc<RwLock<TelemetrySnapshot>>,
     update_count: Arc<RwLock<u64>>,
 }
 
 impl SharedTelemetryCache {
-    /// Creates a new empty `SharedTelemetryCache`.
+    /// Creates a new `SharedTelemetryCache` initialized with default metrics.
     pub fn new() -> Self {
         Self {
             snapshot: Arc::new(RwLock::new(TelemetrySnapshot::default())),
@@ -118,37 +143,70 @@ impl SharedTelemetryCache {
         }
     }
 
-    /// Atomically updates the cached snapshot (called strictly by TelemetryService).
+    /// Atomically updates the entire telemetry snapshot.
     pub fn update_snapshot(&self, new_snapshot: TelemetrySnapshot) {
-        debug!(
-            "Shared Cache update tick #{}: CPU={:.1}%, Memory={:.1}MB",
-            new_snapshot.timestamp_ms, new_snapshot.cpu_usage_pct, new_snapshot.memory_used_mb
-        );
-
-        if let Ok(mut lock) = self.snapshot.write() {
-            *lock = new_snapshot;
+        if let Ok(mut snap) = self.snapshot.write() {
+            *snap = new_snapshot;
         }
         if let Ok(mut count) = self.update_count.write() {
             *count += 1;
         }
+        debug!("SharedTelemetryCache snapshot updated successfully.");
     }
 
-    /// Returns a zero-copy clone of the current immutable `TelemetrySnapshot`.
+    /// Retrieves an immutable copy of the current `TelemetrySnapshot`.
     pub fn get_snapshot(&self) -> TelemetrySnapshot {
-        self.snapshot
-            .read()
-            .map(|s| s.clone())
-            .unwrap_or_default()
+        self.snapshot.read().map(|s| s.clone()).unwrap_or_default()
     }
 
-    /// Returns the current CPU usage percentage from shared cache.
+    /// Returns the latest CPU usage percentage from shared cache.
     pub fn get_cpu_pct(&self) -> f32 {
         self.snapshot.read().map(|s| s.cpu_usage_pct).unwrap_or(0.0)
     }
 
-    /// Returns the current used memory in MB from shared cache.
+    /// Returns the latest GPU usage percentage from shared cache.
+    pub fn get_gpu_pct(&self) -> f32 {
+        self.snapshot.read().map(|s| s.gpu_usage_pct).unwrap_or(0.0)
+    }
+
+    /// Returns the latest RAM used in megabytes from shared cache.
     pub fn get_memory_used_mb(&self) -> f32 {
         self.snapshot.read().map(|s| s.memory_used_mb).unwrap_or(0.0)
+    }
+
+    /// Returns the latest RAM total in megabytes from shared cache.
+    pub fn get_memory_total_mb(&self) -> f32 {
+        self.snapshot.read().map(|s| s.memory_total_mb).unwrap_or(16384.0)
+    }
+
+    /// Returns the latest dedicated GPU telemetry from shared cache.
+    pub fn get_gpu_telemetry(&self) -> GpuTelemetry {
+        self.snapshot.read().map(|s| s.gpu_telemetry.clone()).unwrap_or_default()
+    }
+
+    /// Returns the latest CPU topology telemetry from shared cache.
+    pub fn get_cpu_topology(&self) -> CpuTopologyTelemetry {
+        self.snapshot.read().map(|s| s.cpu_topology.clone()).unwrap_or_default()
+    }
+
+    /// Returns the 16-band audio FFT frequency spectrum from shared cache.
+    pub fn get_audio_spectrum(&self) -> AudioSpectrumTelemetry {
+        self.snapshot.read().map(|s| s.audio_spectrum.clone()).unwrap_or_default()
+    }
+
+    /// Returns the active media playback metadata from shared cache.
+    pub fn get_media_playback(&self) -> MediaPlaybackTelemetry {
+        self.snapshot.read().map(|s| s.media_playback.clone()).unwrap_or_default()
+    }
+
+    /// Returns the live financial and crypto assets from shared cache.
+    pub fn get_crypto_assets(&self) -> Vec<CryptoAssetTelemetry> {
+        self.snapshot.read().map(|s| s.crypto_assets.clone()).unwrap_or_default()
+    }
+
+    /// Returns deep network diagnostics from shared cache.
+    pub fn get_network_diagnostics(&self) -> NetworkDiagnosticsTelemetry {
+        self.snapshot.read().map(|s| s.network_diagnostics.clone()).unwrap_or_default()
     }
 
     /// Returns total cache update count.
@@ -173,7 +231,7 @@ mod tests {
         assert_eq!(cache.get_cpu_pct(), 0.0);
         assert_eq!(cache.update_count(), 0);
 
-        let snapshot = TelemetrySnapshot {
+        let mut snapshot = TelemetrySnapshot {
             timestamp_ms: 1000,
             cpu_usage_pct: 45.2,
             memory_used_mb: 4096.0,
@@ -184,11 +242,19 @@ mod tests {
             custom_metrics: HashMap::new(),
             ..TelemetrySnapshot::default()
         };
+        snapshot.gpu_telemetry.vram_dedicated_used_mb = 2048.0;
+        snapshot.media_playback.title = "Synthwave".to_string();
+        snapshot.crypto_assets = vec![CryptoAssetTelemetry::default()];
+        snapshot.network_diagnostics.ping_latency_ms = 9;
 
         cache.update_snapshot(snapshot.clone());
 
         assert_eq!(cache.get_cpu_pct(), 45.2);
         assert_eq!(cache.get_memory_used_mb(), 4096.0);
+        assert_eq!(cache.get_gpu_telemetry().vram_dedicated_used_mb, 2048.0);
+        assert_eq!(cache.get_media_playback().title, "Synthwave");
+        assert_eq!(cache.get_crypto_assets().len(), 1);
+        assert_eq!(cache.get_network_diagnostics().ping_latency_ms, 9);
         assert_eq!(cache.get_snapshot(), snapshot);
         assert_eq!(cache.update_count(), 1);
     }

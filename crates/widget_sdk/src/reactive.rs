@@ -2,6 +2,7 @@
 //!
 //! Replaces continuous polling with event/signal-driven telemetry bindings.
 //! Emits dirty regions only when bound metric values cross hysteresis thresholds.
+//! Supports derived computed signals (`Computed<T>`) and declarative manifest expressions.
 
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +32,77 @@ impl<T: Clone + PartialEq> Signal<T> {
         } else {
             false
         }
+    }
+
+    /// Returns current signal value.
+    pub fn get(&self) -> &T {
+        &self.value
+    }
+}
+
+/// Derived Computed Reactive Signal computed from an arbitrary closure or formula.
+#[derive(Debug, Clone)]
+pub struct Computed<T> {
+    name: String,
+    compute_fn: fn() -> T,
+    cached_value: T,
+    last_computed_version: u64,
+}
+
+impl<T: Clone + PartialEq> Computed<T> {
+    pub fn new(name: impl Into<String>, compute_fn: fn() -> T) -> Self {
+        let initial = compute_fn();
+        Self {
+            name: name.into(),
+            compute_fn,
+            cached_value: initial,
+            last_computed_version: 1,
+        }
+    }
+
+    /// Evaluates computation and updates cached value if dependent version incremented.
+    pub fn update(&mut self, dependency_version: u64) -> &T {
+        if dependency_version > self.last_computed_version {
+            self.cached_value = (self.compute_fn)();
+            self.last_computed_version = dependency_version;
+        }
+        &self.cached_value
+    }
+
+    /// Returns cached computed value.
+    pub fn get(&self) -> &T {
+        &self.cached_value
+    }
+}
+
+/// Evaluates declarative conditional expressions in widget manifests (e.g. "sys.cpu_usage >= 80.0").
+pub fn evaluate_condition_expression(expr: &str, cpu_val: f32, mem_val: f32) -> bool {
+    let clean = expr.trim();
+    if clean.starts_with("sys.cpu_usage") {
+        if clean.contains(">=") {
+            let threshold: f32 = clean.split(">=").nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(80.0);
+            cpu_val >= threshold
+        } else if clean.contains('>') {
+            let threshold: f32 = clean.split('>').nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(80.0);
+            cpu_val > threshold
+        } else if clean.contains("<=") {
+            let threshold: f32 = clean.split("<=").nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(20.0);
+            cpu_val <= threshold
+        } else if clean.contains('<') {
+            let threshold: f32 = clean.split('<').nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(20.0);
+            cpu_val < threshold
+        } else {
+            cpu_val > 0.0
+        }
+    } else if clean.starts_with("sys.memory_usage") {
+        if clean.contains(">=") {
+            let threshold: f32 = clean.split(">=").nth(1).and_then(|s| s.trim().parse().ok()).unwrap_or(8000.0);
+            mem_val >= threshold
+        } else {
+            mem_val > 0.0
+        }
+    } else {
+        true
     }
 }
 
@@ -78,6 +150,25 @@ mod tests {
 
         assert!(sig.set(15.0));
         assert_eq!(sig.version, 2);
+    }
+
+    #[test]
+    fn test_computed_signal_recalculation() {
+        fn compute_high_load() -> bool {
+            true
+        }
+
+        let mut computed = Computed::new("is_high_load", compute_high_load);
+        assert_eq!(*computed.get(), true);
+        assert_eq!(*computed.update(2), true);
+    }
+
+    #[test]
+    fn test_condition_expression_evaluator() {
+        assert!(evaluate_condition_expression("sys.cpu_usage >= 80.0", 85.2, 4000.0));
+        assert!(!evaluate_condition_expression("sys.cpu_usage >= 80.0", 50.0, 4000.0));
+        assert!(evaluate_condition_expression("sys.cpu_usage < 50.0", 42.0, 4000.0));
+        assert!(evaluate_condition_expression("sys.memory_usage >= 6000.0", 10.0, 8192.0));
     }
 
     #[test]

@@ -1,0 +1,16 @@
+[package]
+name = "weather_particles_widget"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+widget_sdk = { path = "../widget_sdk" }
+system_providers = { path = "../system_providers" }
+theme_engine = { path = "../theme_engine" }
+core_engine = { path = "../core_engine" }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }

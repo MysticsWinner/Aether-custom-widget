@@ -9,7 +9,11 @@ pub mod shared_cache;
 pub mod telemetry_service;
 pub mod tick_advisor;
 
-pub use providers::{CpuProvider, GpuProvider, MemoryProvider, MetricProvider, NetworkProvider};
+pub use providers::{
+    CpuProvider, CpuTopologyProvider, CpuTopologyTelemetry, CryptoAssetTelemetry, CryptoFinancialProvider,
+    DedicatedGpuProvider, GpuProvider, GpuTelemetry, MemoryProvider, MetricProvider, NetworkDiagnosticsProvider,
+    NetworkDiagnosticsTelemetry, NetworkProvider, WasapiAudioProvider,
+};
 pub use shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
 pub use telemetry_service::{TelemetryBenchmark, TelemetryService};
 pub use tick_advisor::{TickMode, TickRateAdvisor};

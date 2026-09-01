@@ -1,0 +1,16 @@
+[widget]
+id = "com.aether.dock_launcher"
+name = "Dynamic Desktop Dock & App Launcher"
+version = "1.0.0"
+author = "Aether Desktop Core Team"
+description = "Hardware-accelerated desktop application dock featuring spring magnification physics, vector iconography, and interactive hit testing."
+
+[display]
+width = 500
+height = 80
+opacity = 0.95
+locked = false
+refresh_rate_hz = 60
+
+[bindings]
+active_processes = "sys.processes.running"

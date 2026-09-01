@@ -9,12 +9,14 @@ pub mod compatibility;
 pub mod integrity;
 pub mod memory_guard;
 pub mod supervisor;
+pub mod wasm;
 
 pub use capability::{PermissionGuard, PermissionManifest, PluginCapability};
 pub use compatibility::{ApiVersion, CompatibilityChecker};
 pub use integrity::{compute_blake3_hash, PluginHashStore};
 pub use memory_guard::{MemoryGuard, ResourceUsageReport, ResourceWarning};
 pub use supervisor::{PluginHealth, PluginProcessInfo, PluginSandboxBenchmark, PluginSupervisor};
+pub use wasm::{WasmExecutionResult, WasmModuleSpec, WasmPluginEngine};
 
 use thiserror::Error;
 

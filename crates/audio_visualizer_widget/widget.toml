@@ -1,0 +1,18 @@
+[widget]
+id = "com.aether.audio_visualizer"
+name = "Spectrum Audio & Media Visualizer"
+version = "1.0.0"
+author = "Aether Desktop Core Team"
+description = "Real-time 16-band WASAPI audio FFT visualizer and interactive Windows Media SMTC playback controller."
+
+[display]
+width = 380
+height = 200
+opacity = 0.95
+locked = false
+refresh_rate_hz = 60
+
+[bindings]
+audio_spectrum = "sys.audio.spectrum"
+media_playback = "sys.audio.media"
+volume = "sys.audio.volume"

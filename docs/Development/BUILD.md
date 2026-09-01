@@ -19,7 +19,7 @@
 
 ### 2.1 Workspace Compilation Check
 ```powershell
-# Fast compilation check across all 28 member crates:
+# Fast compilation check across all 33 member crates:
 cargo check --workspace
 
 # Run clippy strict linter:

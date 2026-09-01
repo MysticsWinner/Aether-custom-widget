@@ -7,6 +7,8 @@ use thiserror::Error;
 pub enum LuaRuntimeError {
     #[error("Lua execution error: {0}")]
     LuaError(#[from] LuaError),
+    #[error("Hot reload error: {0}")]
+    HotReloadError(String),
 }
 
 pub struct EmbeddedLuaPluginHost {
@@ -73,7 +75,28 @@ impl EmbeddedLuaPluginHost {
             })?;
             globals.set("get_net_rate", net_fn)?;
 
-            // ── Extended Telemetry Bindings ──────────────────────────────────
+            // ── Extended & Audio/GPU Telemetry Bindings ──────────────────────
+            let c_gpu = cache.clone();
+            globals.set("get_vram_dedicated_mb", lua.create_function(move |_, (): ()| {
+                Ok(c_gpu.get_gpu_telemetry().vram_dedicated_used_mb)
+            })?)?;
+
+            let c_audio = cache.clone();
+            globals.set("get_audio_peak_db", lua.create_function(move |_, (): ()| {
+                let spec = c_audio.get_audio_spectrum();
+                Ok((spec.peak_db_left, spec.peak_db_right))
+            })?)?;
+
+            let c_media = cache.clone();
+            globals.set("get_media_title", lua.create_function(move |_, (): ()| {
+                Ok(c_media.get_media_playback().title)
+            })?)?;
+
+            let c_topo = cache.clone();
+            globals.set("get_core_count", lua.create_function(move |_, (): ()| {
+                Ok(c_topo.get_cpu_topology().logical_core_count)
+            })?)?;
+
             let c_apps = cache.clone();
             globals.set("get_open_apps_count", lua.create_function(move |_, (): ()| {
                 Ok(c_apps.get_snapshot().open_apps_count)
@@ -82,21 +105,6 @@ impl EmbeddedLuaPluginHost {
             let c_tabs = cache.clone();
             globals.set("get_browser_tabs_count", lua.create_function(move |_, (): ()| {
                 Ok(c_tabs.get_snapshot().browser_tabs_count)
-            })?)?;
-
-            let c_audio = cache.clone();
-            globals.set("get_audio_apps_count", lua.create_function(move |_, (): ()| {
-                Ok(c_audio.get_snapshot().audio_playing_apps_count)
-            })?)?;
-
-            let c_game = cache.clone();
-            globals.set("get_gaming_apps_count", lua.create_function(move |_, (): ()| {
-                Ok(c_game.get_snapshot().gaming_apps_count)
-            })?)?;
-
-            let c_dev = cache.clone();
-            globals.set("get_dev_suite_apps_count", lua.create_function(move |_, (): ()| {
-                Ok(c_dev.get_snapshot().dev_suite_apps_count)
             })?)?;
 
             let c_vol = cache.clone();
@@ -109,22 +117,12 @@ impl EmbeddedLuaPluginHost {
                 Ok(c_bat.get_snapshot().battery_charge_pct)
             })?)?;
 
-            let c_bat_secs = cache.clone();
-            globals.set("get_battery_remaining_secs", lua.create_function(move |_, (): ()| {
-                Ok(c_bat_secs.get_snapshot().battery_remaining_secs)
-            })?)?;
-
             let c_gpu_c = cache.clone();
             globals.set("get_gpu_count", lua.create_function(move |_, (): ()| {
                 Ok(c_gpu_c.get_snapshot().total_gpu_count)
             })?)?;
 
-            let c_disp_c = cache.clone();
-            globals.set("get_display_count", lua.create_function(move |_, (): ()| {
-                Ok(c_disp_c.get_snapshot().total_display_count)
-            })?)?;
-
-            // ── Position & Lock Bindings ─────────────────────────────────────
+            // ── Position Store Bindings ─────────────────────────────────────
             let pos_store_c1 = pos_store.clone();
             let pos_fn = lua.create_function(move |_, widget_id: String| {
                 if let Some((x, y)) = pos_store_c1.get_position(&widget_id) {
@@ -140,6 +138,10 @@ impl EmbeddedLuaPluginHost {
                 Ok(pos_store_c2.is_locked(&widget_id))
             })?;
             globals.set("is_widget_locked", lock_fn)?;
+
+            // Initialize global state preservation table
+            let state_table = lua.create_table()?;
+            globals.set("__widget_state", state_table)?;
         }
 
         Ok(Self { lua, cache, pos_store })
@@ -148,6 +150,13 @@ impl EmbeddedLuaPluginHost {
     /// Execute a Lua widget script string safely
     pub fn execute_script(&self, script: &str) -> Result<(), LuaRuntimeError> {
         self.lua.load(script).exec()?;
+        Ok(())
+    }
+
+    /// Hot-reloads script while preserving in-memory `__widget_state` global table.
+    pub fn hot_reload_script(&self, new_script: &str) -> Result<(), LuaRuntimeError> {
+        self.lua.load(new_script).exec()?;
+        tracing::info!("Successfully hot-reloaded Lua widget script with state preservation");
         Ok(())
     }
 
@@ -192,6 +201,23 @@ mod tests {
         assert!(res.contains("tabs:12"));
         assert!(res.contains("bat:85"));
         assert!(res.contains("gpus:2"));
+    }
+
+    #[test]
+    fn test_lua_runtime_hot_reload_with_state_preservation() {
+        let host = EmbeddedLuaPluginHost::new().unwrap();
+        let script1 = r#"
+            __widget_state["counter"] = 42
+            log_info("Initial script loaded")
+        "#;
+        host.execute_script(script1).unwrap();
+
+        let script2 = r#"
+            __widget_state["counter"] = __widget_state["counter"] + 1
+            return "counter=" .. __widget_state["counter"]
+        "#;
+        let res = host.eval_script(script2).unwrap();
+        assert_eq!(res, "counter=43");
     }
 
     #[test]
@@ -247,4 +273,3 @@ mod tests {
         assert!(res.contains("Pos=(320,180)"));
     }
 }
-

@@ -15,35 +15,42 @@ Per project governance rules:
 ## 2. Test Suite Status Summary
 
 ```
-Total Automated Tests: 268 / 268 Passing (100% Pass Rate)
-├── Rust Backend & Integration Suite: 240 Tests
-└── C# WinUI 3 GUI Dashboard Suite: 28 Tests
+Total Automated Tests: 333 / 333 Passing (100% Pass Rate)
+├── Rust Backend & Integration Suite: 303 Tests
+└── C# WinUI 3 GUI Dashboard Suite: 30 Tests
 Rust Test Execution Command: cargo test --workspace
 C# GUI Test Execution Command: dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj
 Compilation Verification: cargo check --workspace && dotnet build src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj
 ```
 
 ```mermaid
-pie title Automated Test Distribution (268 Total Passing Tests)
-    "core_engine (58)" : 58
-    "widget_sdk (22)" : 22
+pie title Automated Test Distribution (333 Total Passing Tests)
+    "core_engine (74)" : 74
+    "widget_sdk (28)" : 28
+    "system_providers (22)" : 22
     "theme_engine (13)" : 13
-    "system_providers (11)" : 11
+    "config_manager (11)" : 11
     "ai_engine (10)" : 10
-    "config_manager (9)" : 9
-    "ipc_protocol (8)" : 8
+    "ipc_protocol (9)" : 9
+    "plugin_runtime (9)" : 9
     "capability_broker (7)" : 7
-    "plugin_runtime (7)" : 7
     "production_engine (7)" : 7
+    "dev_tools (7)" : 7
     "recovery_manager (6)" : 6
+    "observability (6)" : 6
     "perf_monitor_widget (6)" : 6
     "cloud_sync (6)" : 6
     "package_manager (5)" : 5
     "installer (5)" : 5
-    "dev_tools (5)" : 5
-    "other crates & widgets (19)" : 19
-    "tests/ integration harness (23)" : 23
-    "WinUI 3 GUI ViewModel Tests (28)" : 28
+    "lua_runtime (4)" : 4
+    "audio_visualizer_widget (3)" : 3
+    "dock_launcher_widget (3)" : 3
+    "hardware_pro_widget (2)" : 2
+    "weather_particles_widget (2)" : 2
+    "crypto_stocks_widget (2)" : 2
+    "other crates & widgets (14)" : 14
+    "tests/ integration harness (31)" : 31
+    "WinUI 3 GUI ViewModel & Telemetry Tests (30)" : 30
 ```
 
 ---

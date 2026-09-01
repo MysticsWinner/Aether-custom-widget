@@ -1,5 +1,7 @@
 use crate::providers::{
-    CpuProvider, GpuProvider, MemoryProvider, MetricProvider, MetricValue, NetworkProvider,
+    cpu_topology::CpuTopologyProvider, gpu_d3dkmt::DedicatedGpuProvider,
+    wasapi_audio::WasapiAudioProvider, CpuProvider, GpuProvider, MemoryProvider, MetricProvider,
+    MetricValue, NetworkProvider,
 };
 use crate::shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -11,6 +13,9 @@ pub struct TelemetryService {
     memory_provider: Box<dyn MetricProvider>,
     gpu_provider: Box<dyn MetricProvider>,
     network_provider: Box<dyn MetricProvider>,
+    dedicated_gpu: DedicatedGpuProvider,
+    cpu_topology: CpuTopologyProvider,
+    wasapi_audio: WasapiAudioProvider,
     cache: SharedTelemetryCache,
 }
 
@@ -22,6 +27,9 @@ impl TelemetryService {
             memory_provider: Box::new(MemoryProvider::new()),
             gpu_provider: Box::new(GpuProvider::new()),
             network_provider: Box::new(NetworkProvider::new()),
+            dedicated_gpu: DedicatedGpuProvider::new(),
+            cpu_topology: CpuTopologyProvider::new(),
+            wasapi_audio: WasapiAudioProvider::new(),
             cache,
         }
     }
@@ -55,6 +63,12 @@ impl TelemetryService {
             _ => 0,
         };
 
+        // Phase 1 Extended Telemetry
+        let gpu_telemetry = self.dedicated_gpu.sample_telemetry().unwrap_or_default();
+        let cpu_topology = self.cpu_topology.sample_topology(cpu_val).unwrap_or_default();
+        let audio_spectrum = self.wasapi_audio.sample_spectrum(true, 75.0);
+        let media_playback = self.wasapi_audio.sample_media();
+
         let snapshot = TelemetrySnapshot {
             timestamp_ms: now_ms,
             cpu_usage_pct: cpu_val,
@@ -65,12 +79,12 @@ impl TelemetryService {
             net_sent_bytes_per_sec: net_val / 4,
             open_apps_count: 5,
             browser_tabs_count: 12,
-            audio_playing_apps_count: 1,
+            audio_playing_apps_count: if audio_spectrum.is_active { 1 } else { 0 },
             gaming_apps_count: 0,
             dev_suite_apps_count: 2,
             other_apps_count: 2,
-            master_volume_pct: 75.0,
-            is_muted: false,
+            master_volume_pct: audio_spectrum.master_volume_pct,
+            is_muted: audio_spectrum.is_muted,
             battery_charge_pct: 85.0,
             battery_remaining_secs: 14400,
             is_charging: true,
@@ -80,6 +94,10 @@ impl TelemetryService {
             total_display_count: 2,
             external_display_count: 1,
             virtual_display_count: 0,
+            gpu_telemetry,
+            cpu_topology,
+            audio_spectrum,
+            media_playback,
             custom_metrics: Default::default(),
         };
 
@@ -114,6 +132,9 @@ impl TelemetryBenchmark {
         for _ in 0..reader_count {
             let _cpu = cache.get_cpu_pct();
             let _mem = cache.get_memory_used_mb();
+            let _gpu_telem = cache.get_gpu_telemetry();
+            let _topo = cache.get_cpu_topology();
+            let _audio = cache.get_audio_spectrum();
             let _snapshot = cache.get_snapshot();
         }
         let elapsed_us = start.elapsed().as_micros();
@@ -141,6 +162,9 @@ mod tests {
 
         let snapshot = service.collect_once().unwrap();
         assert!(snapshot.cpu_usage_pct >= 0.0);
+        assert!(!snapshot.gpu_telemetry.adapter_name.is_empty());
+        assert_eq!(snapshot.cpu_topology.per_core_usage_pct.len(), snapshot.cpu_topology.logical_core_count as usize);
+        assert_eq!(snapshot.audio_spectrum.fft_bins_16.len(), 16);
         assert_eq!(cache.update_count(), 1);
         assert_eq!(cache.get_snapshot(), snapshot);
     }

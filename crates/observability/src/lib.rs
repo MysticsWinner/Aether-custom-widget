@@ -1,10 +1,12 @@
 pub mod correlation;
 pub mod etw;
+pub mod flight_recorder;
 pub mod minidump;
 pub mod prometheus;
 
 pub use correlation::TraceContext;
 pub use etw::{EtwEvent, EtwProvider};
+pub use flight_recorder::{FlightEvent, FlightRecorder};
 pub use minidump::MinidumpWriter;
 pub use prometheus::PrometheusExporter;
 

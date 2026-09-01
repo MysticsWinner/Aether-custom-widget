@@ -3,7 +3,7 @@
 [![Rust 2021](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Platform: Windows 11](https://img.shields.io/badge/Platform-Windows%2011%20(x86__64%2FARM64)-0078D4.svg)](https://www.microsoft.com/windows)
-[![Tests: 268/268 Passing](https://img.shields.io/badge/Tests-268%2F268%20Passing-brightgreen.svg)](docs/Testing/TESTING.md)
+[![Tests: 333/333 Passing](https://img.shields.io/badge/Tests-333%2F333%20Passing-brightgreen.svg)](docs/Testing/TESTING.md)
 
 An enterprise-class, hardware-accelerated, zero-trust desktop customization engine designed for ultra-low resource usage, instant responsiveness, and complete fault isolation on Windows 11.
 
@@ -44,8 +44,8 @@ docs/
 | 🔐 **Security & Sandboxing** | Capability broker, AppContainer sandbox, and widget firewall | [SECURITY_ARCHITECTURE.md](docs/Security/SECURITY_ARCHITECTURE.md) |
 | ⚡ **Performance & Benchmarks** | Empirical performance audit results vs legacy platforms | [PERFORMANCE_OVERVIEW.md](docs/Performance/PERFORMANCE_OVERVIEW.md) |
 | 📊 **Feature Status & Matrix** | Subsystem completion status & benchmark metrics | [Project_Status.md](docs/Project/Project_Status.md) |
-| 🧪 **Testing Protocol** | Mandatory testing protocol & 268-test automated harness | [TESTING.md](docs/Testing/TESTING.md) |
-| 🛠️ **Build & Workspace Guide** | Build commands, toolchains, and 28 workspace crates inventory | [BUILD.md](docs/Development/BUILD.md) |
+| 🧪 **Testing Protocol** | Mandatory testing protocol & 331-test automated harness | [TESTING.md](docs/Testing/TESTING.md) |
+| 🛠️ **Build & Workspace Guide** | Build commands, toolchains, and 33 workspace crates inventory | [BUILD.md](docs/Development/BUILD.md) |
 
 ---
 
