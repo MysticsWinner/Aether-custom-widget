@@ -1,4 +1,4 @@
-﻿// Copyright (c) Aether Platform. Licensed under the MIT License.
+// Copyright (c) Aether Platform. Licensed under the MIT License.
 
 using System.IO;
 using CustomWidget.Dashboard.Services;

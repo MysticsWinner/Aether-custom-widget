@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace CustomWidget.Dashboard.Models;
@@ -34,7 +35,7 @@ public sealed class EngineStatus
     [JsonPropertyName("engine_version")]
     public string EngineVersion { get; set; } = "";
 
-    // ── Extended fields (from future GetSubsystemHealth / GetDiagnostics) ──
+    // ── Extended fields (from GetSubsystemHealth / GetDiagnostics) ──
 
     [JsonPropertyName("subsystems")]
     public SubsystemEntry[]? Subsystems { get; set; }
@@ -48,7 +49,7 @@ public sealed class EngineStatus
     [JsonPropertyName("tick_count")]
     public ulong? TickCount { get; set; }
 
-    // ── Extended Hardware & Audio Telemetry Subsystems ──
+    // ── Extended Hardware, Financial & Audio Telemetry Subsystems ──
 
     [JsonPropertyName("gpu_telemetry")]
     public GpuTelemetryDto? GpuTelemetry { get; set; }
@@ -61,6 +62,12 @@ public sealed class EngineStatus
 
     [JsonPropertyName("media_playback")]
     public MediaPlaybackDto? MediaPlayback { get; set; }
+
+    [JsonPropertyName("crypto_assets")]
+    public List<CryptoAssetDto>? CryptoAssets { get; set; }
+
+    [JsonPropertyName("network_diagnostics")]
+    public NetworkDiagnosticsDto? NetworkDiagnostics { get; set; }
 
     /// <summary>
     /// Convenience: memory usage as a percentage (0.0–100.0).
@@ -186,3 +193,62 @@ public sealed class MediaPlaybackDto
     public string PlaybackStatus { get; set; } = "";
 }
 
+/// <summary>
+/// Real-time cryptocurrency or equity market asset DTO.
+/// </summary>
+public sealed class CryptoAssetDto
+{
+    [JsonPropertyName("symbol")]
+    public string Symbol { get; set; } = "";
+
+    [JsonPropertyName("price_usd")]
+    public double PriceUsd { get; set; }
+
+    [JsonPropertyName("change_24h_pct")]
+    public double Change24hPct { get; set; }
+
+    [JsonPropertyName("volume_24h_usd")]
+    public double Volume24hUsd { get; set; }
+
+    [JsonPropertyName("rsi_14")]
+    public double Rsi14 { get; set; }
+
+    [JsonPropertyName("sparkline_20")]
+    public double[] Sparkline20 { get; set; } = [];
+}
+
+/// <summary>
+/// Network latency, jitter, and per-process bandwidth diagnostics DTO.
+/// </summary>
+public sealed class NetworkDiagnosticsDto
+{
+    [JsonPropertyName("ping_ms")]
+    public float PingMs { get; set; }
+
+    [JsonPropertyName("jitter_ms")]
+    public float JitterMs { get; set; }
+
+    [JsonPropertyName("packet_loss_pct")]
+    public float PacketLossPct { get; set; }
+
+    [JsonPropertyName("gateway_reachable")]
+    public bool GatewayReachable { get; set; }
+
+    [JsonPropertyName("top_processes")]
+    public List<ProcessNetworkDto> TopProcesses { get; set; } = [];
+}
+
+/// <summary>
+/// Top bandwidth consumer process entry.
+/// </summary>
+public sealed class ProcessNetworkDto
+{
+    [JsonPropertyName("pid")]
+    public uint Pid { get; set; }
+
+    [JsonPropertyName("process_name")]
+    public string ProcessName { get; set; } = "";
+
+    [JsonPropertyName("bytes_per_sec")]
+    public ulong BytesPerSec { get; set; }
+}

@@ -1,10 +1,8 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -13,9 +11,9 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class ServicesViewModel : ObservableObject
 {
-    private readonly ProcessManagerService _processManager;
-    private readonly AetherIpcService _ipc;
-    private readonly TelemetryPollerService _poller;
+    private readonly IProcessManagerService _processManager;
+    private readonly IAetherIpcService _ipc;
+    private readonly ITelemetryPollerService _poller;
 
     [ObservableProperty] private bool _isEngineRunning;
     [ObservableProperty] private string _engineStatusText = "Checking...";
@@ -44,9 +42,9 @@ public partial class ServicesViewModel : ObservableObject
     ];
 
     public ServicesViewModel(
-        ProcessManagerService processManager,
-        AetherIpcService ipc,
-        TelemetryPollerService poller)
+        IProcessManagerService processManager,
+        IAetherIpcService ipc,
+        ITelemetryPollerService poller)
     {
         _processManager = processManager;
         _ipc = ipc;

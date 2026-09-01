@@ -1,9 +1,7 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 using Microsoft.UI.Xaml;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -15,8 +13,8 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class OverviewViewModel : ObservableObject
 {
-    private readonly TelemetryPollerService _poller;
-    private readonly AetherIpcService _ipc;
+    private readonly ITelemetryPollerService _poller;
+    private readonly IAetherIpcService _ipc;
 
     // Current theme cycle position: 0=dark, 1=light, 2=system
     private int _currentThemeIndex = 0;
@@ -47,7 +45,7 @@ public partial class OverviewViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private string _pingResultText = "";
 
-    public OverviewViewModel(TelemetryPollerService poller, AetherIpcService ipc)
+    public OverviewViewModel(ITelemetryPollerService poller, IAetherIpcService ipc)
     {
         _poller = poller;
         _ipc = ipc;

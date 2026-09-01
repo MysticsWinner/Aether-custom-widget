@@ -2,17 +2,18 @@
 
 using System.Text.Json;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.Services;
 
 /// <summary>
 /// Manages per-widget settings files stored under %LOCALAPPDATA%\Aether\widget_settings\&lt;widget_id&gt;.json.
 /// Provides read/write access to <see cref="WidgetDisplayOptions"/> and synchronises changes
-/// with the Core Engine via <see cref="AetherIpcService"/> IPC calls.
+/// with the Core Engine via <see cref="IAetherIpcService"/> IPC calls.
 /// </summary>
-public sealed class WidgetSettingsService
+public sealed class WidgetSettingsService : IWidgetSettingsService
 {
-    private readonly AetherIpcService _ipc;
+    private readonly IAetherIpcService _ipc;
     private static readonly string _settingsRoot = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Aether", "widget_settings");
@@ -23,7 +24,7 @@ public sealed class WidgetSettingsService
         WriteIndented = true,
     };
 
-    public WidgetSettingsService(AetherIpcService ipc)
+    public WidgetSettingsService(IAetherIpcService ipc)
     {
         _ipc = ipc;
         Directory.CreateDirectory(_settingsRoot);

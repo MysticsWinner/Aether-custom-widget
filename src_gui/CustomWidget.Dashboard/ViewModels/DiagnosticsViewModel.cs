@@ -1,10 +1,8 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -13,8 +11,8 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class DiagnosticsViewModel : ObservableObject
 {
-    private readonly LogCollectorService _logCollector;
-    private readonly AetherIpcService _ipc;
+    private readonly ILogCollectorService _logCollector;
+    private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private string _commandText = "\"GetStatus\"";
     [ObservableProperty] private string _responseText = "";
@@ -27,19 +25,19 @@ public partial class DiagnosticsViewModel : ObservableObject
     /// <summary>
     /// All log entries (unfiltered). Bound to the log viewer ListView.
     /// </summary>
-    public ObservableCollection<LogEntry> AllEntries => _logCollector.Entries;
+    public ObservableCollection<LogEntry> AllEntries => _logCollector.Logs;
 
     /// <summary>
     /// Available log level filter options.
     /// </summary>
     public string[] LogLevels { get; } = ["All", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 
-    public DiagnosticsViewModel(LogCollectorService logCollector, AetherIpcService ipc)
+    public DiagnosticsViewModel(ILogCollectorService logCollector, IAetherIpcService ipc)
     {
         _logCollector = logCollector;
         _ipc = ipc;
 
-        _logCollector.OnNewEntry += OnNewLogEntry;
+        _logCollector.OnNewLog += OnNewLogEntry;
     }
 
     private void OnNewLogEntry(LogEntry entry)

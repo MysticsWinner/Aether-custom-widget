@@ -1,9 +1,7 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -17,7 +15,7 @@ public class TokenItem
 
 public partial class DesignTokensViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
+    private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "Design Tokens Active";
@@ -31,7 +29,7 @@ public partial class DesignTokensViewModel : ObservableObject
     public ObservableCollection<TokenItem> MaterialTokens { get; } = new();
     public ObservableCollection<TokenItem> MotionTokens { get; } = new();
 
-    public DesignTokensViewModel(AetherIpcService ipc)
+    public DesignTokensViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
     }

@@ -1,14 +1,12 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
 public partial class AiComposerViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
+    private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _promptInput = "";
@@ -20,7 +18,7 @@ public partial class AiComposerViewModel : ObservableObject
     [ObservableProperty] private string _securityGateText = "Security Capability Gate: PASSED (All permissions verified)";
     [ObservableProperty] private string _statusMessage = "AI Composer Ready";
 
-    public AiComposerViewModel(AetherIpcService ipc)
+    public AiComposerViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
     }

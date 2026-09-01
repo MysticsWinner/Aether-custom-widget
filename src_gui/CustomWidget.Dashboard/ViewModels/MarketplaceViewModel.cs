@@ -1,9 +1,7 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -42,7 +40,7 @@ public class MarketplacePackageItem : ObservableObject
 
 public partial class MarketplaceViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
+    private readonly IAetherIpcService _ipc;
     private readonly List<MarketplacePackageItem> _allPackages = new();
 
     [ObservableProperty] private bool _isBusy;
@@ -52,7 +50,7 @@ public partial class MarketplaceViewModel : ObservableObject
 
     public ObservableCollection<MarketplacePackageItem> FilteredPackages { get; } = new();
 
-    public MarketplaceViewModel(AetherIpcService ipc)
+    public MarketplaceViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
     }

@@ -1,5 +1,3 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -16,8 +14,8 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class SettingsViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
-    private readonly TelemetryPollerService _poller;
+    private readonly IAetherIpcService _ipc;
+    private readonly ITelemetryPollerService _poller;
     private readonly string _settingsFilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
     [ObservableProperty] private int _selectedThemeIndex; // 0=Dark, 1=Light, 2=System
@@ -30,7 +28,7 @@ public partial class SettingsViewModel : ObservableObject
 
     public string[] ThemeOptions { get; } = ["Dark", "Light", "System"];
 
-    public SettingsViewModel(AetherIpcService ipc, TelemetryPollerService poller)
+    public SettingsViewModel(IAetherIpcService ipc, ITelemetryPollerService poller)
     {
         _ipc = ipc;
         _poller = poller;

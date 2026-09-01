@@ -1,9 +1,7 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -31,7 +29,7 @@ public class SecurityAuditEntry
 
 public partial class SecurityViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
+    private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "Sandbox Operational";
@@ -43,7 +41,7 @@ public partial class SecurityViewModel : ObservableObject
     public ObservableCollection<CapabilityTokenItem> Capabilities { get; } = new();
     public ObservableCollection<SecurityAuditEntry> AuditLogs { get; } = new();
 
-    public SecurityViewModel(AetherIpcService ipc)
+    public SecurityViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
         _ = LoadSecurityStatusAsync();

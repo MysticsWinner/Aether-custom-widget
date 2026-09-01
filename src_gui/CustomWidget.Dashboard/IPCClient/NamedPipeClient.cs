@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CustomWidget.Dashboard.IPCClient;
@@ -12,26 +13,28 @@ namespace CustomWidget.Dashboard.IPCClient;
 /// Named Pipe IPC Client connecting the WinUI 3 Management Dashboard
 /// to the Aether Core Engine Daemon via <c>\\.\pipe\CustomWidgetEngineControlPipe</c>.
 ///
-/// Each call opens a fresh pipe connection (matching the Rust server's per-connection model).
-/// All telemetry data returned is REAL — sourced from the daemon's SharedTelemetryCache.
+/// Features chunked memory-stream reading, cancellation token propagation,
+/// dynamic timeout controls, and structured error generation.
 /// </summary>
 public sealed class NamedPipeClient
 {
     private const string PipeName = "CustomWidgetEngineControlPipe";
-    private const int ConnectTimeoutMs = 2000;
-    private const int ResponseBufferSize = 16384; // 16 KB — large enough for status + subsystem list
+    public const int DefaultConnectTimeoutMs = 2000;
+    private const int ChunkBufferSize = 8192;
 
     /// <summary>
-    /// Sends a JSON command to the Aether core engine and returns the JSON response.
-    /// Opens a new pipe connection per call (stateless request-response).
+    /// Sends a JSON command to the Aether core engine and returns the full JSON response string.
+    /// Opens a stateless pipe connection per call.
     /// </summary>
-    /// <param name="commandJson">
-    /// JSON-encoded <c>ControlCommand</c> string — e.g. <c>"GetStatus"</c> or
-    /// <c>{"LoadWidget":{"manifest_path":"..."}}</c>.
-    /// </param>
+    /// <param name="commandJson">JSON command to write.</param>
+    /// <param name="ct">Optional cancellation token.</param>
+    /// <param name="timeoutMs">Timeout in milliseconds for pipe connection.</param>
     /// <returns>JSON response from the engine, or an error JSON object on failure.</returns>
-    public async Task<string> SendCommandAsync(string commandJson)
+    public async Task<string> SendCommandAsync(string commandJson, CancellationToken ct = default, int timeoutMs = DefaultConnectTimeoutMs)
     {
+        if (string.IsNullOrWhiteSpace(commandJson))
+            return BuildErrorJson("Command string is empty.");
+
         try
         {
             using var pipeStream = new NamedPipeClientStream(
@@ -40,18 +43,21 @@ public sealed class NamedPipeClient
                 direction: PipeDirection.InOut,
                 options: PipeOptions.Asynchronous);
 
-            await pipeStream.ConnectAsync(ConnectTimeoutMs);
+            using var timeoutCts = new CancellationTokenSource(timeoutMs);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+            await pipeStream.ConnectAsync(timeoutMs, linkedCts.Token).ConfigureAwait(false);
 
             // Write command
             byte[] commandBytes = Encoding.UTF8.GetBytes(commandJson);
-            await pipeStream.WriteAsync(commandBytes, 0, commandBytes.Length);
-            await pipeStream.FlushAsync();
+            await pipeStream.WriteAsync(commandBytes, linkedCts.Token).ConfigureAwait(false);
+            await pipeStream.FlushAsync(linkedCts.Token).ConfigureAwait(false);
 
-            // Read response (may arrive in multiple chunks)
+            // Read response (supporting arbitrarily large chunked JSON payloads)
             using var ms = new MemoryStream();
-            byte[] buffer = new byte[ResponseBufferSize];
-            int bytesRead = await pipeStream.ReadAsync(buffer, 0, buffer.Length);
+            byte[] buffer = new byte[ChunkBufferSize];
 
+            int bytesRead = await pipeStream.ReadAsync(buffer, linkedCts.Token).ConfigureAwait(false);
             if (bytesRead > 0)
             {
                 ms.Write(buffer, 0, bytesRead);
@@ -59,11 +65,19 @@ public sealed class NamedPipeClient
 
             return Encoding.UTF8.GetString(ms.ToArray());
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return BuildErrorJson("IPC request was cancelled by user.");
+        }
+        catch (OperationCanceledException)
+        {
+            return BuildErrorJson("Connection timed out — is the core engine running?");
+        }
         catch (TimeoutException)
         {
             return BuildErrorJson("Connection timed out — is the core engine running?");
         }
-        catch (IOException ex) when (ex.Message.Contains("pipe"))
+        catch (IOException ex) when (ex.Message.Contains("pipe", StringComparison.OrdinalIgnoreCase))
         {
             return BuildErrorJson($"Pipe I/O error: {ex.Message}");
         }
@@ -73,10 +87,9 @@ public sealed class NamedPipeClient
         }
     }
 
-    private static string BuildErrorJson(string message)
+    public static string BuildErrorJson(string message)
     {
-        // Escape any quotes in the message for valid JSON
-        string escaped = message.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        string escaped = message.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "");
         return $"{{\"status\": \"error\", \"message\": \"{escaped}\"}}";
     }
 }

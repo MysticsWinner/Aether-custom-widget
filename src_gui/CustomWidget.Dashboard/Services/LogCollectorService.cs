@@ -1,24 +1,30 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.Services;
 
 /// <summary>
 /// Captures and parses log output from the Aether core engine process.
-/// Subscribes to <see cref="ProcessManagerService.OnEngineOutput"/> to receive raw log lines,
+/// Subscribes to <see cref="IProcessManagerService.OnEngineOutput"/> to receive raw log lines,
 /// parses them into structured <see cref="LogEntry"/> objects.
 /// </summary>
-public sealed partial class LogCollectorService
+public sealed partial class LogCollectorService : ILogCollectorService
 {
-    private readonly ProcessManagerService _processManager;
+    private readonly IProcessManagerService _processManager;
 
     /// <summary>
     /// Circular buffer of parsed log entries (most recent last).
     /// </summary>
     public ObservableCollection<LogEntry> Entries { get; } = new();
+
+    public ObservableCollection<LogEntry> Logs => Entries;
 
     /// <summary>
     /// Maximum number of log entries retained.
@@ -39,8 +45,9 @@ public sealed partial class LogCollectorService
     /// Fired when a new log entry is parsed.
     /// </summary>
     public event Action<LogEntry>? OnNewEntry;
+    public event Action<LogEntry>? OnNewLog;
 
-    public LogCollectorService(ProcessManagerService processManager)
+    public LogCollectorService(IProcessManagerService processManager)
     {
         _processManager = processManager;
         _processManager.OnEngineOutput += HandleOutputLine;
@@ -54,6 +61,12 @@ public sealed partial class LogCollectorService
         Entries.Clear();
         WarnCount = 0;
         ErrorCount = 0;
+    }
+
+    public Task ClearLogsAsync()
+    {
+        Clear();
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -70,6 +83,11 @@ public sealed partial class LogCollectorService
             RawLine = $"[{level}] {target}: {message}",
         };
         AddEntry(entry);
+    }
+
+    public void AppendLog(string level, string message, string source)
+    {
+        AddManualEntry(level, source, message);
     }
 
     private void HandleOutputLine(string line)
@@ -102,6 +120,7 @@ public sealed partial class LogCollectorService
 
         WriteToDashboardLog(entry);
         OnNewEntry?.Invoke(entry);
+        OnNewLog?.Invoke(entry);
     }
 
     /// <summary>

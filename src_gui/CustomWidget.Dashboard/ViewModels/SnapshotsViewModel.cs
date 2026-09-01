@@ -1,9 +1,7 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -21,7 +19,7 @@ public class SnapshotItem
 
 public partial class SnapshotsViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
+    private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "Ready";
@@ -29,7 +27,7 @@ public partial class SnapshotsViewModel : ObservableObject
 
     public ObservableCollection<SnapshotItem> Snapshots { get; } = new();
 
-    public SnapshotsViewModel(AetherIpcService ipc)
+    public SnapshotsViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
         _ = LoadSnapshotsAsync();

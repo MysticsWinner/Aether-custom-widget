@@ -1,10 +1,9 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
@@ -19,7 +18,7 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class PerformanceViewModel : ObservableObject
 {
-    private readonly TelemetryPollerService _poller;
+    private readonly ITelemetryPollerService _poller;
     private const int MaxPoints = 120; // 60 seconds at 500ms interval
 
     // ── Observable chart data collections ──
@@ -76,7 +75,7 @@ public partial class PerformanceViewModel : ObservableObject
         new Axis { IsVisible = false }
     ];
 
-    public PerformanceViewModel(TelemetryPollerService poller)
+    public PerformanceViewModel(ITelemetryPollerService poller)
     {
         _poller = poller;
 

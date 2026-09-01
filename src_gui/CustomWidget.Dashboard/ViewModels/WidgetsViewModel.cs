@@ -1,10 +1,8 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
-using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
@@ -14,9 +12,9 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class WidgetsViewModel : ObservableObject
 {
-    private readonly AetherIpcService _ipc;
-    private readonly TelemetryPollerService _poller;
-    private readonly WidgetSettingsService _settingsService;
+    private readonly IAetherIpcService _ipc;
+    private readonly ITelemetryPollerService _poller;
+    private readonly IWidgetSettingsService _settingsService;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "";
@@ -26,7 +24,7 @@ public partial class WidgetsViewModel : ObservableObject
     public ObservableCollection<WidgetInfo> Widgets { get; } = new();
     public ObservableCollection<WidgetInfo> DiscoveredWidgets { get; } = new();
 
-    public WidgetsViewModel(AetherIpcService ipc, TelemetryPollerService poller, WidgetSettingsService settingsService)
+    public WidgetsViewModel(IAetherIpcService ipc, ITelemetryPollerService poller, IWidgetSettingsService settingsService)
     {
         _ipc = ipc;
         _poller = poller;

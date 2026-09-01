@@ -1,6 +1,5 @@
-// Copyright (c) Aether Platform. Licensed under the MIT License.
-
 using System.Diagnostics;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.Services;
 
@@ -8,7 +7,7 @@ namespace CustomWidget.Dashboard.Services;
 /// Manages the lifecycle of the Aether core engine daemon process.
 /// Can start, stop, and monitor the <c>core_engine</c> Rust binary.
 /// </summary>
-public sealed class ProcessManagerService : IDisposable
+public sealed class ProcessManagerService : IProcessManagerService
 {
     private Process? _engineProcess;
     private readonly string _workspaceRoot;

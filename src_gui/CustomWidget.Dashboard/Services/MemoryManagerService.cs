@@ -1,7 +1,10 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using CustomWidget.Dashboard.Services.Interfaces;
 using Microsoft.UI.Xaml;
 
 namespace CustomWidget.Dashboard.Services;
@@ -11,11 +14,11 @@ namespace CustomWidget.Dashboard.Services;
 /// Handles automatic dependency shutdown on app close, working set trimming,
 /// periodic garbage collection, and resource reclamation.
 /// </summary>
-public sealed class MemoryManagerService : IDisposable
+public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
 {
-    private readonly ProcessManagerService _processManager;
-    private readonly TelemetryPollerService _telemetryPoller;
-    private readonly LogCollectorService _logCollector;
+    private readonly IProcessManagerService _processManager;
+    private readonly ITelemetryPollerService _telemetryPoller;
+    private readonly ILogCollectorService _logCollector;
     private readonly DispatcherTimer? _autoMemoryTimer;
     private bool _isDisposed;
 
@@ -23,9 +26,9 @@ public sealed class MemoryManagerService : IDisposable
     private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
 
     public MemoryManagerService(
-        ProcessManagerService processManager,
-        TelemetryPollerService telemetryPoller,
-        LogCollectorService logCollector)
+        IProcessManagerService processManager,
+        ITelemetryPollerService telemetryPoller,
+        ILogCollectorService logCollector)
     {
         _processManager = processManager;
         _telemetryPoller = telemetryPoller;
@@ -63,6 +66,8 @@ public sealed class MemoryManagerService : IDisposable
         catch { }
     }
 
+    public void TrimWorkingSet() => OptimizeMemory();
+
     /// <summary>
     /// Periodic auto-memory cleanup tick handler.
     /// </summary>
@@ -91,7 +96,7 @@ public sealed class MemoryManagerService : IDisposable
             await _processManager.StopEngineAsync();
 
             // 3. Clear logs buffer
-            _logCollector.Clear();
+            await _logCollector.ClearLogsAsync();
 
             // 4. Force final full garbage disposal and RAM working set release
             OptimizeMemory();

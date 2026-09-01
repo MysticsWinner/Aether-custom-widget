@@ -1,7 +1,12 @@
-﻿// Copyright (c) Aether Platform. Licensed under the MIT License.
+// Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.Services;
 
@@ -10,7 +15,7 @@ namespace CustomWidget.Dashboard.Services;
 /// Provides typed methods for every <c>ControlCommand</c> and tracks connection state.
 /// All telemetry data is real — sourced from the Rust daemon's <c>SharedTelemetryCache</c>.
 /// </summary>
-public sealed class AetherIpcService
+public sealed class AetherIpcService : IAetherIpcService
 {
     private readonly IPCClient.NamedPipeClient _pipe = new();
     private bool _isConnected;
@@ -29,12 +34,12 @@ public sealed class AetherIpcService
     /// <summary>
     /// Sends a <c>GetStatus</c> command and deserializes the real telemetry response.
     /// </summary>
-    public async Task<EngineStatus?> GetStatusAsync()
+    public async Task<EngineStatus?> GetStatusAsync(CancellationToken ct = default)
     {
         try
         {
             var cmd = new GetStatusCommand();
-            string response = await _pipe.SendCommandAsync(cmd.ToJson());
+            string response = await _pipe.SendCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(response))
             {
@@ -64,12 +69,12 @@ public sealed class AetherIpcService
     /// <summary>
     /// Sends a <c>Ping</c> command and returns true if the engine responds with <c>Pong</c>.
     /// </summary>
-    public async Task<bool> PingAsync()
+    public async Task<bool> PingAsync(CancellationToken ct = default)
     {
         try
         {
             var cmd = new PingCommand();
-            string response = await _pipe.SendCommandAsync(cmd.ToJson());
+            string response = await _pipe.SendCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
             _isConnected = response.Contains("pong", StringComparison.OrdinalIgnoreCase);
             return _isConnected;
         }
@@ -84,12 +89,12 @@ public sealed class AetherIpcService
     /// Sends a raw JSON command string and returns the raw response.
     /// Used by the Diagnostics IPC console.
     /// </summary>
-    public async Task<string> SendRawCommandAsync(string commandJson)
+    public async Task<string> SendRawCommandAsync(string commandJson, CancellationToken ct = default)
     {
         try
         {
-            string response = await _pipe.SendCommandAsync(commandJson);
-            _isConnected = !response.Contains("\"status\": \"error\"");
+            string response = await _pipe.SendCommandAsync(commandJson, ct).ConfigureAwait(false);
+            _isConnected = !response.Contains("\"status\": \"error\"", StringComparison.OrdinalIgnoreCase);
             return response;
         }
         catch (Exception ex)
@@ -99,91 +104,60 @@ public sealed class AetherIpcService
         }
     }
 
-    /// <summary>
-    /// Sends <c>LoadWidget</c> with the specified manifest path.
-    /// </summary>
-    public async Task<string> LoadWidgetAsync(string manifestPath)
+    public async Task<string> LoadWidgetAsync(string manifestPath, CancellationToken ct = default)
     {
         var cmd = new LoadWidgetCommand { ManifestPath = manifestPath };
-        return await SendRawCommandAsync(cmd.ToJson());
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>UnloadWidget</c> with the specified widget ID.
-    /// </summary>
-    public async Task<string> UnloadWidgetAsync(string widgetId)
+    public async Task<string> UnloadWidgetAsync(string widgetId, CancellationToken ct = default)
     {
         var cmd = new UnloadWidgetCommand { WidgetId = widgetId };
-        return await SendRawCommandAsync(cmd.ToJson());
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>SetThemeMode</c> with the specified mode ("light", "dark", "system").
-    /// </summary>
-    public async Task<string> SetThemeModeAsync(string mode)
+    public async Task<string> SetThemeModeAsync(string mode, CancellationToken ct = default)
     {
         var cmd = new SetThemeModeCommand { Mode = mode };
-        return await SendRawCommandAsync(cmd.ToJson());
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>ReloadAll</c> to reload all loaded widgets.
-    /// </summary>
-    public async Task<string> ReloadAllAsync()
+    public async Task<string> ReloadAllAsync(CancellationToken ct = default)
     {
         var cmd = new ReloadAllCommand();
-        return await SendRawCommandAsync(cmd.ToJson());
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>ToggleDesktopWidget</c> to toggle the transparent desktop overlay window.
-    /// </summary>
-    public async Task<string> ToggleDesktopWidgetAsync()
+    public async Task<string> ToggleDesktopWidgetAsync(CancellationToken ct = default)
     {
-        return await SendRawCommandAsync("\"ToggleDesktopWidget\"");
+        var cmd = new ToggleDesktopWidgetCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>SetWidgetPosition</c> to set specific (X, Y) coordinates for a widget.
-    /// </summary>
-    public async Task<string> SetWidgetPositionAsync(string widgetId, int x, int y)
+    public async Task<string> SetWidgetPositionAsync(string widgetId, int x, int y, CancellationToken ct = default)
     {
-        var payload = JsonSerializer.Serialize(new { widget_id = widgetId, x, y });
-        var cmdJson = $"{{\"type\": \"SetWidgetPosition\", \"payload\": {payload}}}";
-        return await SendRawCommandAsync(cmdJson);
+        var cmd = new SetWidgetPositionCommand { WidgetId = widgetId, X = x, Y = y };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>SetWidgetLock</c> to lock or unlock widget drag movement.
-    /// </summary>
-    public async Task<string> SetWidgetLockAsync(string widgetId, bool locked)
+    public async Task<string> SetWidgetLockAsync(string widgetId, bool locked, CancellationToken ct = default)
     {
-        var payload = JsonSerializer.Serialize(new { widget_id = widgetId, locked });
-        var cmdJson = $"{{\"type\": \"SetWidgetLock\", \"payload\": {payload}}}";
-        return await SendRawCommandAsync(cmdJson);
+        var cmd = new SetWidgetLockCommand { WidgetId = widgetId, Locked = locked };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>ToggleWidgetLock</c> to flip widget position lock state.
-    /// </summary>
-    public async Task<string> ToggleWidgetLockAsync(string widgetId)
+    public async Task<string> ToggleWidgetLockAsync(string widgetId, CancellationToken ct = default)
     {
-        var payload = JsonSerializer.Serialize(new { widget_id = widgetId });
-        var cmdJson = $"{{\"type\": \"ToggleWidgetLock\", \"payload\": {payload}}}";
-        return await SendRawCommandAsync(cmdJson);
+        var cmd = new ToggleWidgetLockCommand { WidgetId = widgetId };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Sends <c>DiscoverWidgets</c> command to recursively scan widget directories on disk.
-    /// Returns the full list of discovered widget plugins and their metadata.
-    /// </summary>
-    public async Task<List<WidgetInfo>> DiscoverWidgetsAsync(List<string>? searchPaths = null)
+    public async Task<List<WidgetInfo>> DiscoverWidgetsAsync(List<string>? searchPaths = null, CancellationToken ct = default)
     {
         try
         {
-            var cmd = new { DiscoverWidgets = new { search_paths = searchPaths } };
-            string cmdJson = JsonSerializer.Serialize(cmd);
-            string responseJson = await SendRawCommandAsync(cmdJson);
+            var cmd = new DiscoverWidgetsCommand { SearchPaths = searchPaths };
+            string responseJson = await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(responseJson) || responseJson.Contains("\"status\": \"error\""))
                 return new List<WidgetInfo>();
@@ -197,103 +171,148 @@ public sealed class AetherIpcService
         }
     }
 
-    /// <summary>
-    /// Queries the marketplace catalog for widget packages matching search query and category filters.
-    /// </summary>
-    public async Task<string> SearchMarketplaceAsync(string query, string? category = null)
+    public async Task<string> SearchMarketplaceAsync(string query, string? category = null, CancellationToken ct = default)
     {
-        var cmd = new { SearchMarketplace = new { query, category = category ?? "all" } };
-        string json = JsonSerializer.Serialize(cmd);
-        return await SendRawCommandAsync(json);
+        var cmd = new SearchMarketplaceCommand { Query = query, Category = category ?? "all" };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Creates a transactional system configuration snapshot.
-    /// </summary>
-    public async Task<string> CreateSnapshotAsync(string name)
+    public async Task<string> CreateSnapshotAsync(string name, CancellationToken ct = default)
     {
-        var cmd = new { CreateSnapshot = new { name } };
-        string json = JsonSerializer.Serialize(cmd);
-        return await SendRawCommandAsync(json);
+        var cmd = new CreateSnapshotCommand { Name = name };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Fetches all system configuration snapshots.
-    /// </summary>
-    public async Task<string> ListSnapshotsAsync()
+    public async Task<string> ListSnapshotsAsync(CancellationToken ct = default)
     {
-        var cmd = new { ListSnapshots = new { } };
-        string json = JsonSerializer.Serialize(cmd);
-        return await SendRawCommandAsync(json);
+        var cmd = new ListSnapshotsCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Restores a system configuration snapshot by snapshot ID.
-    /// </summary>
-    public async Task<string> RestoreSnapshotAsync(string snapshotId)
+    public async Task<string> RestoreSnapshotAsync(string snapshotId, CancellationToken ct = default)
     {
-        var cmd = new { RestoreSnapshot = new { id = snapshotId } };
-        string json = JsonSerializer.Serialize(cmd);
-        return await SendRawCommandAsync(json);
+        var cmd = new RestoreSnapshotCommand { SnapshotId = snapshotId };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Deletes a system configuration snapshot by snapshot ID.
-    /// </summary>
-    public async Task<string> DeleteSnapshotAsync(string snapshotId)
+    public async Task<string> DeleteSnapshotAsync(string snapshotId, CancellationToken ct = default)
     {
-        var cmd = new { DeleteSnapshot = new { id = snapshotId } };
-        string json = JsonSerializer.Serialize(cmd);
-        return await SendRawCommandAsync(json);
+        var cmd = new DeleteSnapshotCommand { SnapshotId = snapshotId };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Fetches security sandbox audit logs and process capability states.
-    /// </summary>
-    public async Task<string> GetSecurityAuditLogsAsync()
+    public async Task<string> ExportSnapshotAsync(string snapshotId, string path, CancellationToken ct = default)
     {
-        var cmd = new { GetSecurityAuditLogs = new { } };
-        string json = JsonSerializer.Serialize(cmd);
-        return await SendRawCommandAsync(json);
+        var cmd = new ExportSnapshotCommand { SnapshotId = snapshotId, Path = path };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
-    // -- Widget Config Commands -------------------------------------------------
 
-    /// <summary>Returns the full descriptor list of all registered widgets.</summary>
-    public async Task<string> ListWidgetsAsync()
-        => await SendRawCommandAsync("\"ListWidgets\"");
+    public async Task<string> ImportSnapshotAsync(string path, CancellationToken ct = default)
+    {
+        var cmd = new ImportSnapshotCommand { Path = path };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
 
-    /// <summary>Updates display options for a specific widget.</summary>
+    public async Task<string> GetSecurityAuditLogsAsync(CancellationToken ct = default)
+    {
+        var cmd = new GetAuditLogsCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetDiagnosticsAsync(CancellationToken ct = default)
+    {
+        var cmd = new GetDiagnosticsCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetSubsystemHealthAsync(CancellationToken ct = default)
+    {
+        var cmd = new GetSubsystemHealthCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetCrashHistoryAsync(string? widgetId = null, CancellationToken ct = default)
+    {
+        var payload = JsonSerializer.Serialize(new { GetCrashHistory = new { widget_id = widgetId } });
+        return await SendRawCommandAsync(payload, ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetLaunchModeAsync(CancellationToken ct = default)
+    {
+        var cmd = new GetLaunchModeCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> ExitSafeModeAsync(CancellationToken ct = default)
+    {
+        var cmd = new ExitSafeModeCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetQuarantineListAsync(CancellationToken ct = default)
+    {
+        var cmd = new GetQuarantineListCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> ReleaseQuarantineAsync(string widgetId, CancellationToken ct = default)
+    {
+        var payload = JsonSerializer.Serialize(new { ReleaseQuarantine = new { widget_id = widgetId } });
+        return await SendRawCommandAsync(payload, ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> ListWidgetsAsync(CancellationToken ct = default)
+    {
+        var cmd = new ListWidgetsCommand();
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
     public async Task<string> UpdateWidgetDisplayOptionsAsync(
         string widgetId, double? opacity = null, double? scale = null,
-        bool? locked = null, bool? enabled = null)
+        bool? locked = null, bool? enabled = null, CancellationToken ct = default)
     {
-        var payload = new { UpdateWidgetDisplayOptions = new { widget_id = widgetId, opacity, scale, locked, enabled } };
-        return await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+        var cmd = new UpdateWidgetDisplayOptionsCommand
+        {
+            WidgetId = widgetId,
+            Opacity = opacity,
+            Scale = scale,
+            Locked = locked,
+            Enabled = enabled
+        };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>Swaps two widgets by "position" or "configuration".</summary>
-    public async Task<string> QuickSwapWidgetAsync(string fromId, string toId, string mode = "position")
+    public async Task<string> QuickSwapWidgetAsync(string fromId, string toId, string mode = "position", CancellationToken ct = default)
     {
-        var payload = new { QuickSwapWidget = new { from_id = fromId, to_id = toId, mode } };
-        return await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+        var cmd = new QuickSwapWidgetCommand { FromId = fromId, ToId = toId, Mode = mode };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>Enables a disabled widget.</summary>
-    public async Task<string> EnableWidgetAsync(string widgetId)
-        => await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(new { EnableWidget = new { widget_id = widgetId } }));
-
-    /// <summary>Disables a widget without unloading it.</summary>
-    public async Task<string> DisableWidgetAsync(string widgetId)
-        => await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(new { DisableWidget = new { widget_id = widgetId } }));
-
-    /// <summary>Sets the opacity of a widget [0.0-1.0].</summary>
-    public async Task<string> SetWidgetOpacityAsync(string widgetId, double opacity)
+    public async Task<string> EnableWidgetAsync(string widgetId, CancellationToken ct = default)
     {
-        var payload = new { SetWidgetOpacity = new { widget_id = widgetId, opacity = (float)Math.Clamp(opacity, 0.0, 1.0) } };
-        return await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(payload));
+        var cmd = new EnableWidgetCommand { WidgetId = widgetId };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
     }
 
-    /// <summary>Resets a widget to its default display options.</summary>
-    public async Task<string> ResetWidgetConfigAsync(string widgetId)
-        => await SendRawCommandAsync(System.Text.Json.JsonSerializer.Serialize(new { ResetWidgetConfig = new { widget_id = widgetId } }));
+    public async Task<string> DisableWidgetAsync(string widgetId, CancellationToken ct = default)
+    {
+        var cmd = new DisableWidgetCommand { WidgetId = widgetId };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> SetWidgetOpacityAsync(string widgetId, double opacity, CancellationToken ct = default)
+    {
+        var cmd = new SetWidgetOpacityCommand
+        {
+            WidgetId = widgetId,
+            Opacity = (float)Math.Clamp(opacity, 0.0, 1.0)
+        };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
+
+    public async Task<string> ResetWidgetConfigAsync(string widgetId, CancellationToken ct = default)
+    {
+        var cmd = new ResetWidgetConfigCommand { WidgetId = widgetId };
+        return await SendRawCommandAsync(cmd.ToJson(), ct).ConfigureAwait(false);
+    }
 }
