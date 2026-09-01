@@ -2,7 +2,7 @@
 
 **Purpose**: Technical documentation of Aether's central broadcast event bus (`CoreEvent`).  
 **Audience**: Engine Developers, Plugin Developers.  
-**Prerequisites**: [System_Architecture.md](System_Architecture.md).  
+**Prerequisites**: [ARCHITECTURE.md](ARCHITECTURE.md).  
 **Related Documents**: [Data_Flow.md](Data_Flow.md).  
 **Last Updated**: 2026-08-07  
 **Status**: Active / Technical Specification  
@@ -36,4 +36,4 @@ pub enum CoreEvent {
 - [crates/core_engine/src/event_bus.rs](file:///d:/Code/Aether-custom-widget/crates/core_engine/src/event_bus.rs)
 
 ## Related Documents
-- [System_Architecture.md](System_Architecture.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)

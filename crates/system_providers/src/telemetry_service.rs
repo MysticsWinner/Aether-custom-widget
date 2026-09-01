@@ -1,6 +1,9 @@
 use crate::providers::{
-    AudioProvider, BatteryProvider, CpuProvider, DisplayTopologyProvider, GpuProvider,
-    MemoryProvider, MetricProvider, MetricValue, NetworkProvider, ProcessMetricsProvider,
+    cpu_topology::CpuTopologyProvider, crypto_financial::CryptoFinancialProvider,
+    gpu_d3dkmt::DedicatedGpuProvider, network_diagnostics::NetworkDiagnosticsProvider,
+    wasapi_audio::WasapiAudioProvider, AudioProvider, BatteryProvider, CpuProvider,
+    DisplayTopologyProvider, GpuProvider, MemoryProvider, MetricProvider, MetricValue,
+    NetworkProvider, ProcessMetricsProvider,
 };
 use crate::shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,6 +19,11 @@ pub struct TelemetryService {
     audio_provider: Box<dyn MetricProvider>,
     process_provider: Box<dyn MetricProvider>,
     display_provider: Box<dyn MetricProvider>,
+    dedicated_gpu: DedicatedGpuProvider,
+    cpu_topology: CpuTopologyProvider,
+    wasapi_audio: WasapiAudioProvider,
+    crypto_financial: CryptoFinancialProvider,
+    network_diagnostics: NetworkDiagnosticsProvider,
     cache: SharedTelemetryCache,
 }
 
@@ -31,6 +39,11 @@ impl TelemetryService {
             audio_provider: Box::new(AudioProvider::new()),
             process_provider: Box::new(ProcessMetricsProvider::new()),
             display_provider: Box::new(DisplayTopologyProvider::new()),
+            dedicated_gpu: DedicatedGpuProvider::new(),
+            cpu_topology: CpuTopologyProvider::new(),
+            wasapi_audio: WasapiAudioProvider::new(),
+            crypto_financial: CryptoFinancialProvider::new(),
+            network_diagnostics: NetworkDiagnosticsProvider::new(),
             cache,
         }
     }
@@ -125,6 +138,14 @@ impl TelemetryService {
                 _ => (1, 1, 0, 1, 0, 0),
             };
 
+        // Phase 1 Extended Telemetry
+        let gpu_telemetry = self.dedicated_gpu.sample_telemetry().unwrap_or_default();
+        let cpu_topology = self.cpu_topology.sample_topology(cpu_val).unwrap_or_default();
+        let audio_spectrum = self.wasapi_audio.sample_spectrum(true, vol_pct);
+        let media_playback = self.wasapi_audio.sample_media();
+        let crypto_assets = self.crypto_financial.sample_all().unwrap_or_default();
+        let network_diagnostics = self.network_diagnostics.sample().unwrap_or_default();
+
         let snapshot = TelemetrySnapshot {
             timestamp_ms: now_ms,
             cpu_usage_pct: cpu_val,
@@ -135,7 +156,7 @@ impl TelemetryService {
             net_sent_bytes_per_sec: net_tx,
             open_apps_count: open_apps,
             browser_tabs_count: browser_tabs,
-            audio_playing_apps_count: audio_apps,
+            audio_playing_apps_count: if audio_spectrum.is_active { 1 } else { audio_apps },
             gaming_apps_count: gaming_apps,
             dev_suite_apps_count: dev_apps,
             other_apps_count: other_apps,
@@ -150,6 +171,12 @@ impl TelemetryService {
             total_display_count: total_displays,
             external_display_count: ext_displays,
             virtual_display_count: virt_displays,
+            gpu_telemetry,
+            cpu_topology,
+            audio_spectrum,
+            media_playback,
+            crypto_assets,
+            network_diagnostics,
             custom_metrics: Default::default(),
         };
 
@@ -184,6 +211,9 @@ impl TelemetryBenchmark {
         for _ in 0..reader_count {
             let _cpu = cache.get_cpu_pct();
             let _mem = cache.get_memory_used_mb();
+            let _gpu_telem = cache.get_gpu_telemetry();
+            let _topo = cache.get_cpu_topology();
+            let _audio = cache.get_audio_spectrum();
             let _snapshot = cache.get_snapshot();
         }
         let elapsed_us = start.elapsed().as_micros();
@@ -211,6 +241,9 @@ mod tests {
 
         let snapshot = service.collect_once().unwrap();
         assert!(snapshot.cpu_usage_pct >= 0.0);
+        assert!(!snapshot.gpu_telemetry.adapter_name.is_empty());
+        assert_eq!(snapshot.cpu_topology.per_core_usage_pct.len(), snapshot.cpu_topology.logical_core_count as usize);
+        assert_eq!(snapshot.audio_spectrum.fft_bins_16.len(), 16);
         assert_eq!(cache.update_count(), 1);
         assert_eq!(cache.get_snapshot(), snapshot);
         assert!(snapshot.total_display_count >= 1);

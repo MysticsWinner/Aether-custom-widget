@@ -2,8 +2,8 @@
 
 **Purpose**: Maps crate dependency graph and prevents circular dependencies across Aether workspace crates.  
 **Audience**: Maintainers, Build Engineers.  
-**Prerequisites**: [System_Architecture.md](System_Architecture.md).  
-**Related Documents**: [Workspace.md](../09_Development/Workspace.md).  
+**Prerequisites**: [ARCHITECTURE.md](ARCHITECTURE.md).  
+**Related Documents**: [WORKSPACE.md](../Development/WORKSPACE.md).  
 **Last Updated**: 2026-08-07  
 **Status**: Active / Reference  
 **Owner**: Core Architecture Team  
@@ -41,4 +41,4 @@
 - [Cargo.toml](../../Cargo.toml)
 
 ## Related Documents
-- [Workspace.md](../09_Development/Workspace.md)
+- [WORKSPACE.md](../Development/WORKSPACE.md)

@@ -1,13 +1,21 @@
 pub mod benchmark;
 pub mod d2d_renderer;
+pub mod dcomp_tree;
 pub mod desktop_widget_window;
 pub mod dirty_rect;
+pub mod glassmorphism;
+pub mod particles;
+pub mod virtual_desktops;
 pub mod workerw;
 
 pub use benchmark::{RainmeterBenchmark, RenderBenchmarkResult};
 pub use d2d_renderer::Direct2DRenderer;
+pub use dcomp_tree::{CompositionVisualNode, DCompVisualTreeManager, SwapchainColorFormat};
 pub use desktop_widget_window::DesktopWidgetWindow;
 pub use dirty_rect::DirtyRegionTracker;
+pub use glassmorphism::{GlassEffectType, GlassmorphismPipeline};
+pub use particles::{Particle, ParticleEmitter, ParticleFieldConfig, ParticlePhysicsEngine, ParticleType};
+pub use virtual_desktops::{DpiMonitorScale, VirtualDesktopManager, VirtualDesktopPinning};
 pub use workerw::find_desktop_workerw_hwnd;
 
 use std::fmt;

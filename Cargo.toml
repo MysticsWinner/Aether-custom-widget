@@ -29,6 +29,11 @@ members = [
     "crates/weather_widget",
     "crates/network_monitor_widget",
     "crates/ai_assistant_widget",
+    "crates/audio_visualizer_widget",
+    "crates/hardware_pro_widget",
+    "crates/dock_launcher_widget",
+    "crates/weather_particles_widget",
+    "crates/crypto_stocks_widget",
     "tests",
 ]
 

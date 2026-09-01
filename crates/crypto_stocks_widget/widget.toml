@@ -1,0 +1,17 @@
+[widget]
+id = "com.aether.crypto_stocks"
+name = "Real-Time Financial & Cryptocurrency Ticker Matrix"
+version = "1.0.0"
+author = "Aether Desktop Core Team"
+description = "Hardware-accelerated live market ticker widget rendering cryptocurrency prices (BTC, ETH, SOL), equity indices, RSI technical indicators, and historical spline area charts."
+
+[display]
+width = 460
+height = 260
+opacity = 0.95
+locked = false
+refresh_rate_hz = 60
+
+[bindings]
+crypto_assets = "sys.market.crypto"
+network_latency = "sys.network.latency"

@@ -17,6 +17,12 @@ public sealed class TelemetrySample
     public ulong NetRecvBytesPerSec { get; init; }
     public ulong NetSentBytesPerSec { get; init; }
 
+    // ── Extended Telemetry Subsystem Data ──
+    public GpuTelemetryDto? GpuTelemetry { get; init; }
+    public CpuTopologyDto? CpuTopology { get; init; }
+    public AudioSpectrumDto? AudioSpectrum { get; init; }
+    public MediaPlaybackDto? MediaPlayback { get; init; }
+
     /// <summary>
     /// Memory usage as a percentage (0.0–100.0).
     /// </summary>
@@ -43,5 +49,9 @@ public sealed class TelemetrySample
         MemoryUsedMb = status.MemoryUsedMb,
         MemoryTotalMb = status.MemoryTotalMb,
         MemoryFreeMb = status.MemoryFreeMb,
+        GpuTelemetry = status.GpuTelemetry,
+        CpuTopology = status.CpuTopology,
+        AudioSpectrum = status.AudioSpectrum,
+        MediaPlayback = status.MediaPlayback,
     };
 }

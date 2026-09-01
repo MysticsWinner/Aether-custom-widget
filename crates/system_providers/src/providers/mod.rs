@@ -1,6 +1,14 @@
-use anyhow::Result;
-use std::fmt::Debug;
-use std::time::Instant;
+pub mod cpu_topology;
+pub mod crypto_financial;
+pub mod gpu_d3dkmt;
+pub mod network_diagnostics;
+pub mod wasapi_audio;
+
+pub use cpu_topology::{CpuTopologyProvider, CpuTopologyTelemetry};
+pub use crypto_financial::{CryptoAssetTelemetry, CryptoFinancialProvider};
+pub use gpu_d3dkmt::{DedicatedGpuProvider, GpuTelemetry};
+pub use network_diagnostics::{NetworkDiagnosticsProvider, NetworkDiagnosticsTelemetry};
+pub use wasapi_audio::{AudioSpectrumTelemetry, MediaPlaybackTelemetry, WasapiAudioProvider};
 
 /// Represents a single metric sample collected from an OS/Hardware provider.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +49,18 @@ pub enum MetricValue {
         external_display_count: u32,
         virtual_display_count: u32,
     },
+    /// Deep dedicated GPU and VRAM hardware metrics.
+    GpuStats(GpuTelemetry),
+    /// Multi-core topology and P/E core load distribution.
+    CpuTopology(CpuTopologyTelemetry),
+    /// Audio frequency spectrum FFT bins.
+    AudioSpectrum(AudioSpectrumTelemetry),
+    /// Media playback session state.
+    MediaSession(MediaPlaybackTelemetry),
+    /// Live financial and cryptocurrency market asset prices.
+    CryptoAssets(Vec<CryptoAssetTelemetry>),
+    /// Deep network latency and bandwidth diagnostics.
+    NetworkDiagnostics(NetworkDiagnosticsTelemetry),
 }
 
 /// Abstract Metric Provider Interface.

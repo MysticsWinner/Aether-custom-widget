@@ -1,9 +1,11 @@
+pub mod aether_cli;
 pub mod cli;
 pub mod discovery;
 pub mod hot_reload;
 pub mod inspector;
 pub mod layout_grid;
 
+pub use aether_cli::{WidgetBuilder, WidgetProjectTemplate};
 pub use cli::{AetherCli, CliCommand};
 pub use discovery::WidgetDiscoveryScanner;
 pub use hot_reload::DevHotReloader;

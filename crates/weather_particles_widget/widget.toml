@@ -1,0 +1,18 @@
+[widget]
+id = "com.aether.weather_particles"
+name = "Ambient Weather & Atmospheric Particle Simulation"
+version = "1.0.0"
+author = "Aether Desktop Core Team"
+description = "Hardware-accelerated ambient weather desktop widget with live Direct2D physical particle simulations (rain splashes, drifting snow, atmospheric fog, and solar rays)."
+
+[display]
+width = 420
+height = 240
+opacity = 0.95
+locked = false
+refresh_rate_hz = 60
+
+[bindings]
+weather_condition = "env.weather.condition"
+wind_speed = "env.weather.wind_speed"
+temperature = "env.weather.temperature_c"

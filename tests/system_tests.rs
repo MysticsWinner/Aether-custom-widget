@@ -122,3 +122,101 @@ async fn test_system_cold_restart_persistence() {
     // Clean up test side-effects
     let _ = std::fs::remove_file(temp_path);
 }
+
+#[tokio::test]
+async fn test_system_adaptive_power_and_glassmorphism_pipeline_e2e() {
+    use core_engine::rendering::glassmorphism::GlassmorphismPipeline;
+    use core_engine::task_scheduler::{AdaptivePowerGovernor, PowerProfile};
+    use theme_engine::{MaterialSpec, MaterialType};
+    use widget_sdk::{BatchRenderCanvas, RectF};
+
+    // 1. Test Adaptive Power Governor switching across system states
+    let mut governor = AdaptivePowerGovernor::new();
+    assert_eq!(governor.current_profile(), PowerProfile::Standard);
+
+    // Interactive audio session -> HighPerformance (144 Hz)
+    let p1 = governor.evaluate_profile(true, true, false, false, 0);
+    assert_eq!(p1, PowerProfile::HighPerformance);
+    assert_eq!(p1.target_refresh_rate_hz(), 144);
+
+    // Fullscreen 3D game -> Suppressed (0 Hz)
+    let p2 = governor.evaluate_profile(false, false, false, true, 0);
+    assert_eq!(p2, PowerProfile::Suppressed);
+    assert_eq!(governor.cpu_savings_estimate_pct(), 100.0);
+
+    // 2. Test Glassmorphism Pipeline multi-pass shader composition
+    let pipeline = GlassmorphismPipeline::new().with_dithering(true);
+    let mut canvas = BatchRenderCanvas::new();
+    let spec = MaterialSpec {
+        material_type: MaterialType::Acrylic,
+        tint_color: "#161B22".to_string(),
+        tint_opacity: 0.90,
+        blur_radius: 30.0,
+        corner_radius: Some(16.0),
+        border_color: Some("#30363D".to_string()),
+        border_width: Some(1.0),
+        ..Default::default()
+    };
+
+    pipeline.apply_material(&mut canvas, RectF::new(0.0, 0.0, 400.0, 200.0), &spec);
+    assert!(canvas.commands().len() >= 2);
+}
+
+#[tokio::test]
+async fn test_system_showcase_widgets_coexistence_e2e() {
+    use audio_visualizer_widget::AudioVisualizerWidget;
+    use dock_launcher_widget::DockLauncherWidget;
+    use hardware_pro_widget::HardwareProWidget;
+    use perf_monitor_widget::PerfMonitorWidget;
+    use system_providers::{SharedTelemetryCache, TelemetryService};
+    use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
+
+    let cache = SharedTelemetryCache::new();
+    let mut service = TelemetryService::new(cache.clone());
+
+    // 1. Initialize all 4 built-in showcase widgets
+    let mut perf = PerfMonitorWidget::new(cache.clone());
+    let mut audio = AudioVisualizerWidget::new(cache.clone());
+    let mut hw_pro = HardwareProWidget::new(cache.clone());
+    let mut dock = DockLauncherWidget::new(cache.clone());
+
+    assert!(perf.on_load().is_ok());
+    assert!(audio.on_load().is_ok());
+    assert!(hw_pro.on_load().is_ok());
+    assert!(dock.on_load().is_ok());
+
+    assert!(perf.on_mount().is_ok());
+    assert!(audio.on_mount().is_ok());
+    assert!(hw_pro.on_mount().is_ok());
+    assert!(dock.on_mount().is_ok());
+
+    assert_eq!(perf.state(), WidgetState::Mounted);
+    assert_eq!(audio.state(), WidgetState::Mounted);
+    assert_eq!(hw_pro.state(), WidgetState::Mounted);
+    assert_eq!(dock.state(), WidgetState::Mounted);
+
+    // 2. Perform simultaneous telemetry sampling and multi-widget tick pass
+    let _snapshot = service.collect_once().expect("Telemetry collection should succeed");
+    let ctx = TickContext {
+        tick_number: 1,
+        delta_ms: 16.6,
+        system_time_ms: 1000,
+    };
+
+    assert!(perf.on_update(&ctx).is_ok());
+    assert!(audio.on_update(&ctx).is_ok());
+    assert!(hw_pro.on_update(&ctx).is_ok());
+    assert!(dock.on_update(&ctx).is_ok());
+
+    // 3. Gracefully tear down all widgets
+    assert!(perf.on_unmount().is_ok());
+    assert!(audio.on_unmount().is_ok());
+    assert!(hw_pro.on_unmount().is_ok());
+    assert!(dock.on_unmount().is_ok());
+
+    assert!(perf.on_unload().is_ok());
+    assert!(audio.on_unload().is_ok());
+    assert!(hw_pro.on_unload().is_ok());
+    assert!(dock.on_unload().is_ok());
+}
+
