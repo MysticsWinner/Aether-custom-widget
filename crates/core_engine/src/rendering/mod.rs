@@ -18,10 +18,11 @@ pub use particles::{Particle, ParticleEmitter, ParticleFieldConfig, ParticlePhys
 pub use virtual_desktops::{DpiMonitorScale, VirtualDesktopManager, VirtualDesktopPinning};
 pub use workerw::find_desktop_workerw_hwnd;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Floating point 2D rectangle representation used for geometry and invalidation bounds.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct RectF {
     pub x: f32,
     pub y: f32,
@@ -82,7 +83,7 @@ impl RectF {
 }
 
 /// Floating point RGBA color token.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Color {
     pub r: f32,
     pub g: f32,

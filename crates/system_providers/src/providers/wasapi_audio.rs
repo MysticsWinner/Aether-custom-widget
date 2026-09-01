@@ -4,7 +4,6 @@
 //! logarithmic Fast Fourier Transform (FFT) frequency spectrum with ballistics,
 //! and extracts System Media Transport Controls (SMTC) playback metadata.
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 

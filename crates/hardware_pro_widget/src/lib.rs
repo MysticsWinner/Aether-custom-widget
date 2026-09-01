@@ -219,9 +219,9 @@ mod tests {
         assert_eq!(widget.state(), WidgetState::Mounted);
 
         let ctx = TickContext {
-            tick_number: 1,
-            delta_ms: 16.6,
-            system_time_ms: 1000,
+            timestamp_ms: 1000,
+            delta_time_ms: 16.0,
+            frame_index: 1,
         };
         assert!(widget.on_update(&ctx).is_ok());
 
@@ -252,9 +252,9 @@ mod tests {
         widget.on_mount().unwrap();
 
         let ctx = TickContext {
-            tick_number: 1,
-            delta_ms: 16.6,
-            system_time_ms: 1000,
+            timestamp_ms: 1000,
+            delta_time_ms: 16.0,
+            frame_index: 1,
         };
         assert!(widget.on_update(&ctx).is_ok());
         assert!(!widget.history_points.is_empty());

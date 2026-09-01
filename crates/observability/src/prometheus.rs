@@ -158,6 +158,7 @@ mod tests {
             external_display_count: 0,
             virtual_display_count: 0,
             custom_metrics: Default::default(),
+            ..TelemetrySnapshot::default()
         };
 
         let metrics = PrometheusExporter::format_snapshot(&snap, 3);

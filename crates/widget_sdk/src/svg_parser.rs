@@ -43,8 +43,8 @@ impl SvgPathData {
     /// Parses an SVG path string (e.g. "M 10 80 Q 52.5 10, 95 80 T 180 80 Z").
     pub fn parse(path_str: &str) -> Result<Self, String> {
         let mut segments = Vec::new();
-        let tokens: Vec<&str> = path_str
-            .replace(',', " ")
+        let normalized = path_str.replace(',', " ");
+        let tokens: Vec<&str> = normalized
             .split_whitespace()
             .collect();
 

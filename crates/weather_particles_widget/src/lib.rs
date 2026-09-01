@@ -111,12 +111,12 @@ impl WidgetLifecycle for WeatherParticlesWidget {
 
     fn on_update(&mut self, ctx: &TickContext) -> Result<()> {
         self.tick_count += 1;
-        let dt = (ctx.delta_ms as f32 / 1000.0).clamp(0.001, 0.05);
+        let dt = (ctx.delta_time_ms as f32 / 1000.0).clamp(0.001, 0.05);
 
         // 1. Emit and simulate physical particles
         self.emitter.emit(dt, &mut self.particles);
 
-        let card_bounds = RectF::new(20.0, 160.0, 380.0, 60.0);
+        let card_bounds = core_engine::rendering::RectF::new(20.0, 160.0, 380.0, 60.0);
         self.physics.step(dt, &mut self.particles, &[card_bounds]);
 
         // 2. Render Canvas
@@ -238,9 +238,9 @@ mod tests {
         assert_eq!(widget.state(), WidgetState::Mounted);
 
         let ctx = TickContext {
-            tick_number: 1,
-            delta_ms: 16.6,
-            system_time_ms: 1000,
+            timestamp_ms: 1000,
+            delta_time_ms: 16.0,
+            frame_index: 1,
         };
         assert!(widget.on_update(&ctx).is_ok());
         assert!(widget.active_particles_count() > 0, "Particles should be active after tick");

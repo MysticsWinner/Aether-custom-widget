@@ -167,9 +167,13 @@ impl ChaosHarness {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static TEST_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_chaos_failure_injection_lifecycle() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         ChaosHarness::reset();
         assert_eq!(ChaosHarness::active_failure_count(), 0);
 
@@ -189,6 +193,7 @@ mod tests {
 
     #[test]
     fn test_real_oom_physical_allocation_pressure() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         ChaosHarness::reset();
         let oom_scenario = ChaosScenario::OomAllocation {
             widget_id: "heavy_widget".to_string(),
@@ -206,6 +211,7 @@ mod tests {
 
     #[test]
     fn test_pipe_corruption_injection() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         ChaosHarness::reset();
         let payload = r#"{"GetStatus":{}}"#;
         assert_eq!(ChaosHarness::apply_pipe_corruption(payload), payload);

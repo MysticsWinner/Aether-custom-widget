@@ -650,7 +650,7 @@ mod tests {
         // Half alpha (128) -> halved colors
         let p_half = to_pargb(200, 100, 50, 128);
         assert_eq!((p_half >> 24) & 0xFF, 128);
-        assert_eq!((p_half >> 16) & 0xFF, 101); // 200 * 128 / 255 ~ 100.39 -> 101
+        assert_eq!((p_half >> 16) & 0xFF, 100); // 200 * 128 / 255 ~ 100.39 -> 100
         assert_eq!((p_half >> 8) & 0xFF, 50);
 
         // Zero alpha -> 0x00000000

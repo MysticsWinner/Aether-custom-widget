@@ -1,3 +1,7 @@
+use anyhow::Result;
+use std::fmt::Debug;
+use std::time::Instant;
+
 pub mod cpu_topology;
 pub mod crypto_financial;
 pub mod gpu_d3dkmt;

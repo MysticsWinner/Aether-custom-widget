@@ -303,9 +303,9 @@ async fn test_13_crypto_financial_and_network_diagnostics_integration() {
     assert!(widget.on_mount().is_ok());
 
     let ctx = TickContext {
-        tick_number: 1,
-        delta_ms: 16.6,
-        system_time_ms: 1000,
+        timestamp_ms: 1000,
+        delta_time_ms: 16.0,
+        frame_index: 1,
     };
     assert!(widget.on_update(&ctx).is_ok());
     assert_eq!(widget.state(), WidgetState::Mounted);
@@ -336,9 +336,9 @@ async fn test_14_ambient_weather_particles_and_frame_arena_integration() {
     assert_eq!(arena.used_bytes(), 2048);
 
     let ctx = TickContext {
-        tick_number: 1,
-        delta_ms: 16.6,
-        system_time_ms: 1000,
+        timestamp_ms: 1000,
+        delta_time_ms: 16.0,
+        frame_index: 1,
     };
     assert!(widget.on_update(&ctx).is_ok());
     assert!(widget.active_particles_count() > 0);

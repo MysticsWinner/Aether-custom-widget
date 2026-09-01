@@ -21,7 +21,10 @@ pub struct CpuTopologyTelemetry {
 
 impl Default for CpuTopologyTelemetry {
     fn default() -> Self {
-        let logical = num_cpus::get().max(1) as u32;
+        let logical = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .max(1) as u32;
         let (p_cores, e_cores) = if logical >= 16 {
             (8, logical - 8)
         } else {
@@ -30,7 +33,7 @@ impl Default for CpuTopologyTelemetry {
         Self {
             physical_core_count: (logical / 2).max(1),
             logical_core_count: logical,
-            p_core_count: p_cores,
+            p_core_count: if p_cores > 0 { p_cores } else { 1 },
             e_core_count: e_cores,
             per_core_usage_pct: vec![0.0; logical as usize],
             is_thermal_throttling: false,
@@ -50,7 +53,10 @@ pub struct CpuTopologyProvider {
 
 impl CpuTopologyProvider {
     pub fn new() -> Self {
-        let logical = num_cpus::get().max(1);
+        let logical = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .max(1);
         Self {
             tick: 0,
             prev_core_times: vec![(0, 1); logical],
@@ -62,7 +68,7 @@ impl CpuTopologyProvider {
     #[cfg(windows)]
     fn query_topology() -> Result<CpuTopologyTelemetry> {
         use windows::Win32::System::SystemInformation::{
-            GetLogicalProcessorInformationEx, LOGICAL_PROCESSOR_RELATIONSHIP,
+            GetLogicalProcessorInformationEx,
             SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX, RelationProcessorCore,
         };
 
@@ -96,7 +102,10 @@ impl CpuTopologyProvider {
                 }
             }
 
-            let logical = num_cpus::get().max(1) as u32;
+            let logical = std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1)
+                .max(1) as u32;
             if physical_cores == 0 {
                 physical_cores = (logical / 2).max(1);
                 p_cores = logical;

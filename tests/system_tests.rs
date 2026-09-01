@@ -145,6 +145,7 @@ async fn test_system_adaptive_power_and_glassmorphism_pipeline_e2e() {
     assert_eq!(governor.cpu_savings_estimate_pct(), 100.0);
 
     // 2. Test Glassmorphism Pipeline multi-pass shader composition
+    use widget_sdk::RenderCanvas;
     let pipeline = GlassmorphismPipeline::new().with_dithering(true);
     let mut canvas = BatchRenderCanvas::new();
     let spec = MaterialSpec {
@@ -152,13 +153,11 @@ async fn test_system_adaptive_power_and_glassmorphism_pipeline_e2e() {
         tint_color: "#161B22".to_string(),
         tint_opacity: 0.90,
         blur_radius: 30.0,
-        corner_radius: Some(16.0),
-        border_color: Some("#30363D".to_string()),
-        border_width: Some(1.0),
+        border_highlight: true,
         ..Default::default()
     };
 
-    pipeline.apply_material(&mut canvas, RectF::new(0.0, 0.0, 400.0, 200.0), &spec);
+    pipeline.apply_material(&mut canvas, widget_sdk::rendering::RectF::new(0.0, 0.0, 400.0, 200.0), &spec);
     assert!(canvas.commands().len() >= 2);
 }
 
@@ -198,9 +197,9 @@ async fn test_system_showcase_widgets_coexistence_e2e() {
     // 2. Perform simultaneous telemetry sampling and multi-widget tick pass
     let _snapshot = service.collect_once().expect("Telemetry collection should succeed");
     let ctx = TickContext {
-        tick_number: 1,
-        delta_ms: 16.6,
-        system_time_ms: 1000,
+        timestamp_ms: 1000,
+        delta_time_ms: 16.0,
+        frame_index: 1,
     };
 
     assert!(perf.on_update(&ctx).is_ok());

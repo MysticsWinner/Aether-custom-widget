@@ -3,11 +3,10 @@
 //! Provides hardware-accelerated Mica, Acrylic, Gaussian blur, frosted glass,
 //! and HDR dithering pipelines for glassmorphism desktop widgets.
 
-use crate::rendering::RectF;
 use serde::{Deserialize, Serialize};
 use theme_engine::{MaterialSpec, MaterialType};
 use tracing::debug;
-use widget_sdk::rendering::{BatchRenderCanvas, Color, RenderCanvas, RenderEffect};
+use widget_sdk::rendering::{BatchRenderCanvas, Color, RectF, RenderCanvas, RenderEffect};
 
 /// Material effect type for shader composition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -67,13 +66,13 @@ impl GlassmorphismPipeline {
         let tint = parse_hex_color(&spec.tint_color, spec.tint_opacity);
 
         // 3. Emit Background Tint Rectangle
-        canvas.draw_rect(rect, tint, spec.corner_radius.unwrap_or(16.0));
+        canvas.draw_rect(rect, tint, 16.0);
 
         // 4. Emit Border / Outline
-        if let (Some(border_color_hex), Some(border_width)) = (&spec.border_color, spec.border_width) {
-            let border_color = parse_hex_color(border_color_hex, 0.4);
-            canvas.draw_rect(rect, border_color, spec.corner_radius.unwrap_or(16.0));
-            debug!("Applied border {:?} width {}", border_color, border_width);
+        if spec.border_highlight {
+            let border_color = Color::rgba(1.0, 1.0, 1.0, 0.15);
+            canvas.draw_rect(rect, border_color, 16.0);
+            debug!("Applied border highlight {:?}", border_color);
         }
     }
 
@@ -156,9 +155,7 @@ mod tests {
             tint_color: "#1E1E24".to_string(),
             tint_opacity: 0.85,
             blur_radius: 25.0,
-            corner_radius: Some(12.0),
-            border_color: Some("#303040".to_string()),
-            border_width: Some(1.0),
+            border_highlight: true,
             ..Default::default()
         };
 

@@ -54,3 +54,9 @@ recovery_manager = { path = "../crates/recovery_manager" }
 capability_broker = { path = "../crates/capability_broker" }
 event_recorder = { path = "../crates/event_recorder" }
 config_manager = { path = "../crates/config_manager" }
+observability = { path = "../crates/observability" }
+audio_visualizer_widget = { path = "../crates/audio_visualizer_widget" }
+hardware_pro_widget = { path = "../crates/hardware_pro_widget" }
+dock_launcher_widget = { path = "../crates/dock_launcher_widget" }
+weather_particles_widget = { path = "../crates/weather_particles_widget" }
+crypto_stocks_widget = { path = "../crates/crypto_stocks_widget" }

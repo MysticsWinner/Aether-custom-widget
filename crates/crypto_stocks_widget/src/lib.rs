@@ -146,7 +146,7 @@ impl WidgetLifecycle for CryptoStocksWidget {
         }
 
         // 3. Active Asset Price & Metrics
-        let price_str = format!("${:,.2}", active_asset.price_usd);
+        let price_str = format!("${:.2}", active_asset.price_usd);
         canvas.draw_text(
             &price_str,
             "Segoe UI Variable Display",
@@ -171,7 +171,7 @@ impl WidgetLifecycle for CryptoStocksWidget {
 
         // 4. RSI & 24h High/Low Indicators
         let indicator_str = format!(
-            "RSI-14: {:.1}  •  24h High: ${:,.0}  •  24h Low: ${:,.0}",
+            "RSI-14: {:.1}  •  24h High: ${:.0}  •  24h Low: ${:.0}",
             active_asset.rsi_14, active_asset.high_24h_usd, active_asset.low_24h_usd
         );
         canvas.draw_text(
@@ -198,7 +198,7 @@ impl WidgetLifecycle for CryptoStocksWidget {
                 })
                 .collect();
 
-            canvas.draw_spline_area(&pts, Color::rgba(0.0, 0.85, 1.0, 0.35), Color::rgb(0.0, 0.9, 1.0), 2.0);
+            canvas.draw_spline_area(pts, Color::rgba(0.0, 0.85, 1.0, 0.35), Color::rgb(0.0, 0.9, 1.0), 2.0);
         }
 
         Ok(())
@@ -239,9 +239,9 @@ mod tests {
         assert_eq!(widget.state(), WidgetState::Mounted);
 
         let ctx = TickContext {
-            tick_number: 1,
-            delta_ms: 16.6,
-            system_time_ms: 1000,
+            timestamp_ms: 1000,
+            delta_time_ms: 16.0,
+            frame_index: 1,
         };
         assert!(widget.on_update(&ctx).is_ok());
 
