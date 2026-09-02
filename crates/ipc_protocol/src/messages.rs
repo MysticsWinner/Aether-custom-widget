@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// High-level IPC Control Commands sent over Win32 Named Pipes
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -101,8 +101,12 @@ pub enum ControlCommand {
     GenerateWallpaperTheme { wallpaper_path: Option<String> },
     /// Query AI performance advice & repair suggestions for widgets
     GetAiPerformanceAdvice { widget_id: Option<String> },
-    /// Search marketplace packages by query
-    SearchMarketplace { query: String },
+    /// Search marketplace packages by query, optionally filtered by category
+    SearchMarketplace {
+        query: String,
+        #[serde(default)]
+        category: Option<String>,
+    },
     /// Query current Group Policy rules
     GetEnterprisePolicy,
     /// Update Group Policy rules JSON
@@ -387,10 +391,22 @@ mod tests {
     fn test_marketplace_snapshot_security_serialization() {
         let search_cmd = ControlCommand::SearchMarketplace {
             query: "monitoring".to_string(),
+            category: Some("all".to_string()),
         };
         let json_search = serde_json::to_string(&search_cmd).unwrap();
         let decoded_search: ControlCommand = serde_json::from_str(&json_search).unwrap();
         assert_eq!(decoded_search, search_cmd);
+
+        // Verify backwards compatibility with legacy payloads omitting category
+        let legacy_json = r#"{"SearchMarketplace":{"query":"monitoring"}}"#;
+        let legacy_decoded: ControlCommand = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(
+            legacy_decoded,
+            ControlCommand::SearchMarketplace {
+                query: "monitoring".to_string(),
+                category: None,
+            }
+        );
 
         let snap_cmd = ControlCommand::CreateSnapshot {
             name: "Baseline".to_string(),

@@ -98,12 +98,15 @@ All IPC messages sent over the Control Channel follow the `ControlCommand` JSON 
 - **Get Health**: `{"type": "GetSubsystemHealth"}`
 - **Get Diagnostics**: `{"type": "GetDiagnostics"}`
 
+### 2.7 Package Manager & Marketplace
+- **Search Marketplace**: `{"SearchMarketplace": {"query": "monitoring", "category": "all"}}` (supports optional `category` filter, with `None` fallback)
+
 ---
 
 ## 3. Client Implementation Matrix
 
 | Client | Implementation Path | Language | Notes |
 |:---|:---|:---|:---|
-| **WinUI 3 Dashboard** | `src_gui/CustomWidget.Dashboard/Services/AetherIpcService.cs` | C# (.NET 8) | Async `NamedPipeClientStream` with timeout and auto-reconnect. |
+| **WinUI 3 Dashboard** | `src_gui/CustomWidget.Dashboard/Services/AetherIpcService.cs` | C# (.NET 8) | Async `NamedPipeClientStream` with chunked memory-stream reading (`while > 0`), timeout, and auto-reconnect. |
 | **Ratatui TUI** | `crates/dashboard_tui/src/main.rs` | Rust | Tokio `ClientOptions` pipe client with live polling loop. |
 | **CLI Tools** | `crates/dev_tools/src/ipc.rs` | Rust | Low-latency synchronous and async pipe helpers. |

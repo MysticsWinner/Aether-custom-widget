@@ -29,13 +29,22 @@ public interface IWidget
 
 ## 2. Dashboard Service Architecture (`src_gui/CustomWidget.Dashboard/Services`)
 
-The WinUI 3 Dashboard provides 6 background services:
+The WinUI 3 Dashboard provides 6 background services registered via Dependency Injection (`Microsoft.Extensions.DependencyInjection`) using both interface and concrete bindings:
 
-| Service | File Path | Responsibility |
+| Service Interface | Concrete Implementation | Responsibility |
 |:---|:---|:---|
-| `AetherIpcService` | `Services/AetherIpcService.cs` | Async Named Pipe client, JSON command dispatch, auto-reconnect |
-| `MemoryManagerService` | `Services/MemoryManagerService.cs` | Process working set tracking, GC triggers, and RAM budget enforcement |
-| `ProcessManagerService` | `Services/ProcessManagerService.cs` | Host daemon lifecycle supervisor, process startup & shutdown |
-| `TelemetryPollerService` | `Services/TelemetryPollerService.cs` | High-frequency telemetry polling loop with DispatcherQueue dispatch |
-| `WidgetSettingsService` | `Services/WidgetSettingsService.cs` | Persistent JSON settings storage and per-widget options |
-| `LogCollectorService` | `Services/LogCollectorService.cs` | Ring buffer log collector and diagnostic trace reader |
+| `IAetherIpcService` | `Services/AetherIpcService.cs` | Async Named Pipe client (`NamedPipeClient`), chunked memory-stream reader, JSON command dispatch, auto-reconnect |
+| `IMemoryManagerService` | `Services/MemoryManagerService.cs` | Process working set tracking, optimized GC triggers, and RAM budget enforcement |
+| `IProcessManagerService` | `Services/ProcessManagerService.cs` | Host daemon lifecycle supervisor, process startup & shutdown |
+| `ITelemetryPollerService` | `Services/TelemetryPollerService.cs` | High-frequency telemetry polling loop with DispatcherQueue UI dispatch |
+| `IWidgetSettingsService` | `Services/WidgetSettingsService.cs` | Persistent JSON settings storage and per-widget options |
+| `ILogCollectorService` | `Services/LogCollectorService.cs` | Thread-safe ring buffer log collector and diagnostic trace reader with DispatcherQueue marshaling |
+
+### 2.1 Dependency Injection Pattern
+Services are registered in `App.xaml.cs` via:
+```csharp
+services.AddSingleton<ConcreteService>();
+services.AddSingleton<IServiceInterface>(sp => sp.GetRequiredService<ConcreteService>());
+```
+Consumers inject the interface `IServiceInterface` across ViewModels and Pages.
+

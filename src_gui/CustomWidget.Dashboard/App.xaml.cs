@@ -2,6 +2,7 @@
 
 using System.IO;
 using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -92,11 +93,22 @@ public partial class App : Application
 
         // ── Core Services (singletons — shared across the app lifetime) ──
         services.AddSingleton<AetherIpcService>();
+        services.AddSingleton<IAetherIpcService>(sp => sp.GetRequiredService<AetherIpcService>());
+
         services.AddSingleton<TelemetryPollerService>();
+        services.AddSingleton<ITelemetryPollerService>(sp => sp.GetRequiredService<TelemetryPollerService>());
+
         services.AddSingleton<ProcessManagerService>();
+        services.AddSingleton<IProcessManagerService>(sp => sp.GetRequiredService<ProcessManagerService>());
+
         services.AddSingleton<LogCollectorService>();
+        services.AddSingleton<ILogCollectorService>(sp => sp.GetRequiredService<LogCollectorService>());
+
         services.AddSingleton<MemoryManagerService>();
+        services.AddSingleton<IMemoryManagerService>(sp => sp.GetRequiredService<MemoryManagerService>());
+
         services.AddSingleton<WidgetSettingsService>();
+        services.AddSingleton<IWidgetSettingsService>(sp => sp.GetRequiredService<WidgetSettingsService>());
 
         // ── ViewModels (transient — new instance per page navigation) ──
         services.AddTransient<OverviewViewModel>();
@@ -120,7 +132,7 @@ public partial class App : Application
         {
             try
             {
-                var mem = provider.GetService<MemoryManagerService>();
+                var mem = provider.GetService<IMemoryManagerService>();
                 mem?.ShutdownAndCleanAllDependenciesAsync().GetAwaiter().GetResult();
             }
             catch { }

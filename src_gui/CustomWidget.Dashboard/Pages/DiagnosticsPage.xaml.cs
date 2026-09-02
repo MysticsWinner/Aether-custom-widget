@@ -3,6 +3,7 @@
 using System.Diagnostics;
 using System.IO;
 using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -17,7 +18,7 @@ namespace CustomWidget.Dashboard.Pages;
 public sealed partial class DiagnosticsPage : Page
 {
     private readonly DiagnosticsViewModel _vm;
-    private readonly ProcessManagerService _processManager;
+    private readonly IProcessManagerService _processManager;
     private readonly DispatcherTimer _refreshTimer;
     private string _logsDirectory = "";
     private string _selectedFilePath = "";
@@ -25,7 +26,7 @@ public sealed partial class DiagnosticsPage : Page
     public DiagnosticsPage()
     {
         _vm = App.Services.GetRequiredService<DiagnosticsViewModel>();
-        _processManager = App.Services.GetRequiredService<ProcessManagerService>();
+        _processManager = App.Services.GetRequiredService<IProcessManagerService>();
         this.InitializeComponent();
 
         // Dynamically resolve the logs directory

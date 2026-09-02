@@ -3,6 +3,7 @@
 using System;
 using CustomWidget.Dashboard.Pages;
 using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Windowing;
@@ -39,7 +40,7 @@ public sealed partial class MainWindow : Window
             Title = "Aether Studio";
 
             // Resolve services from DI
-            _poller = App.Services.GetRequiredService<TelemetryPollerService>();
+            _poller = (TelemetryPollerService)App.Services.GetRequiredService<ITelemetryPollerService>();
 
             // Subscribe to poller events
             _poller.OnNewSample += _ => UpdateStatusIndicator(true);
@@ -53,14 +54,19 @@ public sealed partial class MainWindow : Window
             _statusTimer.Tick += (_, _) => UpdateStatusIndicator(_poller.Latest != null);
             _statusTimer.Start();
 
-            // Handle window close → stop poller, terminate background core_engine processes, and trim memory working set
-            this.Closed += async (_, _) =>
+            // Handle window close → stop poller, terminate background core_engine processes, and trim memory working set.
+            // Execute synchronous shutdown to ensure cleanup completes before the process terminates.
+            this.Closed += (_, _) =>
             {
-                _statusTimer?.Stop();
-                var memoryManager = App.Services.GetService<MemoryManagerService>();
-                if (memoryManager != null)
+                try
                 {
-                    await memoryManager.ShutdownAndCleanAllDependenciesAsync();
+                    _statusTimer?.Stop();
+                    var memoryManager = App.Services.GetService<IMemoryManagerService>();
+                    memoryManager?.ShutdownAndCleanAllDependenciesAsync().GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    App.LogCrash("MainWindow_Closed", ex);
                 }
             };
 
@@ -84,7 +90,7 @@ public sealed partial class MainWindow : Window
                 var dict = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(json);
                 if (dict != null && dict.TryGetValue("AutoStartEngine", out var autoStr) && bool.TryParse(autoStr, out var autoVal) && autoVal)
                 {
-                    var pm = App.Services.GetRequiredService<ProcessManagerService>();
+                    var pm = App.Services.GetRequiredService<IProcessManagerService>();
                     await pm.StartEngineAsync();
                 }
             }
@@ -221,7 +227,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            var ipcService = App.Services.GetRequiredService<AetherIpcService>();
+            var ipcService = App.Services.GetRequiredService<IAetherIpcService>();
 
             // Update footer dot
             if (IpcStatusDot != null)
@@ -239,7 +245,8 @@ public sealed partial class MainWindow : Window
 
             if (EngineVersionText != null)
             {
-                EngineVersionText.Text = connected ? $"v0.7.0" : "";
+                string version = !string.IsNullOrEmpty(ipcService.LastEngineVersion) ? ipcService.LastEngineVersion : "0.6.0";
+                EngineVersionText.Text = connected ? $"v{version}" : "";
             }
 
             if (ConnectionInfoBar != null)

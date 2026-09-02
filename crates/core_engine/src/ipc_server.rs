@@ -848,8 +848,9 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             serde_json::json!({ "status": "ok", "recommendations": recs }).to_string()
         }
 
-        ControlCommand::SearchMarketplace { query } => {
-            info!("IPC: SearchMarketplace -> query='{}'", query);
+        ControlCommand::SearchMarketplace { query, category } => {
+            info!("IPC: SearchMarketplace -> query='{}', category={:?}", query, category);
+            let _ = category;
             if let Ok(mkt) = state.marketplace.lock() {
                 let results = mkt.search(&query);
                 serde_json::json!({ "status": "ok", "results": results }).to_string()
@@ -1148,6 +1149,10 @@ mod tests {
         let mkt_cmd = r#"{"SearchMarketplace":{"query":"gpu"}}"#;
         let mkt_resp = dispatch_command(mkt_cmd, &state);
         assert!(mkt_resp.contains("gpu-gauge"), "resp: {mkt_resp}");
+
+        let mkt_cat_cmd = r#"{"SearchMarketplace":{"query":"gpu","category":"all"}}"#;
+        let mkt_cat_resp = dispatch_command(mkt_cat_cmd, &state);
+        assert!(mkt_cat_resp.contains("gpu-gauge"), "resp: {mkt_cat_resp}");
     }
 
     #[test]

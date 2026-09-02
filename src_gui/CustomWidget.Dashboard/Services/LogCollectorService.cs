@@ -18,6 +18,7 @@ namespace CustomWidget.Dashboard.Services;
 public sealed partial class LogCollectorService : ILogCollectorService
 {
     private readonly IProcessManagerService _processManager;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue? _dispatcherQueue;
 
     /// <summary>
     /// Circular buffer of parsed log entries (most recent last).
@@ -51,6 +52,11 @@ public sealed partial class LogCollectorService : ILogCollectorService
     {
         _processManager = processManager;
         _processManager.OnEngineOutput += HandleOutputLine;
+        try
+        {
+            _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        }
+        catch { }
     }
 
     /// <summary>
@@ -111,16 +117,39 @@ public sealed partial class LogCollectorService : ILogCollectorService
         if (entry.Level == "WARN") WarnCount++;
         if (entry.Level == "ERROR") ErrorCount++;
 
-        lock (Entries)
+        if (_dispatcherQueue is not null)
         {
-            Entries.Add(entry);
-            while (Entries.Count > MaxEntries)
-                Entries.RemoveAt(0);
-        }
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                try
+                {
+                    Entries.Add(entry);
+                    while (Entries.Count > MaxEntries)
+                        Entries.RemoveAt(0);
 
-        WriteToDashboardLog(entry);
-        OnNewEntry?.Invoke(entry);
-        OnNewLog?.Invoke(entry);
+                    WriteToDashboardLog(entry);
+                    OnNewEntry?.Invoke(entry);
+                    OnNewLog?.Invoke(entry);
+                }
+                catch (Exception ex)
+                {
+                    App.LogCrash("LogCollector_UIUpdate", ex);
+                }
+            });
+        }
+        else
+        {
+            lock (Entries)
+            {
+                Entries.Add(entry);
+                while (Entries.Count > MaxEntries)
+                    Entries.RemoveAt(0);
+            }
+
+            WriteToDashboardLog(entry);
+            OnNewEntry?.Invoke(entry);
+            OnNewLog?.Invoke(entry);
+        }
     }
 
     /// <summary>

@@ -53,12 +53,12 @@ public sealed class NamedPipeClient
             await pipeStream.WriteAsync(commandBytes, linkedCts.Token).ConfigureAwait(false);
             await pipeStream.FlushAsync(linkedCts.Token).ConfigureAwait(false);
 
-            // Read response (supporting arbitrarily large chunked JSON payloads)
+            // Read response — loop until pipe closes or no more data (supporting arbitrarily large chunked JSON payloads)
             using var ms = new MemoryStream();
             byte[] buffer = new byte[ChunkBufferSize];
 
-            int bytesRead = await pipeStream.ReadAsync(buffer, linkedCts.Token).ConfigureAwait(false);
-            if (bytesRead > 0)
+            int bytesRead;
+            while ((bytesRead = await pipeStream.ReadAsync(buffer, linkedCts.Token).ConfigureAwait(false)) > 0)
             {
                 ms.Write(buffer, 0, bytesRead);
             }

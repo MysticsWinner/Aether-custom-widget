@@ -1,6 +1,7 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
 using CustomWidget.Dashboard.Services;
+using CustomWidget.Dashboard.Services.Interfaces;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -64,7 +65,7 @@ public sealed partial class OverviewPage : Page
         }
 
         // IPC connection dot
-        var ipc = App.Services.GetRequiredService<AetherIpcService>();
+        var ipc = App.Services.GetRequiredService<IAetherIpcService>();
         bool connected = ipc.IsConnected;
         IpcDot.Fill = connected
             ? (SolidColorBrush)Application.Current.Resources["AetherSuccessBrush"]
@@ -74,7 +75,7 @@ public sealed partial class OverviewPage : Page
 
     private async void DesktopWidgetBtn_Click(object sender, RoutedEventArgs e)
     {
-        var ipc = App.Services.GetRequiredService<AetherIpcService>();
+        var ipc = App.Services.GetRequiredService<IAetherIpcService>();
         await ipc.ToggleDesktopWidgetAsync();
     }
 

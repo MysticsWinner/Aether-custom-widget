@@ -37,7 +37,7 @@ public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
         // Auto-cleanup timer (trims working set and collects GC garbage every 30s)
         try
         {
-            _autoMemoryTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+            _autoMemoryTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
             _autoMemoryTimer.Tick += (_, _) => PerformAutoMemoryCleanup();
             _autoMemoryTimer.Start();
         }
@@ -55,9 +55,8 @@ public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
     {
         try
         {
-            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.Collect(2, GCCollectionMode.Optimized, false, false);
             GC.WaitForPendingFinalizers();
-            GC.Collect();
 
             // Trim working set on Windows OS
             IntPtr procHandle = Process.GetCurrentProcess().Handle;
