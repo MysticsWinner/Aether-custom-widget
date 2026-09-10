@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -42,6 +43,7 @@ public partial class MarketplaceViewModel : ObservableObject
 {
     private readonly IAetherIpcService _ipc;
     private readonly List<MarketplacePackageItem> _allPackages = new();
+    private const string LogSource = "MarketplaceViewModel";
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "Ready";
@@ -79,12 +81,9 @@ public partial class MarketplaceViewModel : ObservableObject
             _allPackages.Clear();
             _allPackages.AddRange(sampleCatalog);
 
-            try
-            {
-                // Query IPC engine for remote catalog search
-                string remoteJson = await _ipc.SearchMarketplaceAsync(SearchQuery, SelectedCategory);
-            }
-            catch { }
+            // B14 Fix: Removed dead IPC code that fetched but never processed the remote catalog.
+            // When real marketplace backend exists, add proper response parsing here.
+            DashboardLogger.Debug(LogSource, "Marketplace catalog loaded from local sample data");
 
             FilterCatalog();
             StatusMessage = $"Catalog loaded — {_allPackages.Count} verified packages available";
@@ -140,6 +139,7 @@ public partial class MarketplaceViewModel : ObservableObject
 
         package.IsInstalled = true;
         StatusMessage = $"Successfully installed '{package.Name}' (v{package.Version}). Verified by Ed25519!";
+        DashboardLogger.Info(LogSource, $"Package installed: {package.Id} v{package.Version}");
         IsBusy = false;
     }
 
@@ -154,6 +154,7 @@ public partial class MarketplaceViewModel : ObservableObject
 
         package.IsInstalled = false;
         StatusMessage = $"Uninstalled '{package.Name}'.";
+        DashboardLogger.Info(LogSource, $"Package uninstalled: {package.Id}");
         IsBusy = false;
     }
 }

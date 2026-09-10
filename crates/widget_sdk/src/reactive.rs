@@ -73,6 +73,11 @@ impl<T: Clone + PartialEq> Computed<T> {
     pub fn get(&self) -> &T {
         &self.cached_value
     }
+
+    /// Returns the name of this computed signal.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 /// Evaluates declarative conditional expressions in widget manifests (e.g. "sys.cpu_usage >= 80.0").

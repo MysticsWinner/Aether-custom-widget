@@ -46,20 +46,14 @@ impl Default for CpuTopologyTelemetry {
 #[derive(Debug)]
 pub struct CpuTopologyProvider {
     tick: u64,
-    prev_core_times: Vec<(u64, u64)>, // (idle, total) per core
     last_telemetry: CpuTopologyTelemetry,
     alpha: f32,
 }
 
 impl CpuTopologyProvider {
     pub fn new() -> Self {
-        let logical = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1)
-            .max(1);
         Self {
             tick: 0,
-            prev_core_times: vec![(0, 1); logical],
             last_telemetry: CpuTopologyTelemetry::default(),
             alpha: 0.25,
         }

@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -9,6 +10,7 @@ namespace CustomWidget.Dashboard.Pages;
 
 public sealed partial class MarketplacePage : Page
 {
+    private const string LogSource = "MarketplacePage";
     private readonly MarketplaceViewModel _vm;
 
     public MarketplacePage()
@@ -24,10 +26,14 @@ public sealed partial class MarketplacePage : Page
                 StatusText.Text = _vm.StatusMessage;
             }
         };
+
+        this.Unloaded += (_, _) => DashboardLogger.Debug(LogSource, "MarketplacePage unloaded");
+        DashboardLogger.Debug(LogSource, "MarketplacePage loaded");
     }
 
     private void RefreshBtn_Click(object sender, RoutedEventArgs e)
     {
+        DashboardLogger.Info(LogSource, "Refresh Catalog clicked");
         _ = _vm.LoadCatalogCommand.ExecuteAsync(null);
     }
 
@@ -40,7 +46,9 @@ public sealed partial class MarketplacePage : Page
     {
         if (CategoryCombo.SelectedItem is ComboBoxItem item)
         {
-            _vm.SelectedCategory = item.Content?.ToString() ?? "All Categories";
+            string category = item.Content?.ToString() ?? "All Categories";
+            DashboardLogger.Debug(LogSource, $"Category filter changed to: {category}");
+            _vm.SelectedCategory = category;
         }
     }
 
@@ -48,6 +56,7 @@ public sealed partial class MarketplacePage : Page
     {
         if (sender is Button btn && btn.Tag is MarketplacePackageItem package)
         {
+            DashboardLogger.Info(LogSource, $"Package action clicked: {package.Name} (Installed={package.IsInstalled})");
             if (package.IsInstalled)
             {
                 await _vm.UninstallPackageCommand.ExecuteAsync(package);

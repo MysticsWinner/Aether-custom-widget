@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using CustomWidget.Dashboard.Services;
 
 namespace CustomWidget.Dashboard.ViewModels.Common;
 
@@ -74,20 +75,23 @@ public abstract class ViewModelBase : INotifyPropertyChanged, IDisposable
     {
         if (IsBusy) return;
 
+        string name = actionName ?? GetType().Name;
         try
         {
             IsBusy = true;
             ErrorMessage = "";
+            DashboardLogger.Debug("ViewModelBase", $"ExecuteAsync starting: {name}");
             await action(CancellationToken).ConfigureAwait(false);
+            DashboardLogger.Debug("ViewModelBase", $"ExecuteAsync completed: {name}");
         }
         catch (OperationCanceledException)
         {
-            // Gracefully handled on cancellation
+            DashboardLogger.Debug("ViewModelBase", $"ExecuteAsync cancelled: {name}");
         }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
-            App.LogCrash(actionName ?? GetType().Name, ex);
+            DashboardLogger.Error(name, $"Error during ExecuteAsync: {ex.Message}", ex);
         }
         finally
         {

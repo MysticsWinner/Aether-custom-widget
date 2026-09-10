@@ -92,10 +92,11 @@ impl GpuRenderer for Direct2DRenderer {
         }
 
         let regions = self.dirty_tracker.regions().to_vec();
-        for rect in regions {
+        for region in regions {
+            let rect = region.rect;
             debug!(
-                "Executing Direct2D PushAxisAlignedClip for region: ({:.1}, {:.1}, {:.1}x{:.1})",
-                rect.x, rect.y, rect.width, rect.height
+                "Executing Direct2D PushAxisAlignedClip for region: ({:.1}, {:.1}, {:.1}x{:.1}) [cause: {:?}]",
+                rect.x, rect.y, rect.width, rect.height, region.cause
             );
             // In Windows 11 D2D context:
             // d2d_context.PushAxisAlignedClip(&D2D1_RECT_F { left: rect.x, top: rect.y, right: rect.right(), bottom: rect.bottom() }, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);

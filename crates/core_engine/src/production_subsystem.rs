@@ -15,13 +15,19 @@ impl ProductionSubsystem {
         Self { event_bus: None }
     }
 
-    pub fn run_diagnostics(&self) -> bool {
-        let audit_report = SecurityAuditor::run_security_audit();
-        let stress = StressTestingHarness::run_stress_test(100, 100);
-        let updater = AutoUpdater::new(env!("CARGO_PKG_VERSION"));
-        let _ = updater.check_for_updates();
-        let docs = DocumentationPortal::build_portal();
-        audit_report.overall_passed && stress && docs
+    pub async fn run_diagnostics(&self) -> bool {
+        // The heavy / blocking operations are executed on a dedicated blocking thread pool.
+        // This avoids panics when called from within an async Tokio context.
+        tokio::task::spawn_blocking(move || {
+            let audit_report = SecurityAuditor::run_security_audit();
+            let stress = StressTestingHarness::run_stress_test(100, 100);
+            let updater = AutoUpdater::new(env!("CARGO_PKG_VERSION"));
+            let _ = updater.check_for_updates();
+            let docs = DocumentationPortal::build_portal();
+            audit_report.overall_passed && stress && docs
+        })
+        .await
+        .unwrap_or(false)
     }
 }
 
@@ -40,7 +46,7 @@ impl Subsystem for ProductionSubsystem {
     async fn initialize(&mut self, bus: Arc<EventBus>) -> anyhow::Result<()> {
         info!("Initializing Phase 15 Production Subsystem (Security Audits, Stress Testing & Auto Updates)...");
         self.event_bus = Some(bus);
-        let _ = self.run_diagnostics();
+        let _ = self.run_diagnostics().await;
         info!("Production Readiness Subsystem initialized. Host daemon certified production ready.");
         Ok(())
     }
@@ -70,7 +76,7 @@ mod tests {
 
         assert_eq!(subsystem.name(), "production_readiness_engine");
         assert!(subsystem.initialize(bus).await.is_ok());
-        assert!(subsystem.run_diagnostics());
+        assert!(subsystem.run_diagnostics().await);
         assert!(subsystem.shutdown().await.is_ok());
     }
 }

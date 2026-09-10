@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -14,6 +15,7 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class SettingsViewModel : ObservableObject
 {
+    private const string LogSource = "SettingsViewModel";
     private readonly IAetherIpcService _ipc;
     private readonly ITelemetryPollerService _poller;
     private readonly string _settingsFilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
@@ -38,6 +40,8 @@ public partial class SettingsViewModel : ObservableObject
         _engineVersion = string.IsNullOrEmpty(ipc.LastEngineVersion)
             ? "—"
             : $"v{ipc.LastEngineVersion}";
+
+        DashboardLogger.Debug(LogSource, $"SettingsViewModel initialized (theme={SelectedThemeIndex}, pollMs={PollingIntervalMs})");
     }
 
     private void LoadSettings()
@@ -63,25 +67,51 @@ public partial class SettingsViewModel : ObservableObject
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Warn(LogSource, $"Failed to load settings from '{_settingsFilePath}': {ex.Message}");
+        }
     }
 
     private void SaveSettings()
     {
         try
         {
-            var dict = new Dictionary<string, string>
+            var dict = new Dictionary<string, string>();
+            if (File.Exists(_settingsFilePath))
             {
-                { nameof(SelectedThemeIndex), SelectedThemeIndex.ToString() },
-                { nameof(PollingIntervalMs), PollingIntervalMs.ToString() },
-                { nameof(AutoStartEngine), AutoStartEngine.ToString() },
-                { nameof(CloudSyncEnabled), CloudSyncEnabled.ToString() },
-                { nameof(AiFeaturesEnabled), AiFeaturesEnabled.ToString() }
-            };
-            string json = JsonSerializer.Serialize(dict);
+                try
+                {
+                    string existingJson = File.ReadAllText(_settingsFilePath);
+                    var existingDict = JsonSerializer.Deserialize<Dictionary<string, string>>(existingJson);
+                    if (existingDict != null)
+                    {
+                        foreach (var kvp in existingDict)
+                        {
+                            dict[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DashboardLogger.Warn(LogSource, $"Failed to read existing settings before save: {ex.Message}");
+                }
+            }
+
+            dict[nameof(SelectedThemeIndex)] = SelectedThemeIndex.ToString();
+            dict[nameof(PollingIntervalMs)] = PollingIntervalMs.ToString();
+            dict[nameof(AutoStartEngine)] = AutoStartEngine.ToString();
+            dict[nameof(CloudSyncEnabled)] = CloudSyncEnabled.ToString();
+            dict[nameof(AiFeaturesEnabled)] = AiFeaturesEnabled.ToString();
+
+            string json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_settingsFilePath, json);
+            DashboardLogger.Debug(LogSource, $"Settings saved to '{_settingsFilePath}' ({dict.Count} keys)");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Error(LogSource, $"Failed to save settings to '{_settingsFilePath}'", ex);
+        }
     }
 
     partial void OnSelectedThemeIndexChanged(int value)

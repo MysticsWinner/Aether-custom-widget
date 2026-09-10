@@ -23,4 +23,12 @@ public interface ITelemetryPollerService
     void Start();
     void Stop();
     void SetThrottleState(bool isLowFrequency);
+    void SetWindowVisibility(bool isVisible);
+    void SetPowerState(bool isOnBattery);
+
+    /// <summary>
+    /// True if the poller has received at least one successful telemetry sample.
+    /// Used by MainWindow to determine initial connection state without casting to concrete type.
+    /// </summary>
+    bool HasReceivedSample => Latest is not null;
 }

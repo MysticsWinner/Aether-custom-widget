@@ -8,6 +8,7 @@ pub mod benchmark;
 pub mod composer;
 pub mod generators;
 pub mod performance_advisor;
+pub mod security_gate;
 pub mod voice;
 pub mod wallpaper_theme;
 pub mod widget_synthesizer;
@@ -17,6 +18,9 @@ pub use benchmark::AiEngineBenchmark;
 pub use composer::{AiDesktopComposer, ComposerOutput};
 pub use generators::{LayoutGenerator, ThemeGenerator, WidgetGenerator};
 pub use performance_advisor::{AiPerformanceAdvisor, PerformanceRecommendation};
+pub use security_gate::{
+    AiCapability, AiSecurityError, AiSecurityGate, UntrustedAiProposal, ValidatedAiAction,
+};
 pub use voice::VoiceIntentParser;
 pub use wallpaper_theme::{WallpaperPalette, WallpaperThemeGenerator};
 pub use widget_synthesizer::{SynthesizedWidget, WidgetSynthesizer};

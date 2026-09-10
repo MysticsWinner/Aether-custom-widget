@@ -9,6 +9,8 @@ namespace CustomWidget.Dashboard.Services;
 /// </summary>
 public sealed class ProcessManagerService : IProcessManagerService
 {
+    private const string LogSource = "ProcessManager";
+
     private Process? _engineProcess;
     private readonly string _workspaceRoot;
 
@@ -74,7 +76,12 @@ public sealed class ProcessManagerService : IProcessManagerService
         {
             Directory.CreateDirectory(Path.Combine(_workspaceRoot, "logs"));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Warn(LogSource, $"Failed to create logs directory: {ex.Message}");
+        }
+
+        DashboardLogger.Info(LogSource, $"ProcessManagerService initialized (workspaceRoot={_workspaceRoot})");
     }
 
     private void WriteToEngineLog(string line)
@@ -84,7 +91,10 @@ public sealed class ProcessManagerService : IProcessManagerService
             string path = Path.Combine(_workspaceRoot, "logs", "engine.log");
             File.AppendAllText(path, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {line}\n");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Warn(LogSource, $"Failed to write engine log: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -93,7 +103,12 @@ public sealed class ProcessManagerService : IProcessManagerService
     public async Task<bool> StartEngineAsync()
     {
         if (IsEngineRunning)
+        {
+            DashboardLogger.Info(LogSource, $"Engine already running (PID={EnginePid})");
             return true;
+        }
+
+        DashboardLogger.Info(LogSource, "Starting core engine daemon...");
 
         try
         {
@@ -111,12 +126,20 @@ public sealed class ProcessManagerService : IProcessManagerService
             _engineProcess = Process.Start(psi);
 
             if (_engineProcess is null)
+            {
+                DashboardLogger.Error(LogSource, "Process.Start returned null — failed to start engine");
                 return false;
+            }
+
+            int pid = _engineProcess.Id;
+            DashboardLogger.Info(LogSource, $"Engine process started (PID={pid})");
 
             _engineProcess.EnableRaisingEvents = true;
             _engineProcess.Exited += (_, _) =>
             {
-                OnEngineExited?.Invoke(_engineProcess?.ExitCode ?? -1);
+                int exitCode = _engineProcess?.ExitCode ?? -1;
+                DashboardLogger.Info(LogSource, $"Engine process exited (PID={pid}, exitCode={exitCode})");
+                OnEngineExited?.Invoke(exitCode);
             };
 
             // Read output asynchronously
@@ -134,7 +157,10 @@ public sealed class ProcessManagerService : IProcessManagerService
                         }
                     }
                 }
-                catch { /* Process exited */ }
+                catch (Exception ex)
+                {
+                    DashboardLogger.Debug(LogSource, $"Stdout reader exited: {ex.Message}");
+                }
             });
 
             _ = Task.Run(async () =>
@@ -151,15 +177,21 @@ public sealed class ProcessManagerService : IProcessManagerService
                         }
                     }
                 }
-                catch { /* Process exited */ }
+                catch (Exception ex)
+                {
+                    DashboardLogger.Debug(LogSource, $"Stderr reader exited: {ex.Message}");
+                }
             });
 
             // Give the engine a moment to start the IPC pipe
             await Task.Delay(2000);
-            return IsEngineRunning;
+            bool running = IsEngineRunning;
+            DashboardLogger.Info(LogSource, $"Engine start result: running={running}");
+            return running;
         }
-        catch
+        catch (Exception ex)
         {
+            DashboardLogger.Error(LogSource, "Failed to start engine", ex);
             return false;
         }
     }
@@ -169,14 +201,21 @@ public sealed class ProcessManagerService : IProcessManagerService
     /// </summary>
     public async Task StopEngineAsync()
     {
+        DashboardLogger.Info(LogSource, "Stopping engine...");
+
         if (_engineProcess is not null && !_engineProcess.HasExited)
         {
             try
             {
+                int pid = _engineProcess.Id;
                 _engineProcess.Kill(entireProcessTree: true);
                 await _engineProcess.WaitForExitAsync();
+                DashboardLogger.Info(LogSource, $"Managed engine process killed (PID={pid})");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                DashboardLogger.Warn(LogSource, $"Error killing managed engine process: {ex.Message}");
+            }
             finally
             {
                 _engineProcess = null;
@@ -188,11 +227,18 @@ public sealed class ProcessManagerService : IProcessManagerService
         {
             try
             {
+                int pid = proc.Id;
                 proc.Kill(entireProcessTree: true);
                 await proc.WaitForExitAsync();
+                DashboardLogger.Info(LogSource, $"External engine process killed (PID={pid})");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                DashboardLogger.Warn(LogSource, $"Error killing external engine process: {ex.Message}");
+            }
         }
+
+        DashboardLogger.Info(LogSource, "Engine stop completed");
     }
 
     /// <summary>
@@ -200,17 +246,29 @@ public sealed class ProcessManagerService : IProcessManagerService
     /// </summary>
     public async Task<bool> RestartEngineAsync()
     {
+        DashboardLogger.Info(LogSource, "Restarting engine...");
         await StopEngineAsync();
         await Task.Delay(1000); // Wait for pipe cleanup
         return await StartEngineAsync();
     }
 
+    /// <summary>
+    /// B8 Fix: Dispose properly kills any engine process and logs it.
+    /// </summary>
     public void Dispose()
     {
         try
         {
-            StopEngineAsync().GetAwaiter().GetResult();
+            if (_engineProcess is not null && !_engineProcess.HasExited)
+            {
+                int pid = _engineProcess.Id;
+                _engineProcess.Kill(entireProcessTree: true);
+                DashboardLogger.Info(LogSource, $"Engine process killed during Dispose (PID={pid})");
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Warn(LogSource, $"Error during Dispose: {ex.Message}");
+        }
     }
 }

@@ -20,6 +20,11 @@ This document captures the formal architectural decisions made during the design
 | [ADR 010](#adr-010-adaptive-performance-budgets--degradation-hierarchy) | Adaptive Performance Budgets & Degradation Hierarchy | **Accepted** | Performance & Resource Quotas |
 | [ADR 011](#adr-011-desktop-profiles--context-aware-automation-engine) | Desktop Profiles & Context-Aware Automation Engine | **Accepted** | Config Manager & Context Detection |
 | [ADR 012](#adr-012-ai-desktop-composer--mandatory-security-validation-gate) | AI Desktop Composer & Mandatory Security Validation Gate | **Accepted** | AI Engine & Security Validation |
+| [ADR 013](#adr-013-wait-free-atomic-telemetry-publishing--double-buffered-seqlock-snapshots) | Wait-Free Atomic Telemetry Publishing & Double-Buffered Seqlock Snapshots | **Accepted** | Telemetry Synchronization |
+| [ADR 014](#adr-014-subsystem-cadence-scheduling--failure-aware-cleanup-rollback) | Subsystem Cadence Scheduling & Failure-Aware Cleanup Rollback | **Accepted** | Host Engine Lifecycle |
+| [ADR 015](#adr-015-authoritative-directcomposition-pipeline--workerw-shell-recovery) | Authoritative DirectComposition Pipeline & WorkerW Shell Recovery | **Accepted** | Authoritative Rendering & Recovery |
+| [ADR 016](#adr-016-multi-reader-spmc-shared-memory-ipc-protocol) | Multi-Reader SPMC Shared-Memory IPC Protocol | **Accepted** | IPC & Memory-Mapped Protocol |
+| [ADR 017](#adr-017-classified-event-reliability-semantics--state-reconstruction) | Classified Event Reliability Semantics & State Reconstruction | **Accepted** | Event Bus & State Recovery |
 
 ---
 
@@ -158,3 +163,86 @@ This document captures the formal architectural decisions made during the design
 * **Consequences**:
   - *Positive*: AI-generated desktop layouts cannot execute unauthorized commands or violate platform performance/security boundaries.
   - *Positive*: User retains full approval control before changes are applied.
+
+---
+
+## ADR 013: Wait-Free Scalar Reads, Lock-Free Seqlock Snapshots & Cache Coherence Reality
+
+* **Status**: Accepted
+* **Context**: Telemetry previously claimed "lock-free `RwLock`" access, but `std::sync::RwLock` is a blocking kernel/futex primitive. Furthermore, documentation loosely used "wait-free" to describe composite snapshot reads which can retry under concurrent writes.
+* **Decision**: 
+  - Implement **wait-free** atomic scalar registers (`AtomicU32` storing IEEE-754 bits, `AtomicU64`, `AtomicBool`) for single-metric fast paths (`get_cpu_pct()`, `get_memory_used_mb()`), guaranteeing bounded $O(1)$ instructions with zero retries.
+  - Implement **lock-free** seqlock-style double-buffered snapshot acquisition (`get_snapshot()`), eliminating reader-reader locking and mutexes with bounded spin loop retries.
+  - Explicitly document the physical hardware contention model: while software mutex contention is eliminated, cache-coherence bus traffic (MESI/MOESI Read-For-Ownership and store buffer drain cycles) still occurs across CPU cores on writer updates.
+* **Consequences**:
+  - *Positive*: Fast-path metric queries are mathematically wait-free with zero lock contention.
+  - *Positive*: Full telemetry snapshots are consistent and tear-free without blocking.
+  - *Positive*: Concurrency-theory documentation is rigorous and technically auditable.
+
+---
+
+## ADR 014: Subsystem Cadence Scheduling, Deadline Tracking & Lifecycle Separation
+
+* **Status**: Accepted
+* **Context**: All subsystems previously executed on a monolithic synchronous tick loop, conflating core daemon lifecycle with widget plugin execution. Furthermore, partial startup failures leaked system resources.
+* **Decision**: 
+  - Formally separate the **9-state Subsystem Lifecycle Machine** (`Uninitialized`, `Starting`, `Ready`, `Degraded`, `Recovering`, `Stopping`, `Stopped`, `Failed`, `SafeMode`) from the **11-state Widget Plugin Lifecycle Machine** (`Unloaded`, `Loading`, `Loaded`, `Mounting`, `Active`, `Paused`, `Degraded`, `Unmounting`, `Unloading`, `Error`, `Quarantined`).
+  - Implement `SubsystemManager` with categorized cadences (`Periodic`, `Reactive`, `OnDemand`, `DeadlineDriven`) and real-time execution statistics (`SubsystemExecutionStats`) tracking tick durations and deadline misses.
+  - Implement automatic reverse-order cleanup rollback (`shutdown()`) if any subsystem fails during `initialize_all()`.
+* **Consequences**:
+  - *Positive*: Eliminates lifecycle terminology ambiguity.
+  - *Positive*: Prevents resource leaks on startup failures.
+  - *Positive*: Provides runtime deadline miss tracking and scheduler fairness between subsystems.
+
+---
+
+## ADR 015: Authoritative DirectComposition Pipeline & WorkerW Shell Recovery
+
+* **Status**: Accepted
+* **Context**: Rendering architecture must establish an authoritative primary pipeline versus compatibility fallbacks, and survive Windows Explorer shell crashes without losing desktop icon backing.
+* **Decision**: Formalize DirectComposition visual tree hosting on Direct3D 11 / Direct2D device contexts as the authoritative primary pipeline; isolate `UpdateLayeredWindow` layered HWND as a secondary compatibility fallback. Implement `DesktopSurfaceManager` with active `WorkerWSurfaceState` tracking, detecting Explorer restart events and automatically re-querying `Progman` (message `0x052C`) to rebind the WorkerW surface.
+* **Consequences**:
+  - *Positive*: Seamless desktop widget survival across Explorer.exe crashes and shell restarts.
+  - *Positive*: DirectComposition GPU acceleration maintains sub-pixel typography and Mica/Acrylic effects.
+
+---
+
+## ADR 016: Multi-Reader SPMC Shared-Memory IPC Protocol & Win32 SDDL Security
+
+* **Status**: Accepted
+* **Context**: Shared-memory IPC requires safe concurrency for multiple readers (WinUI 3 GUI, ratatui TUI, sandboxed widgets) without pointer corruption or unprivileged tampering from untrusted plugins.
+* **Decision**: 
+  - Implement `MultiReaderSnapshotBuffer` and `MultiReaderRingBuffer` with a monotonic producer sequence counter and independent per-reader local cursors (`MultiReaderCursor`).
+  - Apply the Win32 SDDL string `D:(A;;FR;;;AC)(A;;FR;;;WD)(A;;FA;;;BA)(A;;FA;;;SY)S:(ML;;NW;;;LW)` granting AppContainer sandboxed processes read-only access at Low Integrity level.
+  - Implement `WriterCrashedMidWrite` detection to prevent infinite spins if a producer terminates mid-write, and fixed 64-byte cross-architecture layouts to eliminate 32/64-bit alignment mismatches.
+* **Consequences**:
+  - *Positive*: Arbitrary concurrent reader processes read telemetry simultaneously with zero reader-reader contention and zero pointer corruption.
+  - *Positive*: Untrusted AppContainer plugins cannot write to or corrupt shared memory.
+
+---
+
+## ADR 017: Three-Tier Event Taxonomy (Ephemeral, Replayable, Durable) & Overflow Gap Reconciliation
+
+* **Status**: Accepted
+* **Context**: Using an unclassified broadcast channel causes missed critical state transitions or unbounded memory consumption. Furthermore, calling in-memory buffers "durable" conflates volatility with persistence, and late-joining subscribers risked silent desynchronization on buffer overflows.
+* **Decision**: 
+  - Classify events into three distinct tiers: `Ephemeral` (10ms transient ticks), `Replayable` (in-memory 128-entry sequence buffer), and `Durable` (WAL/disk-persisted configuration).
+  - Implement overflow gap detection: when a subscriber requests `replay_since(seq)` where $seq + 1 < \text{oldest\_available}$, the bus returns `ReplayResult::GapDetected` containing an authoritative `AuthoritativeStateSnapshot` for state reconciliation instead of silent partial history.
+* **Consequences**:
+  - *Positive*: Reconnecting GUI clients detect evicted events and perform clean snapshot state reconciliation.
+  - *Positive*: Accurate concurrency and persistence terminology.
+
+---
+
+## ADR 018: AI Mutation Security Pipeline, Capability Gate & Evasion Hardening
+
+* **Status**: Accepted
+* **Context**: Untrusted AI proposals (from voice recognition, natural language layout composers, workflow automation, or plugin scripts) can introduce prompt injections, path traversal evasions, or unauthorized system configuration mutations.
+* **Decision**:
+  - Implement `AiSecurityGate` enforcing a mandatory 4-stage pipeline: `SchemaValidator` -> `PolicyValidator` -> `CapabilityValidator` -> `HumanApprovalGate`.
+  - Harden path validation against evasion: normalize URL-encoded tokens (`%2e%2e`, `%2f`, `%5c`), block embedded null bytes (`\0`), block UNC network shares (`\\server\share`), reject absolute drive roots, and enforce directory whitelisting and `.toml` extensions.
+  - Require explicit human confirmation (`user_confirmed: true`) for all mutating operations (`LoadWidget`, `ApplyConfig`), blocking alternate execution paths from bypassing the security gate.
+* **Consequences**:
+  - *Positive*: Prompt injection, encoded directory traversals, and unapproved configuration mutations are strictly blocked.
+  - *Positive*: Human-in-the-loop governance guarantees user sovereignty over desktop mutations.
+

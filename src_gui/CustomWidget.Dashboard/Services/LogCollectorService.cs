@@ -17,6 +17,8 @@ namespace CustomWidget.Dashboard.Services;
 /// </summary>
 public sealed partial class LogCollectorService : ILogCollectorService
 {
+    private const string LogSource = "LogCollector";
+
     private readonly IProcessManagerService _processManager;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue? _dispatcherQueue;
 
@@ -57,6 +59,8 @@ public sealed partial class LogCollectorService : ILogCollectorService
             _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         }
         catch { }
+
+        DashboardLogger.Debug(LogSource, $"LogCollectorService created (maxEntries={MaxEntries})");
     }
 
     /// <summary>
@@ -64,9 +68,11 @@ public sealed partial class LogCollectorService : ILogCollectorService
     /// </summary>
     public void Clear()
     {
+        int prevCount = Entries.Count;
         Entries.Clear();
         WarnCount = 0;
         ErrorCount = 0;
+        DashboardLogger.Info(LogSource, $"Log buffer cleared ({prevCount} entries removed)");
     }
 
     public Task ClearLogsAsync()
@@ -109,20 +115,26 @@ public sealed partial class LogCollectorService : ILogCollectorService
             string path = Path.Combine(_processManager.WorkspaceRoot, "logs", "dashboard.log");
             File.AppendAllText(path, $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{entry.Level}] [{entry.Target}] {entry.Message}\n");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Warn(LogSource, $"Failed to write to dashboard.log: {ex.Message}");
+        }
     }
 
     private void AddEntry(LogEntry entry)
     {
-        if (entry.Level == "WARN") WarnCount++;
-        if (entry.Level == "ERROR") ErrorCount++;
-
+        // B9 Fix: Move counter increments inside the dispatcher-enqueued block
+        // so they are synchronized with the ObservableCollection mutation.
         if (_dispatcherQueue is not null)
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
                 try
                 {
+                    // B9 Fix: Counters now increment on the UI thread, consistent with collection
+                    if (entry.Level == "WARN") WarnCount++;
+                    if (entry.Level == "ERROR") ErrorCount++;
+
                     Entries.Add(entry);
                     while (Entries.Count > MaxEntries)
                         Entries.RemoveAt(0);
@@ -133,12 +145,15 @@ public sealed partial class LogCollectorService : ILogCollectorService
                 }
                 catch (Exception ex)
                 {
-                    App.LogCrash("LogCollector_UIUpdate", ex);
+                    DashboardLogger.Error(LogSource, "UI update dispatch failed", ex);
                 }
             });
         }
         else
         {
+            if (entry.Level == "WARN") WarnCount++;
+            if (entry.Level == "ERROR") ErrorCount++;
+
             lock (Entries)
             {
                 Entries.Add(entry);

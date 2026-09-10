@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 using Microsoft.UI.Xaml;
 
@@ -13,6 +14,7 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class OverviewViewModel : ObservableObject
 {
+    private const string LogSource = "OverviewViewModel";
     private readonly ITelemetryPollerService _poller;
     private readonly IAetherIpcService _ipc;
 
@@ -51,6 +53,7 @@ public partial class OverviewViewModel : ObservableObject
         _ipc = ipc;
 
         _poller.OnNewSample += OnNewSample;
+        DashboardLogger.Debug(LogSource, "OverviewViewModel initialized");
     }
 
     private void OnNewSample(TelemetrySample sample)
@@ -81,6 +84,7 @@ public partial class OverviewViewModel : ObservableObject
     private async Task ReloadAllAsync()
     {
         IsBusy = true;
+        DashboardLogger.Info(LogSource, "ReloadAll triggered from Overview");
         try
         {
             await _ipc.ReloadAllAsync();
@@ -112,6 +116,7 @@ public partial class OverviewViewModel : ObservableObject
         }
 
         // Sync theme with Core Engine daemon via IPC
+        DashboardLogger.Info(LogSource, $"Theme toggled to '{next}'");
         await _ipc.SetThemeModeAsync(next);
 
         // Show feedback in status text briefly
@@ -126,6 +131,7 @@ public partial class OverviewViewModel : ObservableObject
         try
         {
             bool ok = await _ipc.PingAsync();
+            DashboardLogger.Info(LogSource, $"Ping result: {(ok ? "PONG" : "NO RESPONSE")}");
             // Write to dedicated PingResultText — not StatusText — so it isn't overwritten by telemetry refresh
             PingResultText = ok ? "📡 Pong! Engine is alive ✓" : "📡 No response from engine ✗";
             SchedulePingClear();

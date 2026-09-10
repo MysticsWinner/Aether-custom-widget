@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -9,6 +10,7 @@ namespace CustomWidget.Dashboard.Pages;
 
 public sealed partial class SecurityPage : Page
 {
+    private const string LogSource = "SecurityPage";
     private readonly SecurityViewModel _vm;
 
     public SecurityPage()
@@ -25,10 +27,14 @@ public sealed partial class SecurityPage : Page
                 StatusText.Text = _vm.StatusMessage;
             }
         };
+
+        this.Unloaded += (_, _) => DashboardLogger.Debug(LogSource, "SecurityPage unloaded");
+        DashboardLogger.Debug(LogSource, "SecurityPage loaded");
     }
 
     private void RefreshBtn_Click(object sender, RoutedEventArgs e)
     {
+        DashboardLogger.Info(LogSource, "Refresh Security Audit clicked");
         _ = _vm.LoadSecurityStatusCommand.ExecuteAsync(null);
     }
 }

@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -11,6 +13,7 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class ServicesViewModel : ObservableObject
 {
+    private const string LogSource = "ServicesViewModel";
     private readonly IProcessManagerService _processManager;
     private readonly IAetherIpcService _ipc;
     private readonly ITelemetryPollerService _poller;
@@ -28,7 +31,7 @@ public partial class ServicesViewModel : ObservableObject
     /// Known subsystems from the Aether architecture (populated from real data when available,
     /// falls back to known names from AGENTS.md).
     /// </summary>
-    private static readonly string[] KnownSubsystemNames =
+    public static readonly string[] KnownSubsystemNames =
     [
         "telemetry_subsystem",
         "gpu_render_engine",
@@ -40,6 +43,8 @@ public partial class ServicesViewModel : ObservableObject
         "ai_intelligence",
         "production_readiness",
     ];
+
+    public static int TotalKnownSubsystems => KnownSubsystemNames.Length;
 
     public ServicesViewModel(
         IProcessManagerService processManager,
@@ -54,13 +59,15 @@ public partial class ServicesViewModel : ObservableObject
         _poller.OnConnectionChanged += connected =>
         {
             RefreshStatus();
-            RefreshSubsystems(connected);
+            _ = RefreshSubsystemsAsync(connected);
         };
 
         // Initialize immediately so the UI shows correct state without waiting for first poll
         RefreshStatus();
         if (_ipc.IsConnected)
-            RefreshSubsystems(true);
+            _ = RefreshSubsystemsAsync(true);
+
+        DashboardLogger.Debug(LogSource, "ServicesViewModel initialized");
     }
 
     private void RefreshStatus()
@@ -70,23 +77,51 @@ public partial class ServicesViewModel : ObservableObject
         EnginePidText = _processManager.EnginePid?.ToString() ?? "—";
     }
 
-    private void RefreshSubsystems(bool connected)
+    public async Task RefreshSubsystemsAsync(bool connected)
     {
         Subsystems.Clear();
 
-        if (connected)
+        if (!connected)
+            return;
+
+        try
         {
-            // Populate with known subsystem names — mark all as Healthy when connected
-            // (The extended IPC protocol in Phase I will provide real per-subsystem health)
-            foreach (var name in KnownSubsystemNames)
+            string json = await _ipc.GetSubsystemHealthAsync();
+            if (!string.IsNullOrWhiteSpace(json) && !json.Contains("\"status\": \"error\""))
             {
-                Subsystems.Add(new SubsystemInfo
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("subsystems", out var subs) && subs.ValueKind == JsonValueKind.Array)
                 {
-                    Name = name,
-                    Health = "Healthy",
-                    Description = GetSubsystemDescription(name),
-                });
+                    foreach (var sub in subs.EnumerateArray())
+                    {
+                        string name = sub.TryGetProperty("name", out var n) ? (n.GetString() ?? "") : "";
+                        string health = sub.TryGetProperty("health", out var h) ? (h.GetString() ?? "Healthy") : "Healthy";
+
+                        Subsystems.Add(new SubsystemInfo
+                        {
+                            Name = name,
+                            Health = health,
+                            Description = GetSubsystemDescription(name),
+                        });
+                    }
+                    return;
+                }
             }
+        }
+        catch
+        {
+            DashboardLogger.Warn(LogSource, "Failed to parse subsystem health JSON — falling back to known subsystem names");
+            // Fallback below
+        }
+
+        foreach (var name in KnownSubsystemNames)
+        {
+            Subsystems.Add(new SubsystemInfo
+            {
+                Name = name,
+                Health = "Healthy",
+                Description = GetSubsystemDescription(name),
+            });
         }
     }
 
@@ -98,6 +133,7 @@ public partial class ServicesViewModel : ObservableObject
         try
         {
             bool started = await _processManager.StartEngineAsync();
+            DashboardLogger.Info(LogSource, $"StartEngine result: started={started}");
             EngineStatusText = started ? "Running" : "Failed to start";
             IsEngineRunning = started;
         }
@@ -116,6 +152,7 @@ public partial class ServicesViewModel : ObservableObject
         try
         {
             await _processManager.StopEngineAsync();
+            DashboardLogger.Info(LogSource, "Engine stopped");
             IsEngineRunning = false;
             EngineStatusText = "Stopped";
             Subsystems.Clear();
@@ -135,6 +172,7 @@ public partial class ServicesViewModel : ObservableObject
         try
         {
             bool ok = await _processManager.RestartEngineAsync();
+            DashboardLogger.Info(LogSource, $"RestartEngine result: ok={ok}");
             EngineStatusText = ok ? "Running" : "Failed to restart";
             IsEngineRunning = ok;
         }
@@ -152,6 +190,7 @@ public partial class ServicesViewModel : ObservableObject
         try
         {
             bool ok = await _ipc.PingAsync();
+            DashboardLogger.Info(LogSource, $"PingEngine result: {(ok ? "PONG" : "NO RESPONSE")}");
             PingResult = ok ? "✓ Pong! Engine is alive." : "✗ No response.";
         }
         finally
@@ -161,9 +200,9 @@ public partial class ServicesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void RefreshSubsystemList()
+    private async Task RefreshSubsystemList()
     {
-        RefreshSubsystems(_ipc.IsConnected);
+        await RefreshSubsystemsAsync(_ipc.IsConnected);
     }
 
     private static string GetSubsystemDescription(string name) => name switch

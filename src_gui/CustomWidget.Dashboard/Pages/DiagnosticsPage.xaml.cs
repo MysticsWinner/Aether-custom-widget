@@ -17,6 +17,7 @@ namespace CustomWidget.Dashboard.Pages;
 /// </summary>
 public sealed partial class DiagnosticsPage : Page
 {
+    private const string LogSource = "DiagnosticsPage";
     private readonly DiagnosticsViewModel _vm;
     private readonly IProcessManagerService _processManager;
     private readonly DispatcherTimer _refreshTimer;
@@ -36,8 +37,12 @@ public sealed partial class DiagnosticsPage : Page
             try
             {
                 Directory.CreateDirectory(_logsDirectory);
+                DashboardLogger.Debug(LogSource, $"Created logs directory: {_logsDirectory}");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                DashboardLogger.Warn(LogSource, $"Failed to create logs directory: {ex.Message}");
+            }
         }
 
         RefreshLogsList();
@@ -47,7 +52,13 @@ public sealed partial class DiagnosticsPage : Page
         _refreshTimer.Tick += RefreshUI;
         _refreshTimer.Start();
 
-        this.Unloaded += (_, _) => _refreshTimer.Stop();
+        this.Unloaded += (_, _) =>
+        {
+            _refreshTimer.Stop();
+            DashboardLogger.Debug(LogSource, "DiagnosticsPage unloaded");
+        };
+
+        DashboardLogger.Debug(LogSource, "DiagnosticsPage loaded");
     }
 
     private void RefreshUI(object? sender, object e)
@@ -235,21 +246,16 @@ public sealed partial class DiagnosticsPage : Page
         }
     }
 
-    private void SendBtn_Click(object sender, RoutedEventArgs e)
+    private async void SendBtn_Click(object sender, RoutedEventArgs e)
     {
         if (_vm != null)
         {
             _vm.CommandText = CommandInput.Text;
-            _ = _vm.SendCommandCommand.ExecuteAsync(null);
-
-            // Update response after a short delay
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
-            timer.Tick += (_, _) =>
-            {
-                timer.Stop();
-                ResponseOutput.Text = _vm.ResponseText;
-            };
-            timer.Start();
+            DashboardLogger.Info(LogSource, $"Executing IPC console command: '{_vm.CommandText}'");
+            // B12 Fix: Await command directly instead of using an arbitrary 800ms DispatcherTimer
+            await _vm.SendCommandCommand.ExecuteAsync(null);
+            ResponseOutput.Text = _vm.ResponseText;
+            DashboardLogger.Debug(LogSource, $"IPC console response received ({_vm.ResponseText.Length} chars)");
         }
     }
 
@@ -257,6 +263,7 @@ public sealed partial class DiagnosticsPage : Page
     {
         if (_vm != null)
         {
+            DashboardLogger.Info(LogSource, "Clearing in-memory logs");
             _vm.ClearLogsCommand.Execute(null);
         }
     }
@@ -267,6 +274,7 @@ public sealed partial class DiagnosticsPage : Page
         {
             string filter = item.Content?.ToString() ?? "All";
             _vm.SelectedLogLevel = filter;
+            DashboardLogger.Debug(LogSource, $"Log filter changed to: {filter}");
             if (!string.IsNullOrEmpty(_selectedFilePath))
             {
                 LoadLogFileContents(_selectedFilePath, filter);

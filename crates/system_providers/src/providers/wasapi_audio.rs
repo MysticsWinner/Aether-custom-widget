@@ -125,7 +125,7 @@ impl WasapiAudioProvider {
     /// Returns active SMTC media session playback information.
     pub fn sample_media(&mut self) -> MediaPlaybackTelemetry {
         // SMTC media session polling
-        if self.last_spectrum.is_active {
+        self.last_media = if self.last_spectrum.is_active {
             MediaPlaybackTelemetry {
                 is_playing: true,
                 title: "Resonance (Synthwave Mix)".to_string(),
@@ -138,7 +138,13 @@ impl WasapiAudioProvider {
             }
         } else {
             MediaPlaybackTelemetry::default()
-        }
+        };
+        self.last_media.clone()
+    }
+
+    /// Returns the last sampled media playback telemetry.
+    pub fn last_media(&self) -> &MediaPlaybackTelemetry {
+        &self.last_media
     }
 }
 

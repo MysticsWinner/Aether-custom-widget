@@ -16,6 +16,8 @@ namespace CustomWidget.Dashboard.Services;
 /// </summary>
 public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
 {
+    private const string LogSource = "MemoryManager";
+
     private readonly IProcessManagerService _processManager;
     private readonly ITelemetryPollerService _telemetryPoller;
     private readonly ILogCollectorService _logCollector;
@@ -34,16 +36,19 @@ public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
         _telemetryPoller = telemetryPoller;
         _logCollector = logCollector;
 
-        // Auto-cleanup timer (trims working set and collects GC garbage every 30s)
+        DashboardLogger.Debug(LogSource, "MemoryManagerService created");
+
+        // Auto-cleanup timer (trims working set and collects GC garbage every 5 min)
         try
         {
             _autoMemoryTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
             _autoMemoryTimer.Tick += (_, _) => PerformAutoMemoryCleanup();
             _autoMemoryTimer.Start();
+            DashboardLogger.Info(LogSource, "Auto-memory cleanup timer started (interval=5min)");
         }
         catch
         {
-            // Headless unit test environment without WinUI XAML dispatcher context
+            DashboardLogger.Debug(LogSource, "DispatcherTimer unavailable (headless/test environment) — auto-cleanup disabled");
         }
     }
 
@@ -55,14 +60,24 @@ public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
     {
         try
         {
+            long beforeBytes = GC.GetTotalMemory(false);
+
             GC.Collect(2, GCCollectionMode.Optimized, false, false);
             GC.WaitForPendingFinalizers();
+
+            long afterBytes = GC.GetTotalMemory(false);
+            long reclaimedKb = (beforeBytes - afterBytes) / 1024;
 
             // Trim working set on Windows OS
             IntPtr procHandle = Process.GetCurrentProcess().Handle;
             SetProcessWorkingSetSize(procHandle, (IntPtr)(-1), (IntPtr)(-1));
+
+            DashboardLogger.Debug(LogSource, $"Memory optimized: GC reclaimed ~{reclaimedKb}KB (before={beforeBytes / 1024}KB, after={afterBytes / 1024}KB), working set trimmed");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Warn(LogSource, "Memory optimization failed", ex);
+        }
     }
 
     public void TrimWorkingSet() => OptimizeMemory();
@@ -72,6 +87,7 @@ public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
     /// </summary>
     private void PerformAutoMemoryCleanup()
     {
+        DashboardLogger.Debug(LogSource, "Auto-memory cleanup tick");
         OptimizeMemory();
     }
 
@@ -84,27 +100,54 @@ public sealed class MemoryManagerService : IMemoryManagerService, IDisposable
         if (_isDisposed) return;
         _isDisposed = true;
 
+        DashboardLogger.Info(LogSource, "Beginning full shutdown sequence...");
+
         try
         {
             _autoMemoryTimer?.Stop();
+            DashboardLogger.Debug(LogSource, "Auto-memory timer stopped");
 
             // 1. Stop background telemetry poller
             _telemetryPoller.Stop();
+            DashboardLogger.Debug(LogSource, "Telemetry poller stopped");
 
             // 2. Stop core_engine background processes & process tree
             await _processManager.StopEngineAsync();
+            DashboardLogger.Debug(LogSource, "Engine process stopped");
 
             // 3. Clear logs buffer
             await _logCollector.ClearLogsAsync();
+            DashboardLogger.Debug(LogSource, "Log buffer cleared");
 
-            // 4. Force final full garbage disposal and RAM working set release
+            // 4. Flush dashboard logger before final GC
+            DashboardLogger.Flush();
+
+            // 5. Force final full garbage disposal and RAM working set release
             OptimizeMemory();
+
+            DashboardLogger.Info(LogSource, "Full shutdown sequence completed successfully");
+            DashboardLogger.Flush();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DashboardLogger.Error(LogSource, "Shutdown sequence encountered errors", ex);
+            DashboardLogger.Flush();
+        }
     }
 
+    /// <summary>
+    /// B5 Fix: Dispose() now synchronously waits for shutdown with a timeout
+    /// instead of fire-and-forget.
+    /// </summary>
     public void Dispose()
     {
-        _ = ShutdownAndCleanAllDependenciesAsync();
+        try
+        {
+            ShutdownAndCleanAllDependenciesAsync().Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (Exception ex)
+        {
+            DashboardLogger.Error(LogSource, "Dispose timeout or error during shutdown", ex);
+        }
     }
 }

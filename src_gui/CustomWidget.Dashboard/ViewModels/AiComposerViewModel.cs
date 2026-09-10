@@ -1,11 +1,15 @@
+using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
 
 public partial class AiComposerViewModel : ObservableObject
 {
+    private const string LogSource = "AiComposerViewModel";
     private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
@@ -21,6 +25,7 @@ public partial class AiComposerViewModel : ObservableObject
     public AiComposerViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
+        DashboardLogger.Debug(LogSource, "AiComposerViewModel initialized");
     }
 
     [RelayCommand]
@@ -31,12 +36,14 @@ public partial class AiComposerViewModel : ObservableObject
 
         IsBusy = true;
         StatusMessage = $"Synthesizing workstation layout for '{prompt}'...";
+        DashboardLogger.Info(LogSource, $"Starting AI synthesis for prompt: '{prompt}'");
 
         try
         {
             var cmd = new { SynthesizeDesktop = new { prompt = prompt } };
             string json = System.Text.Json.JsonSerializer.Serialize(cmd);
             string response = await _ipc.SendRawCommandAsync(json);
+            DashboardLogger.Debug(LogSource, $"SynthesizeDesktop IPC response: {response}");
 
             // Generate dynamic synthesis parameters based on natural language prompt keywords
             string lowerPrompt = prompt.ToLowerInvariant();
@@ -58,11 +65,13 @@ public partial class AiComposerViewModel : ObservableObject
             SecurityGateText = "Security Capability Gate: PASSED (AppContainer & Ed25519 verified)";
             IsDetailsVisible = true;
             StatusMessage = "Synthesis complete!";
+            DashboardLogger.Info(LogSource, $"AI synthesis completed for '{prompt}' (theme={theme}, material={material})");
         }
         catch (Exception ex)
         {
             SummaryText = $"Synthesis error: {ex.Message}";
             IsDetailsVisible = false;
+            DashboardLogger.Error(LogSource, $"Synthesis error for prompt '{prompt}'", ex);
         }
         finally
         {
@@ -75,6 +84,7 @@ public partial class AiComposerViewModel : ObservableObject
     {
         IsBusy = true;
         StatusMessage = "Applying synthesized theme and layout setup...";
+        DashboardLogger.Info(LogSource, "Applying synthesized layout setup...");
 
         try
         {
@@ -82,10 +92,12 @@ public partial class AiComposerViewModel : ObservableObject
             StatusMessage = "Synthesized setup applied live across all active desktop widgets!";
             SummaryText = "Setup applied successfully!";
             IsDetailsVisible = false;
+            DashboardLogger.Info(LogSource, "Synthesized layout setup applied successfully");
         }
         catch (Exception ex)
         {
             StatusMessage = $"Apply setup failed: {ex.Message}";
+            DashboardLogger.Error(LogSource, "Failed to apply synthesized setup", ex);
         }
         finally
         {
@@ -97,6 +109,7 @@ public partial class AiComposerViewModel : ObservableObject
     public void SelectPresetPrompt(string preset)
     {
         if (string.IsNullOrWhiteSpace(preset)) return;
+        DashboardLogger.Debug(LogSource, $"Preset prompt selected: '{preset}'");
         PromptInput = preset;
         _ = SynthesizeAsync();
     }

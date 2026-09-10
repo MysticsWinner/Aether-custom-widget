@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -38,6 +42,7 @@ public class DesktopProfileItem : ObservableObject
 
 public partial class ProfilesViewModel : ObservableObject
 {
+    private const string LogSource = "ProfilesViewModel";
     private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
@@ -49,6 +54,7 @@ public partial class ProfilesViewModel : ObservableObject
     public ProfilesViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
+        DashboardLogger.Debug(LogSource, "ProfilesViewModel initialized");
     }
 
     [RelayCommand]
@@ -56,6 +62,7 @@ public partial class ProfilesViewModel : ObservableObject
     {
         IsBusy = true;
         StatusMessage = "Fetching active desktop profiles from core engine...";
+        DashboardLogger.Debug(LogSource, "Fetching desktop profiles...");
 
         try
         {
@@ -70,6 +77,7 @@ public partial class ProfilesViewModel : ObservableObject
 
             // Query IPC engine for active profile
             string json = await _ipc.SendRawCommandAsync("{\"type\":\"GetActiveProfile\"}");
+            DashboardLogger.Debug(LogSource, $"GetActiveProfile IPC response: {json}");
 
             Profiles.Clear();
             foreach (var p in defaultList)
@@ -79,10 +87,12 @@ public partial class ProfilesViewModel : ObservableObject
             }
 
             StatusMessage = $"Active profile: {ActiveProfileId}";
+            DashboardLogger.Info(LogSource, $"Desktop profiles loaded ({Profiles.Count} profiles available, active={ActiveProfileId})");
         }
         catch (Exception ex)
         {
             StatusMessage = $"Error querying profiles: {ex.Message}";
+            DashboardLogger.Error(LogSource, "Error loading desktop profiles", ex);
         }
         finally
         {
@@ -97,6 +107,7 @@ public partial class ProfilesViewModel : ObservableObject
 
         IsBusy = true;
         StatusMessage = $"Switching active desktop profile to '{profile.Name}'...";
+        DashboardLogger.Info(LogSource, $"Activating profile '{profile.Name}' (ID: {profile.Id})...");
 
         try
         {
@@ -113,10 +124,12 @@ public partial class ProfilesViewModel : ObservableObject
             }
 
             StatusMessage = $"Active profile set to '{profile.Name}' ({profile.TargetFps} FPS)";
+            DashboardLogger.Info(LogSource, $"Successfully switched to profile '{profile.Name}' ({profile.TargetFps} FPS)");
         }
         catch (Exception ex)
         {
             StatusMessage = $"Failed to set profile: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"Failed to activate profile '{profile.Id}'", ex);
         }
         finally
         {

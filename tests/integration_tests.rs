@@ -176,7 +176,9 @@ async fn test_06_cloud_sync_crdt_vector_clock_offline_integration() {
 
 #[tokio::test]
 async fn test_07_ai_voice_intent_and_workflow_automation_integration() {
-    let cmd = VoiceIntentParser::parse_intent("switch to dark theme").unwrap();
+    let gate = ai_engine::AiSecurityGate::new();
+    let action = VoiceIntentParser::parse_and_authorize("switch to dark theme", &gate, false).unwrap();
+    let cmd = action.command;
     assert_eq!(
         cmd,
         ControlCommand::SetThemeMode {

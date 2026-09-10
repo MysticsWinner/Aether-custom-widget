@@ -31,6 +31,10 @@ public partial class App : Application
 
     public App()
     {
+        // Initialize central logging infrastructure as early as possible
+        DashboardLogger.InitializeDefault();
+        DashboardLogger.Info("App", "Aether Studio Dashboard initializing...");
+
         this.UnhandledException += OnUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
 
@@ -38,6 +42,7 @@ public partial class App : Application
         {
             this.InitializeComponent();
             Services = ConfigureServices();
+            DashboardLogger.Info("App", "Application initialized and services configured successfully");
         }
         catch (Exception ex)
         {
@@ -50,6 +55,7 @@ public partial class App : Application
     {
         try
         {
+            DashboardLogger.Info("App", "OnLaunched: creating and activating MainWindow");
             _mainWindow = new MainWindow();
             _mainWindow.Activate();
         }
@@ -71,17 +77,27 @@ public partial class App : Application
             LogCrash("Domain_UnhandledException", ex);
     }
 
+    /// <summary>
+    /// B15 Fix: Logs crash to DashboardLogger.Fatal and ensures secondary fallback writes to Debug.WriteLine.
+    /// </summary>
     public static void LogCrash(string source, Exception ex)
     {
         try
         {
+            DashboardLogger.Fatal(source, $"Application crash in {source}: {ex.Message}", ex);
+            DashboardLogger.Flush();
+
             string log = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Crash in {source}:\n{ex.TypeAndMessage()}\n{ex.StackTrace}\n\n";
             Console.WriteLine(log);
             System.Diagnostics.Debug.WriteLine(log);
             string path = Path.Combine(AppContext.BaseDirectory, "crash.log");
             File.AppendAllText(path, log);
         }
-        catch { }
+        catch (Exception innerEx)
+        {
+            // B15 Fix: Never silently eat exceptions when logging fails
+            System.Diagnostics.Debug.WriteLine($"[App.LogCrash] Failed to write crash log: {innerEx.Message}");
+        }
     }
 
     /// <summary>
@@ -89,6 +105,7 @@ public partial class App : Application
     /// </summary>
     private static IServiceProvider ConfigureServices()
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         var services = new ServiceCollection();
 
         // ── Core Services (singletons — shared across the app lifetime) ──
@@ -126,16 +143,24 @@ public partial class App : Application
         services.AddTransient<AiComposerViewModel>();
 
         var provider = services.BuildServiceProvider();
+        sw.Stop();
+        DashboardLogger.Debug("App", $"DI service container built in {sw.ElapsedMilliseconds}ms");
 
         // Attach fallback ProcessExit handler for process termination
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
             try
             {
+                DashboardLogger.Info("App", "ProcessExit triggered — running final cleanup...");
                 var mem = provider.GetService<IMemoryManagerService>();
                 mem?.ShutdownAndCleanAllDependenciesAsync().GetAwaiter().GetResult();
+                DashboardLogger.Flush();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                DashboardLogger.Error("App", "Error during ProcessExit cleanup", ex);
+                DashboardLogger.Flush();
+            }
         };
 
         return provider;

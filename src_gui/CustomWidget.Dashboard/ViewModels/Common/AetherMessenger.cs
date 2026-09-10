@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using CustomWidget.Dashboard.Services;
 
 namespace CustomWidget.Dashboard.ViewModels.Common;
 
@@ -73,7 +74,7 @@ public sealed class AetherMessenger
                     }
                     catch (Exception ex)
                     {
-                        App.LogCrash($"Messenger_{type.Name}", ex);
+                        DashboardLogger.Error("AetherMessenger", $"Error invoking subscriber for message {type.Name}: {ex.Message}", ex);
                     }
                 }
             }

@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -13,6 +14,7 @@ namespace CustomWidget.Dashboard.Pages;
 /// </summary>
 public sealed partial class ServicesPage : Page
 {
+    private const string LogSource = "ServicesPage";
     private readonly ServicesViewModel _vm;
     private readonly DispatcherTimer _refreshTimer;
 
@@ -27,7 +29,13 @@ public sealed partial class ServicesPage : Page
         _refreshTimer.Tick += RefreshUI;
         _refreshTimer.Start();
 
-        this.Unloaded += (_, _) => _refreshTimer.Stop();
+        this.Unloaded += (_, _) =>
+        {
+            _refreshTimer.Stop();
+            DashboardLogger.Debug(LogSource, "ServicesPage unloaded");
+        };
+
+        DashboardLogger.Debug(LogSource, "ServicesPage loaded");
     }
 
     private void RefreshUI(object? sender, object e)
@@ -46,14 +54,26 @@ public sealed partial class ServicesPage : Page
     }
 
     private void StartBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.StartEngineCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Start Engine clicked");
+        _ = _vm.StartEngineCommand.ExecuteAsync(null);
+    }
 
     private void StopBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.StopEngineCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Stop Engine clicked");
+        _ = _vm.StopEngineCommand.ExecuteAsync(null);
+    }
 
     private void RestartBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.RestartEngineCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Restart Engine clicked");
+        _ = _vm.RestartEngineCommand.ExecuteAsync(null);
+    }
 
     private void PingBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.PingEngineCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Ping Engine clicked");
+        _ = _vm.PingEngineCommand.ExecuteAsync(null);
+    }
 }

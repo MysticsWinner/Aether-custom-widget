@@ -16,22 +16,30 @@ namespace CustomWidget.Dashboard.Pages;
 /// </summary>
 public sealed partial class OverviewPage : Page
 {
+    private const string LogSource = "OverviewPage";
     private readonly OverviewViewModel _vm;
-    private readonly DispatcherTimer _refreshTimer;
+    private readonly System.ComponentModel.PropertyChangedEventHandler _propertyChangedHandler;
 
     public OverviewPage()
     {
         this.InitializeComponent();
         _vm = App.Services.GetRequiredService<OverviewViewModel>();
 
-        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _refreshTimer.Tick += RefreshUI;
-        _refreshTimer.Start();
+        _propertyChangedHandler = (_, _) => RefreshUI();
+        _vm.PropertyChanged += _propertyChangedHandler;
 
-        this.Unloaded += (_, _) => _refreshTimer.Stop();
+        RefreshUI();
+
+        this.Unloaded += (_, _) =>
+        {
+            _vm.PropertyChanged -= _propertyChangedHandler;
+            DashboardLogger.Debug(LogSource, "OverviewPage unloaded");
+        };
+
+        DashboardLogger.Debug(LogSource, "OverviewPage loaded");
     }
 
-    private void RefreshUI(object? sender, object e)
+    private void RefreshUI()
     {
         // Update gauge values
         CpuPctText.Text = $"{_vm.CpuPct:F1}%";
@@ -51,7 +59,8 @@ public sealed partial class OverviewPage : Page
         VersionText.Text = _vm.EngineVersion;
         WidgetCountText.Text = _vm.ActiveWidgetCount.ToString();
         WidgetListText.Text = _vm.ActiveWidgetsText;
-        SubsystemText.Text = "9"; // Known subsystem count from architecture
+        // B13 Fix: Derive subsystem count from ServicesViewModel.TotalKnownSubsystems
+        SubsystemText.Text = ServicesViewModel.TotalKnownSubsystems.ToString();
 
         // Ping / action result feedback (shown/hidden based on content)
         if (!string.IsNullOrEmpty(_vm.PingResultText))
@@ -65,28 +74,38 @@ public sealed partial class OverviewPage : Page
         }
 
         // IPC connection dot
-        var ipc = App.Services.GetRequiredService<IAetherIpcService>();
-        bool connected = ipc.IsConnected;
-        IpcDot.Fill = connected
-            ? (SolidColorBrush)Application.Current.Resources["AetherSuccessBrush"]
-            : (SolidColorBrush)Application.Current.Resources["AetherErrorBrush"];
+        bool connected = _vm.IsConnected;
+        if (Application.Current.Resources.TryGetValue(connected ? "AetherSuccessBrush" : "AetherErrorBrush", out var brushObj) && brushObj is SolidColorBrush scb)
+        {
+            IpcDot.Fill = scb;
+        }
         IpcText.Text = connected ? "Connected" : "Disconnected";
     }
 
     private async void DesktopWidgetBtn_Click(object sender, RoutedEventArgs e)
     {
+        DashboardLogger.Info(LogSource, "DesktopWidget toggle clicked");
         var ipc = App.Services.GetRequiredService<IAetherIpcService>();
         await ipc.ToggleDesktopWidgetAsync();
     }
 
     private void ReloadBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.ReloadAllCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Reload All clicked");
+        _ = _vm.ReloadAllCommand.ExecuteAsync(null);
+    }
 
     private void ThemeBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.ToggleThemeCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Toggle Theme clicked");
+        _ = _vm.ToggleThemeCommand.ExecuteAsync(null);
+    }
 
     private void PingBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.PingEngineCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Ping Engine clicked");
+        _ = _vm.PingEngineCommand.ExecuteAsync(null);
+    }
 
     private static string FormatBytes(ulong bytes) => bytes switch
     {

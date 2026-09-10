@@ -85,6 +85,26 @@ impl WidgetConfigStore {
         self.persist(&cfg);
     }
 
+    /// Transactionally applies an updated configuration for `widget_id`.
+    /// Preserves in-memory state with automatic rollback if atomic disk persistence fails.
+    pub fn apply_transaction(&mut self, widget_id: &str, new_cfg: WidgetConfig) -> anyhow::Result<()> {
+        let previous = self.configs.get(widget_id).cloned();
+        self.configs.insert(widget_id.to_string(), new_cfg.clone());
+
+        if let Err(e) = self.persist_result(&new_cfg) {
+            warn!("WidgetConfigStore: transaction failed for '{}', rolling back: {e}", widget_id);
+            if let Some(prev) = previous {
+                self.configs.insert(widget_id.to_string(), prev);
+            } else {
+                self.configs.remove(widget_id);
+            }
+            return Err(e);
+        }
+
+        info!("WidgetConfigStore: transaction committed for '{}'", widget_id);
+        Ok(())
+    }
+
     /// Swap configs between two widgets (configuration mode).
     pub fn swap_configs(&mut self, from_id: &str, to_id: &str) {
         let from = self.get_or_default(from_id);
@@ -117,20 +137,22 @@ impl WidgetConfigStore {
     }
 
     fn persist(&self, cfg: &WidgetConfig) {
+        let _ = self.persist_result(cfg);
+    }
+
+    fn persist_result(&self, cfg: &WidgetConfig) -> anyhow::Result<()> {
         let path = self.file_path(&cfg.widget_id);
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        match serde_json::to_string_pretty(cfg) {
-            Ok(json) => {
-                if let Err(e) = std::fs::write(&path, json) {
-                    warn!("WidgetConfigStore: failed to persist '{}': {e}", cfg.widget_id);
-                } else {
-                    info!("WidgetConfigStore: persisted config for '{}'", cfg.widget_id);
-                }
-            }
-            Err(e) => warn!("WidgetConfigStore: serialize error for '{}': {e}", cfg.widget_id),
-        }
+        let val = serde_json::to_value(cfg)
+            .map_err(|e| anyhow::anyhow!("Serialization error for '{}': {e}", cfg.widget_id))?;
+        
+        // Execute atomic transactional write using config_manager::ConfigTransaction
+        let transaction = config_manager::ConfigTransaction::new(&path);
+        transaction.write_atomic(&val)?;
+        info!("WidgetConfigStore: atomic transaction persisted config for '{}'", cfg.widget_id);
+        Ok(())
     }
 
     fn load_from_disk(&self, widget_id: &str) -> Option<WidgetConfig> {
@@ -156,8 +178,23 @@ mod tests {
     use super::*;
 
     fn temp_store() -> WidgetConfigStore {
-        let dir = std::env::temp_dir().join("aether_widget_cfg_test");
+        let dir = std::env::temp_dir().join(format!("aether_widget_cfg_test_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         WidgetConfigStore::new(dir)
+    }
+
+    #[test]
+    fn test_widget_config_store_transaction_commit_and_rollback() {
+        let mut store = temp_store();
+        let widget_id = "test_trans_widget";
+
+        let initial_cfg = WidgetConfig::new(widget_id);
+        assert!(store.apply_transaction(widget_id, initial_cfg.clone()).is_ok());
+        assert_eq!(store.get_or_default(widget_id).display_options.opacity, 1.0);
+
+        let mut updated = initial_cfg.clone();
+        updated.display_options.opacity = 0.65;
+        assert!(store.apply_transaction(widget_id, updated).is_ok());
+        assert_eq!(store.get_or_default(widget_id).display_options.opacity, 0.65);
     }
 
     #[test]

@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -12,6 +13,7 @@ namespace CustomWidget.Dashboard.Pages;
 /// </summary>
 public sealed partial class SettingsPage : Page
 {
+    private const string LogSource = "SettingsPage";
     private readonly SettingsViewModel _vm;
 
     public SettingsPage()
@@ -27,12 +29,16 @@ public sealed partial class SettingsPage : Page
         CloudSyncToggle.IsOn = _vm.CloudSyncEnabled;
         AiToggle.IsOn = _vm.AiFeaturesEnabled;
         EngineVersionText.Text = _vm.EngineVersion;
+
+        this.Unloaded += (_, _) => DashboardLogger.Debug(LogSource, "SettingsPage unloaded");
+        DashboardLogger.Debug(LogSource, "SettingsPage loaded");
     }
 
     private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_vm != null && ThemeCombo.SelectedIndex >= 0)
         {
+            DashboardLogger.Debug(LogSource, $"Theme combo changed to: {ThemeCombo.SelectedIndex}");
             _vm.SelectedThemeIndex = ThemeCombo.SelectedIndex;
         }
     }

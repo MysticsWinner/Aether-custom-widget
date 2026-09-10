@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -12,6 +13,8 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class WidgetsViewModel : ObservableObject
 {
+    private const string LogSource = "WidgetsViewModel";
+
     private readonly IAetherIpcService _ipc;
     private readonly ITelemetryPollerService _poller;
     private readonly IWidgetSettingsService _settingsService;
@@ -20,6 +23,12 @@ public partial class WidgetsViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private string _searchQuery = "";
+
+    // B7 Fix: Search debounce CTS — cancels pending discovery on new keystrokes
+    private CancellationTokenSource? _searchDebounceCts;
+
+    // B6 Fix: Track last known active widget set to avoid unnecessary collection rebuilds
+    private HashSet<string> _lastActiveWidgetSet = new();
 
     public ObservableCollection<WidgetInfo> Widgets { get; } = new();
     public ObservableCollection<WidgetInfo> DiscoveredWidgets { get; } = new();
@@ -36,13 +45,35 @@ public partial class WidgetsViewModel : ObservableObject
             RefreshRunningWidgets();
         };
 
+        DashboardLogger.Debug(LogSource, "WidgetsViewModel initialized — starting initial discovery");
         _ = DiscoverWidgetsAsync();
     }
 
+    /// <summary>
+    /// B7 Fix: Debounce search by 300ms to avoid IPC flooding on each keystroke.
+    /// </summary>
     partial void OnSearchQueryChanged(string value)
     {
-        // Triggers UI refresh for filtered view
-        _ = DiscoverWidgetsAsync();
+        // Cancel any pending debounced search
+        _searchDebounceCts?.Cancel();
+        _searchDebounceCts?.Dispose();
+        _searchDebounceCts = new CancellationTokenSource();
+        var ct = _searchDebounceCts.Token;
+
+        DashboardLogger.Debug(LogSource, $"Search query changed: '{value}' — debouncing 300ms");
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(300, ct);
+                if (!ct.IsCancellationRequested)
+                {
+                    await DiscoverWidgetsAsync();
+                }
+            }
+            catch (OperationCanceledException) { /* Debounce cancelled — newer keystroke arrived */ }
+        });
     }
 
     [RelayCommand]
@@ -50,6 +81,7 @@ public partial class WidgetsViewModel : ObservableObject
     {
         IsBusy = true;
         StatusMessage = "Scanning filesystem for widget.toml manifests...";
+        DashboardLogger.Debug(LogSource, "Discovering widgets...");
         try
         {
             var list = await _ipc.DiscoverWidgetsAsync();
@@ -76,10 +108,12 @@ public partial class WidgetsViewModel : ObservableObject
             }
 
             StatusMessage = $"✓ Found {list.Count} plugin manifest(s) on disk.";
+            DashboardLogger.Info(LogSource, $"Widget discovery complete: {list.Count} total, {DiscoveredWidgets.Count} matching filter");
         }
         catch (Exception ex)
         {
             StatusMessage = $"✗ Discovery failed: {ex.Message}";
+            DashboardLogger.Error(LogSource, "Widget discovery failed", ex);
         }
         finally
         {
@@ -87,31 +121,45 @@ public partial class WidgetsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// B6 Fix: Only rebuilds the Widgets collection when the active widget set actually changes.
+    /// Compares current active IDs against the last known set to avoid rebuilding 120x/minute.
+    /// </summary>
     private void RefreshRunningWidgets()
     {
         if (_poller.LastStatus is not { } status) return;
 
         var activeIds = status.ActiveWidgets.ToHashSet();
 
-        // Update running widgets list
-        var currentIds = Widgets.Select(w => w.Id).ToHashSet();
-        if (!currentIds.SetEquals(activeIds))
+        // B6 Fix: Skip rebuild if the active set hasn't changed
+        if (_lastActiveWidgetSet.SetEquals(activeIds))
         {
-            Widgets.Clear();
-            foreach (var widgetId in status.ActiveWidgets)
+            // Only update IsLoaded flags on discovered widgets (lightweight operation)
+            foreach (var dw in DiscoveredWidgets)
             {
-                var opts = _settingsService.Load(widgetId);
-                Widgets.Add(new WidgetInfo
-                {
-                    Id = widgetId,
-                    Name = FormatWidgetName(widgetId),
-                    IsLoaded = true,
-                    Opacity = opts.Opacity,
-                    Scale = opts.Scale,
-                    IsLocked = opts.Locked,
-                    Enabled = opts.Enabled,
-                });
+                dw.IsLoaded = activeIds.Contains(dw.Id);
             }
+            return;
+        }
+
+        DashboardLogger.Debug(LogSource, $"Active widget set changed: {string.Join(", ", activeIds)}");
+        _lastActiveWidgetSet = activeIds;
+
+        // Full rebuild of running widgets list
+        Widgets.Clear();
+        foreach (var widgetId in status.ActiveWidgets)
+        {
+            var opts = _settingsService.Load(widgetId);
+            Widgets.Add(new WidgetInfo
+            {
+                Id = widgetId,
+                Name = FormatWidgetName(widgetId),
+                IsLoaded = true,
+                Opacity = opts.Opacity,
+                Scale = opts.Scale,
+                IsLocked = opts.Locked,
+                Enabled = opts.Enabled,
+            });
         }
 
         // Cross-reference running status with discovered widgets list
@@ -125,6 +173,8 @@ public partial class WidgetsViewModel : ObservableObject
     private async Task ToggleWidgetLoadAsync(WidgetInfo? widget)
     {
         if (widget is null || string.IsNullOrWhiteSpace(widget.ManifestPath)) return;
+
+        DashboardLogger.Info(LogSource, $"Toggle widget load: {widget.Id} (currently loaded={widget.IsLoaded})");
 
         if (widget.IsLoaded)
         {
@@ -145,6 +195,7 @@ public partial class WidgetsViewModel : ObservableObject
 
         IsBusy = true;
         StatusMessage = $"Loading {manifestPath}...";
+        DashboardLogger.Info(LogSource, $"Loading widget: {manifestPath}");
         try
         {
             string result = await _ipc.LoadWidgetAsync(manifestPath);
@@ -152,6 +203,8 @@ public partial class WidgetsViewModel : ObservableObject
             StatusMessage = success
                 ? $"✓ Widget loaded: {manifestPath}"
                 : $"✗ Load failed: {result}";
+
+            DashboardLogger.Info(LogSource, $"Load result: success={success}");
 
             if (success)
             {
@@ -162,6 +215,7 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"LoadWidget error for '{manifestPath}'", ex);
         }
         finally
         {
@@ -176,6 +230,7 @@ public partial class WidgetsViewModel : ObservableObject
 
         IsBusy = true;
         StatusMessage = $"Unloading {widgetId}...";
+        DashboardLogger.Info(LogSource, $"Unloading widget: {widgetId}");
         try
         {
             string result = await _ipc.UnloadWidgetAsync(widgetId);
@@ -194,10 +249,13 @@ public partial class WidgetsViewModel : ObservableObject
             {
                 StatusMessage = $"✗ Unload failed: {result}";
             }
+
+            DashboardLogger.Info(LogSource, $"Unload result: success={success}");
         }
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"UnloadWidget error for '{widgetId}'", ex);
         }
         finally
         {
@@ -210,6 +268,7 @@ public partial class WidgetsViewModel : ObservableObject
     {
         IsBusy = true;
         StatusMessage = "Reloading all widgets...";
+        DashboardLogger.Info(LogSource, "Reloading all widgets");
         try
         {
             await _ipc.ReloadAllAsync();
@@ -228,6 +287,7 @@ public partial class WidgetsViewModel : ObservableObject
     {
         string target = string.IsNullOrWhiteSpace(widgetId) ? "perf_monitor_widget" : widgetId;
         StatusMessage = $"Toggling lock for '{target}'...";
+        DashboardLogger.Debug(LogSource, $"Toggling lock: {target}");
         try
         {
             await _settingsService.ToggleLockAsync(target);
@@ -236,12 +296,14 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error toggling lock: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"ToggleLock error for '{target}'", ex);
         }
     }
 
     [RelayCommand]
     private async Task SetOpacityAsync((string widgetId, double opacity) args)
     {
+        DashboardLogger.Debug(LogSource, $"SetOpacity: {args.widgetId} → {args.opacity:F2}");
         try
         {
             await _settingsService.SetOpacityAsync(args.widgetId, args.opacity);
@@ -250,6 +312,7 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error updating opacity: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"SetOpacity error for '{args.widgetId}'", ex);
         }
     }
 
@@ -257,6 +320,7 @@ public partial class WidgetsViewModel : ObservableObject
     private async Task ToggleEnableDisableAsync(string? widgetId)
     {
         if (string.IsNullOrWhiteSpace(widgetId)) return;
+        DashboardLogger.Debug(LogSource, $"ToggleEnableDisable: {widgetId}");
         try
         {
             var opts = _settingsService.Load(widgetId);
@@ -267,12 +331,14 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error toggling widget state: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"ToggleEnable error for '{widgetId}'", ex);
         }
     }
 
     [RelayCommand]
     private async Task QuickSwapPositionAsync((string fromId, string toId) args)
     {
+        DashboardLogger.Info(LogSource, $"QuickSwapPosition: {args.fromId} ↔ {args.toId}");
         try
         {
             await _ipc.QuickSwapWidgetAsync(args.fromId, args.toId, "position");
@@ -281,12 +347,14 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error swapping positions: {ex.Message}";
+            DashboardLogger.Error(LogSource, "QuickSwapPosition error", ex);
         }
     }
 
     [RelayCommand]
     private async Task QuickSwapConfigAsync((string fromId, string toId) args)
     {
+        DashboardLogger.Info(LogSource, $"QuickSwapConfig: {args.fromId} ↔ {args.toId}");
         try
         {
             await _ipc.QuickSwapWidgetAsync(args.fromId, args.toId, "configuration");
@@ -295,6 +363,7 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error swapping configurations: {ex.Message}";
+            DashboardLogger.Error(LogSource, "QuickSwapConfig error", ex);
         }
     }
 
@@ -302,6 +371,7 @@ public partial class WidgetsViewModel : ObservableObject
     private async Task ResetWidgetConfigAsync(string? widgetId)
     {
         if (string.IsNullOrWhiteSpace(widgetId)) return;
+        DashboardLogger.Info(LogSource, $"ResetWidgetConfig: {widgetId}");
         try
         {
             await _settingsService.ResetAsync(widgetId);
@@ -310,6 +380,7 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error resetting config: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"ResetConfig error for '{widgetId}'", ex);
         }
     }
 
@@ -318,6 +389,7 @@ public partial class WidgetsViewModel : ObservableObject
     {
         string target = string.IsNullOrWhiteSpace(widgetId) ? "perf_monitor_widget" : widgetId;
         StatusMessage = $"Resetting position for '{target}'...";
+        DashboardLogger.Debug(LogSource, $"ResetWidgetPosition: {target}");
         try
         {
             await _ipc.SetWidgetPositionAsync(target, 100, 100);
@@ -326,6 +398,7 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error resetting position: {ex.Message}";
+            DashboardLogger.Error(LogSource, $"ResetPosition error for '{target}'", ex);
         }
     }
 
@@ -333,6 +406,7 @@ public partial class WidgetsViewModel : ObservableObject
     private async Task ToggleDesktopWidgetAsync()
     {
         StatusMessage = "Toggling desktop overlay widget...";
+        DashboardLogger.Info(LogSource, "ToggleDesktopWidget");
         try
         {
             await _ipc.ToggleDesktopWidgetAsync();
@@ -341,6 +415,7 @@ public partial class WidgetsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"✗ Error toggling overlay: {ex.Message}";
+            DashboardLogger.Error(LogSource, "ToggleDesktopWidget error", ex);
         }
     }
 

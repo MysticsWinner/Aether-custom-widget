@@ -84,4 +84,92 @@ public class WidgetSettingsServiceTests
         var resetOpts = _settings.Load(widgetId);
         Assert.AreEqual(1.0, resetOpts.Opacity, 0.01);
     }
+
+    [TestMethod]
+    public async Task Test_LoadAllSettingsAsync_ReturnsDictionary()
+    {
+        string widgetId = "test_loadall_" + Guid.NewGuid().ToString("N");
+        var opts = new WidgetDisplayOptions
+        {
+            WidgetId = widgetId,
+            Opacity = 0.85,
+            Scale = 1.1,
+            Locked = true,
+            Enabled = true
+        };
+        await _settings.SaveSettingsAsync(widgetId, opts);
+
+        var all = await _settings.LoadAllSettingsAsync();
+        Assert.IsNotNull(all);
+        Assert.IsTrue(all.ContainsKey(widgetId));
+        Assert.AreEqual(0.85, all[widgetId].Opacity, 0.01);
+    }
+
+    [TestMethod]
+    public async Task Test_GetSettingsAsync_ReturnsMatchingOptions()
+    {
+        string widgetId = "test_getasync_" + Guid.NewGuid().ToString("N");
+        var opts = new WidgetDisplayOptions
+        {
+            WidgetId = widgetId,
+            Opacity = 0.65,
+            Scale = 0.9,
+            Locked = false,
+            Enabled = true
+        };
+        await _settings.SaveSettingsAsync(widgetId, opts);
+
+        var retrieved = await _settings.GetSettingsAsync(widgetId);
+        Assert.IsNotNull(retrieved);
+        Assert.AreEqual(widgetId, retrieved.WidgetId);
+        Assert.AreEqual(0.65, retrieved.Opacity, 0.01);
+    }
+
+    [TestMethod]
+    public async Task Test_SetPositionAsync_CompletesSuccessfully()
+    {
+        string widgetId = "test_pos_" + Guid.NewGuid().ToString("N");
+        // Should complete without throwing even if IPC is offline (best-effort)
+        await _settings.SetPositionAsync(widgetId, 250, 400);
+    }
+
+    [TestMethod]
+    public async Task Test_SetLockedAsync_PersistsLockState()
+    {
+        string widgetId = "test_setlocked_" + Guid.NewGuid().ToString("N");
+        await _settings.SetLockedAsync(widgetId, true);
+        var loaded = await _settings.GetSettingsAsync(widgetId);
+        Assert.IsTrue(loaded.Locked);
+
+        await _settings.SetLockedAsync(widgetId, false);
+        loaded = await _settings.GetSettingsAsync(widgetId);
+        Assert.IsFalse(loaded.Locked);
+    }
+
+    [TestMethod]
+    public async Task Test_SetScaleAsync_ClampsMinimumScale()
+    {
+        string widgetId = "test_scale_" + Guid.NewGuid().ToString("N");
+        await _settings.SetScaleAsync(widgetId, 1.4);
+        var loaded = await _settings.GetSettingsAsync(widgetId);
+        Assert.AreEqual(1.4, loaded.Scale, 0.01);
+
+        // Clamping to >= 0.1
+        await _settings.SetScaleAsync(widgetId, 0.01);
+        loaded = await _settings.GetSettingsAsync(widgetId);
+        Assert.AreEqual(0.1, loaded.Scale, 0.01);
+    }
+
+    [TestMethod]
+    public async Task Test_SetEnabledAsync_PersistsEnabledState()
+    {
+        string widgetId = "test_enabled_" + Guid.NewGuid().ToString("N");
+        await _settings.SetEnabledAsync(widgetId, false);
+        var loaded = await _settings.GetSettingsAsync(widgetId);
+        Assert.IsFalse(loaded.Enabled);
+
+        await _settings.SetEnabledAsync(widgetId, true);
+        loaded = await _settings.GetSettingsAsync(widgetId);
+        Assert.IsTrue(loaded.Enabled);
+    }
 }

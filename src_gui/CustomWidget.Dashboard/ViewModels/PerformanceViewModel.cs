@@ -3,6 +3,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
@@ -15,11 +16,15 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// <summary>
 /// ViewModel for the Performance page — real-time charts showing CPU, GPU, RAM, and network.
 /// Uses LiveChartsCore with rolling 60-second windows backed by real IPC telemetry data.
+/// B18 Fix: Implements IDisposable to unsubscribe from telemetry events.
 /// </summary>
-public partial class PerformanceViewModel : ObservableObject
+public partial class PerformanceViewModel : ObservableObject, IDisposable
 {
+    private const string LogSource = "PerformanceViewModel";
+
     private readonly ITelemetryPollerService _poller;
     private const int MaxPoints = 120; // 60 seconds at 500ms interval
+    private bool _disposed;
 
     // ── Observable chart data collections ──
     private readonly ObservableCollection<ObservableValue> _cpuValues = new();
@@ -88,6 +93,7 @@ public partial class PerformanceViewModel : ObservableObject
         ];
 
         _poller.OnNewSample += OnNewSample;
+        DashboardLogger.Debug(LogSource, "PerformanceViewModel initialized — subscribed to telemetry");
     }
 
     private void OnNewSample(TelemetrySample sample)
@@ -165,4 +171,16 @@ public partial class PerformanceViewModel : ObservableObject
         LineSmoothness = 0.65,
         AnimationsSpeed = TimeSpan.FromMilliseconds(150),
     };
+
+    /// <summary>
+    /// B18 Fix: Unsubscribes from telemetry events to prevent memory leaks when navigated away.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _poller.OnNewSample -= OnNewSample;
+        DashboardLogger.Debug(LogSource, "PerformanceViewModel disposed — unsubscribed from telemetry");
+    }
 }

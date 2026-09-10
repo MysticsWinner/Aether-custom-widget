@@ -56,6 +56,11 @@ impl WasmPluginEngine {
         }
     }
 
+    /// Returns the default linear memory allocation bounds in bytes.
+    pub fn linear_memory_bytes(&self) -> usize {
+        self.linear_memory_bytes
+    }
+
     /// Loads and verifies a Wasm plugin module.
     pub fn load_module(&mut self, spec: WasmModuleSpec) -> Result<(), String> {
         if spec.max_memory_pages == 0 || spec.max_memory_pages > 256 {

@@ -1,6 +1,7 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -15,6 +16,7 @@ namespace CustomWidget.Dashboard.Pages;
 /// </summary>
 public sealed partial class WidgetsPage : Page
 {
+    private const string LogSource = "WidgetsPage";
     private readonly WidgetsViewModel _vm;
     private readonly DispatcherTimer _refreshTimer;
 
@@ -30,7 +32,13 @@ public sealed partial class WidgetsPage : Page
         _refreshTimer.Tick += RefreshUI;
         _refreshTimer.Start();
 
-        this.Unloaded += (_, _) => _refreshTimer.Stop();
+        this.Unloaded += (_, _) =>
+        {
+            _refreshTimer.Stop();
+            DashboardLogger.Debug(LogSource, "WidgetsPage unloaded");
+        };
+
+        DashboardLogger.Debug(LogSource, "WidgetsPage loaded");
     }
 
     private void RefreshUI(object? sender, object e)
@@ -46,6 +54,7 @@ public sealed partial class WidgetsPage : Page
 
     private async void DiscoverBtn_Click(object sender, RoutedEventArgs e)
     {
+        DashboardLogger.Info(LogSource, "Discover Widgets clicked");
         await _vm.DiscoverWidgetsAsync();
     }
 
@@ -58,12 +67,14 @@ public sealed partial class WidgetsPage : Page
     {
         if (sender is Button btn && btn.Tag is WidgetInfo widget)
         {
+            DashboardLogger.Info(LogSource, $"Toggle widget load clicked for '{widget.Name}' (Loaded={widget.IsLoaded})");
             await _vm.ToggleWidgetLoadCommand.ExecuteAsync(widget);
         }
     }
 
     private async void LoadBtn_Click(object sender, RoutedEventArgs e)
     {
+        DashboardLogger.Info(LogSource, "Load Widget from file picker clicked");
         try
         {
             var picker = new FileOpenPicker();
@@ -83,11 +94,13 @@ public sealed partial class WidgetsPage : Page
             var file = await picker.PickSingleFileAsync();
             if (file is not null)
             {
+                DashboardLogger.Info(LogSource, $"Selected widget manifest: {file.Path}");
                 await _vm.LoadWidgetCommand.ExecuteAsync(file.Path);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            DashboardLogger.Warn(LogSource, $"FileOpenPicker failed or unsupported, falling back to dialog: {ex.Message}");
             var dialog = new ContentDialog
             {
                 Title = "Load Widget Manifest",
@@ -102,6 +115,7 @@ public sealed partial class WidgetsPage : Page
                 var textBox = dialog.Content as TextBox;
                 if (!string.IsNullOrWhiteSpace(textBox?.Text))
                 {
+                    DashboardLogger.Info(LogSource, $"Manual manifest path entered: {textBox.Text}");
                     await _vm.LoadWidgetCommand.ExecuteAsync(textBox.Text);
                 }
             }
@@ -109,12 +123,16 @@ public sealed partial class WidgetsPage : Page
     }
 
     private void ReloadBtn_Click(object sender, RoutedEventArgs e)
-        => _ = _vm.ReloadAllCommand.ExecuteAsync(null);
+    {
+        DashboardLogger.Info(LogSource, "Reload All clicked");
+        _ = _vm.ReloadAllCommand.ExecuteAsync(null);
+    }
 
     private void UnloadBtn_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is string widgetId)
         {
+            DashboardLogger.Info(LogSource, $"Unload widget clicked: '{widgetId}'");
             _ = _vm.UnloadWidgetCommand.ExecuteAsync(widgetId);
         }
     }
@@ -123,6 +141,7 @@ public sealed partial class WidgetsPage : Page
     {
         if (sender is Button btn && btn.Tag is string widgetId)
         {
+            DashboardLogger.Info(LogSource, $"Lock toggle clicked: '{widgetId}'");
             _ = _vm.ToggleWidgetLockCommand.ExecuteAsync(widgetId);
         }
     }
@@ -131,6 +150,7 @@ public sealed partial class WidgetsPage : Page
     {
         if (sender is Button btn && btn.Tag is string widgetId)
         {
+            DashboardLogger.Info(LogSource, $"Reset position clicked: '{widgetId}'");
             _ = _vm.ResetWidgetPositionCommand.ExecuteAsync(widgetId);
         }
     }
@@ -147,6 +167,7 @@ public sealed partial class WidgetsPage : Page
     {
         if (sender is ToggleSwitch ts && ts.Tag is string widgetId)
         {
+            DashboardLogger.Info(LogSource, $"Enable toggle: '{widgetId}' -> {ts.IsOn}");
             _ = _vm.ToggleEnableDisableCommand.ExecuteAsync(widgetId);
         }
     }
@@ -155,6 +176,7 @@ public sealed partial class WidgetsPage : Page
     {
         if (sender is ToggleSwitch ts && ts.Tag is string widgetId)
         {
+            DashboardLogger.Info(LogSource, $"Lock toggle: '{widgetId}' -> {ts.IsOn}");
             _ = _vm.ToggleWidgetLockCommand.ExecuteAsync(widgetId);
         }
     }
@@ -163,6 +185,7 @@ public sealed partial class WidgetsPage : Page
     {
         if (sender is Button btn && btn.Tag is string widgetId)
         {
+            DashboardLogger.Info(LogSource, $"Reset widget config: '{widgetId}'");
             _ = _vm.ResetWidgetConfigCommand.ExecuteAsync(widgetId);
         }
     }

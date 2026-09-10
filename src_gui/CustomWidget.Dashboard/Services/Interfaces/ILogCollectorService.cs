@@ -13,8 +13,12 @@ namespace CustomWidget.Dashboard.Services.Interfaces;
 public interface ILogCollectorService
 {
     ObservableCollection<LogEntry> Logs { get; }
+    int WarnCount { get; }
+    int ErrorCount { get; }
     event Action<LogEntry>? OnNewLog;
 
     void AppendLog(string level, string message, string source);
+    void AddManualEntry(string level, string target, string message);
+    void Clear();
     Task ClearLogsAsync();
 }

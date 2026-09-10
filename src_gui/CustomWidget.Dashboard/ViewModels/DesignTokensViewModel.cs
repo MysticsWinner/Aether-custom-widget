@@ -1,6 +1,9 @@
+using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -15,6 +18,7 @@ public class TokenItem
 
 public partial class DesignTokensViewModel : ObservableObject
 {
+    private const string LogSource = "DesignTokensViewModel";
     private readonly IAetherIpcService _ipc;
 
     [ObservableProperty] private bool _isBusy;
@@ -32,6 +36,7 @@ public partial class DesignTokensViewModel : ObservableObject
     public DesignTokensViewModel(IAetherIpcService ipc)
     {
         _ipc = ipc;
+        DashboardLogger.Debug(LogSource, "DesignTokensViewModel initialized");
     }
 
     [RelayCommand]
@@ -39,21 +44,25 @@ public partial class DesignTokensViewModel : ObservableObject
     {
         IsBusy = true;
         StatusMessage = "Resolving semantic design token hierarchy from theme_engine...";
+        DashboardLogger.Info(LogSource, $"Resolving design tokens for theme '{SelectedThemeId}'...");
 
         try
         {
             var cmd = new { ResolveDesignTokens = new { theme_id = SelectedThemeId } };
             string json = System.Text.Json.JsonSerializer.Serialize(cmd);
             string response = await _ipc.SendRawCommandAsync(json);
+            DashboardLogger.Debug(LogSource, $"ResolveDesignTokens IPC response: {response}");
 
             // Populate structured 12-category token hierarchy
             PopulateTokens();
 
             StatusMessage = "Design Tokens Resolved Successfully (theme_engine 7.4)";
+            DashboardLogger.Info(LogSource, $"Design tokens resolved successfully for theme '{SelectedThemeId}'");
         }
         catch (Exception ex)
         {
             StatusMessage = $"Token resolution warning: {ex.Message}";
+            DashboardLogger.Warn(LogSource, $"Token resolution encountered an issue, falling back to local defaults: {ex.Message}");
             PopulateTokens();
         }
         finally
@@ -91,6 +100,7 @@ public partial class DesignTokensViewModel : ObservableObject
     public void SelectAccentColor(string hex)
     {
         if (string.IsNullOrWhiteSpace(hex)) return;
+        DashboardLogger.Debug(LogSource, $"Accent color selected: '{hex}'");
         ActiveAccentHex = hex;
         _ = ResolveTokensAsync();
     }

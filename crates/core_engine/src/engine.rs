@@ -81,15 +81,20 @@ impl Engine {
         Ok(())
     }
 
-    /// Executes a single tick step of the core engine.
+    /// Executes a single scheduled tick step of the core engine based on subsystem cadences.
     pub async fn tick(&mut self) {
         let current_state = self.state().await;
         if current_state != EngineState::Running {
             return;
         }
 
-        // Tick all subsystems
-        self.subsystem_manager.tick_all().await;
+        // Tick subsystems according to declared cadence (periodic, deadline, etc.)
+        self.subsystem_manager.tick_scheduled().await;
+    }
+
+    /// Triggers a reactive or on-demand tick on a specific subsystem.
+    pub async fn tick_subsystem(&mut self, name: &str) -> anyhow::Result<bool> {
+        self.subsystem_manager.tick_subsystem(name).await
     }
 
     /// Pauses engine execution.

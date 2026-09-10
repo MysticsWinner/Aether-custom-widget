@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -13,6 +14,7 @@ namespace CustomWidget.Dashboard.Pages;
 /// </summary>
 public sealed partial class PerformancePage : Page
 {
+    private const string LogSource = "PerformancePage";
     private readonly PerformanceViewModel _vm;
     private readonly DispatcherTimer _refreshTimer;
 
@@ -43,7 +45,14 @@ public sealed partial class PerformancePage : Page
         _refreshTimer.Tick += RefreshStats;
         _refreshTimer.Start();
 
-        this.Unloaded += (_, _) => _refreshTimer.Stop();
+        this.Unloaded += (_, _) =>
+        {
+            _refreshTimer.Stop();
+            _vm.Dispose();
+            DashboardLogger.Debug(LogSource, "PerformancePage unloaded and ViewModel disposed");
+        };
+
+        DashboardLogger.Debug(LogSource, "PerformancePage loaded");
     }
 
     private void RefreshStats(object? sender, object e)

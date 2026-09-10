@@ -32,8 +32,17 @@ impl AiSubsystem {
         &self.workflow_engine
     }
 
-    pub fn parse_voice_command(&self, utterance: &str) -> Option<ControlCommand> {
+    /// Parses an utterance into an untrusted proposal.
+    pub fn parse_voice_proposal(&self, utterance: &str) -> Option<ai_engine::UntrustedAiProposal> {
         VoiceIntentParser::parse_intent(utterance)
+    }
+
+    /// Parses and validates a voice command through the AI Security Gate.
+    pub fn parse_voice_command(&self, utterance: &str) -> Option<ControlCommand> {
+        let gate = ai_engine::AiSecurityGate::new();
+        VoiceIntentParser::parse_and_authorize(utterance, &gate, true)
+            .ok()
+            .map(|action| action.command)
     }
 }
 

@@ -1,3 +1,19 @@
+//! # Aether Authoritative Rendering Architecture
+//!
+//! ## Primary Pipeline: DirectComposition + Direct2D Device Context
+//! The authoritative rendering path creates a Direct3D 11 device, binds a Direct2D device context,
+//! and hosts swap chain visual surfaces directly inside the desktop visual tree via DirectComposition.
+//! This pipeline provides:
+//! - Hardware-accelerated presentation with zero GDI bitblt roundtrips.
+//! - Sub-pixel DirectWrite anti-aliased text rendering.
+//! - Mica/Acrylic/Frosted Glass shader passes with Bayer matrix dithering.
+//! - True per-monitor V2 DPI coordinate awareness without bitmap stretching.
+//!
+//! ## Compatibility Fallback: Layered HWND (UpdateLayeredWindow)
+//! On legacy hardware or when DirectComposition fails to attach to the shell window,
+//! the engine isolates and falls back to a 32-bit PARGB `UpdateLayeredWindow` layered window.
+//! This path is strictly an isolated fallback and never treated as the primary architecture.
+
 pub mod benchmark;
 pub mod d2d_renderer;
 pub mod dcomp_tree;
@@ -12,17 +28,22 @@ pub use benchmark::{RainmeterBenchmark, RenderBenchmarkResult};
 pub use d2d_renderer::Direct2DRenderer;
 pub use dcomp_tree::{CompositionVisualNode, DCompVisualTreeManager, SwapchainColorFormat};
 pub use desktop_widget_window::DesktopWidgetWindow;
-pub use dirty_rect::DirtyRegionTracker;
+pub use dirty_rect::{DirtyRegionTracker, InvalidationCause, InvalidatedRegion};
 pub use glassmorphism::{GlassEffectType, GlassmorphismPipeline};
 pub use particles::{Particle, ParticleEmitter, ParticleFieldConfig, ParticlePhysicsEngine, ParticleType};
-pub use virtual_desktops::{DpiMonitorScale, VirtualDesktopManager, VirtualDesktopPinning};
-pub use workerw::find_desktop_workerw_hwnd;
+pub use virtual_desktops::{
+    DesktopTopology, DipRect, DpiMonitorScale, MonitorInfo, PhysicalRect, VirtualDesktopManager,
+    VirtualDesktopPinning,
+};
+pub use workerw::{
+    find_desktop_workerw_hwnd, is_workerw_valid_hwnd, DesktopSurfaceManager, WorkerWSurfaceState,
+};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Floating point 2D rectangle representation used for geometry and invalidation bounds.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct RectF {
     pub x: f32,
     pub y: f32,

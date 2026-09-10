@@ -1,5 +1,6 @@
 // Copyright (c) Aether Platform. Licensed under the MIT License.
 
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -10,6 +11,7 @@ namespace CustomWidget.Dashboard.Pages;
 
 public sealed partial class AiComposerPage : Page
 {
+    private const string LogSource = "AiComposerPage";
     private readonly AiComposerViewModel _vm;
 
     public AiComposerPage()
@@ -36,10 +38,14 @@ public sealed partial class AiComposerPage : Page
             if (e.PropertyName == nameof(_vm.PromptInput))
                 PromptInput.Text = _vm.PromptInput;
         };
+
+        this.Unloaded += (_, _) => DashboardLogger.Debug(LogSource, "AiComposerPage unloaded");
+        DashboardLogger.Debug(LogSource, "AiComposerPage loaded");
     }
 
     private void Synthesize_Click(object sender, RoutedEventArgs e)
     {
+        DashboardLogger.Info(LogSource, "Synthesize button clicked");
         _vm.PromptInput = PromptInput.Text;
         _ = _vm.SynthesizeCommand.ExecuteAsync(null);
     }

@@ -34,8 +34,13 @@ graph LR
 ### Channel 2: High-Frequency Telemetry Channel (Shared Memory)
 - **Mechanism**: Win32 File Mapping (`CreateFileMappingW`, `MapViewOfFile`)
 - **Address**: `Local\AetherTelemetrySharedMemory`
-- **Payload**: Fixed C-compatible struct `MetricPayload` (`CPU`, `GPU`, `RAM`, `Network`)
-- **Performance**: Zero kernel context switches; consumers read directly from shared memory buffer
+- **Header**: `ShmHeader` (magic: `0x41455448`, protocol_version: `1`, seqlock sequence, timestamp, producer PID, liveness)
+- **Payload**: Fixed C-compatible struct `MetricPayload` (`CPU`, `GPU`, `RAM`, `Network`, displays, audio)
+- **Multi-Reader Protocols**:
+  - `MultiReaderSnapshotBuffer`: Seqlock double-buffered snapshot enabling multiple concurrent readers (WinUI 3 GUI, ratatui TUI, widgets) with zero lock contention and zero reader-reader interference.
+  - `MultiReaderRingBuffer`: Circular buffer with monotonic write sequence and independent per-reader cursors (`MultiReaderCursor`).
+  - `SharedMemoryRingBuffer`: Dedicated SPSC lock-free circular queue for 1:1 message streaming.
+- **Realistic Performance Profile**: Eliminates Win32 Named Pipe IPC serialization and message-copy overhead during steady state. Note that memory-mapped I/O remains subject to OS paging, page faults, CPU cache line invalidations, and Win32 named event synchronization overhead.
 
 ---
 
@@ -101,12 +106,19 @@ All IPC messages sent over the Control Channel follow the `ControlCommand` JSON 
 ### 2.7 Package Manager & Marketplace
 - **Search Marketplace**: `{"SearchMarketplace": {"query": "monitoring", "category": "all"}}` (supports optional `category` filter, with `None` fallback)
 
+### 2.8 Security Audit Logs & Tamper-Evident Verification
+- **Get Audit Logs**: `{"type": "GetAuditLogs"}`
+- **Verify Audit Chain**: `{"type": "VerifyAuditChain"}`
+- **Get Quarantine List**: `{"type": "GetQuarantineList"}`
+- **Release Quarantine**: `{"ReleaseQuarantine": {"widget_id": "clock_w"}}`
+
 ---
 
 ## 3. Client Implementation Matrix
 
 | Client | Implementation Path | Language | Notes |
 |:---|:---|:---|:---|
-| **WinUI 3 Dashboard** | `src_gui/CustomWidget.Dashboard/Services/AetherIpcService.cs` | C# (.NET 8) | Async `NamedPipeClientStream` with chunked memory-stream reading (`while > 0`), timeout, and auto-reconnect. |
+| **WinUI 3 Dashboard** | `src_gui/CustomWidget.Dashboard/Services/AetherIpcService.cs` | C# (.NET 8) | Async `NamedPipeClientStream` with chunked memory-stream reading (`while > 0`), timeout, exponential backoff retries, power/visibility-aware adaptive polling (500ms on AC, 2000ms on battery, 5000ms minimized), and thread-safe volatile connection tracking. |
 | **Ratatui TUI** | `crates/dashboard_tui/src/main.rs` | Rust | Tokio `ClientOptions` pipe client with live polling loop. |
 | **CLI Tools** | `crates/dev_tools/src/ipc.rs` | Rust | Low-latency synchronous and async pipe helpers. |
+

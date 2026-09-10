@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Models;
+using CustomWidget.Dashboard.Services;
 using CustomWidget.Dashboard.Services.Interfaces;
 
 namespace CustomWidget.Dashboard.ViewModels;
@@ -11,6 +12,7 @@ namespace CustomWidget.Dashboard.ViewModels;
 /// </summary>
 public partial class DiagnosticsViewModel : ObservableObject
 {
+    private const string LogSource = "DiagnosticsViewModel";
     private readonly ILogCollectorService _logCollector;
     private readonly IAetherIpcService _ipc;
 
@@ -38,6 +40,7 @@ public partial class DiagnosticsViewModel : ObservableObject
         _ipc = ipc;
 
         _logCollector.OnNewLog += OnNewLogEntry;
+        DashboardLogger.Debug(LogSource, "DiagnosticsViewModel initialized");
     }
 
     private void OnNewLogEntry(LogEntry entry)
@@ -62,6 +65,7 @@ public partial class DiagnosticsViewModel : ObservableObject
         try
         {
             string response = await _ipc.SendRawCommandAsync(CommandText.Trim());
+            DashboardLogger.Info(LogSource, $"IPC console: sent '{CommandText.Trim().Truncate(80)}', received {response.Length} chars");
 
             // Pretty-print the JSON response
             try
@@ -97,6 +101,7 @@ public partial class DiagnosticsViewModel : ObservableObject
         WarnCount = 0;
         ErrorCount = 0;
         ErrorBadgeText = "";
+        DashboardLogger.Info(LogSource, "Logs cleared from diagnostics view");
     }
 
     /// <summary>

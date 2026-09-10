@@ -56,20 +56,90 @@ impl AutoUpdater {
     /// Checks for available updates by comparing current version against a release manifest.
     ///
     /// Returns `Some(UpdateInfo)` if a newer version exists, `None` otherwise.
-    /// NOTE: The actual HTTP fetch requires an async runtime with a network client
-    /// (e.g. `reqwest`). This method provides the structural framework; the
-    /// network transport is a TODO until `reqwest` is added as a dependency.
+    /// Network transport performs a synchronous HTTP GET via `reqwest::blocking` to fetch
+    /// and deserialize the release manifest JSON.
     pub fn check_for_updates(&self) -> Option<UpdateInfo> {
         info!(
             "Checking for updates: current={}, manifest_url='{}'",
             self.current_version, self.update_manifest_url
         );
 
-        // TODO: Replace with real HTTP GET to self.update_manifest_url once reqwest is added.
-        // For now, we report that no update is available (safe default) rather than
-        // returning a hardcoded fake version.
-        warn!("Auto-updater network transport not yet implemented; reporting no update available.");
-        None
+        // Perform a blocking HTTP GET to fetch the release manifest JSON.
+        // The manifest is expected to contain fields: version, download_url, sha256_hash, release_notes.
+        // This implementation uses `reqwest::blocking` to keep the API sync.
+        match reqwest::blocking::get(&self.update_manifest_url) {
+            Ok(resp) => {
+                if let Ok(text) = resp.text() {
+                    #[derive(serde::Deserialize)]
+                    struct Manifest {
+                        version: String,
+                        download_url: String,
+                        sha256_hash: String,
+                        release_notes: String,
+                    }
+                    match serde_json::from_str::<Manifest>(&text) {
+                        Ok(manifest) => {
+                            if self.is_newer_version(&manifest.version) {
+                                info!("Update available: {}", manifest.version);
+                                return Some(UpdateInfo {
+                                    version: manifest.version,
+                                    download_url: manifest.download_url,
+                                    sha256_hash: manifest.sha256_hash,
+                                    release_notes: manifest.release_notes,
+                                });
+                            } else {
+                                info!("No newer version found.");
+                                return None;
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to parse update manifest JSON: {}", e);
+                            return None;
+                        }
+                    }
+                } else {
+                    warn!("Failed to read response body from update manifest URL.");
+                    return None;
+                }
+            }
+            Err(e) => {
+                warn!("Network error while checking for updates: {}", e);
+                return None;
+            }
+        }
+    }
+
+    /// Downloads the update package from `update.download_url` into `self.download_dir`,
+    /// verifies its SHA-256 hash against `update.sha256_hash`, and returns the local path.
+    /// If verification fails, the downloaded file is removed and an error is returned.
+    pub fn download_package(&self, update: &UpdateInfo) -> anyhow::Result<PathBuf> {
+        std::fs::create_dir_all(&self.download_dir)?;
+        let file_name = Path::new(&update.download_url)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("update.msix");
+        let dest_path = self.download_dir.join(format!("{}_{}", update.version, file_name));
+
+        info!("Downloading update package from '{}' to {:?}", update.download_url, dest_path);
+
+        let mut response = reqwest::blocking::get(&update.download_url)
+            .map_err(|e| anyhow::anyhow!("Failed to download update package: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error downloading update package: {}", response.status()));
+        }
+
+        let mut file = std::fs::File::create(&dest_path)?;
+        std::io::copy(&mut response, &mut file)?;
+        drop(file);
+
+        if !Self::verify_package_integrity(&dest_path, &update.sha256_hash) {
+            let _ = std::fs::remove_file(&dest_path);
+            return Err(anyhow::anyhow!("Integrity check failed: package hash mismatch"));
+        }
+
+        info!("Update package successfully downloaded and verified at {:?}", dest_path);
+        Ok(dest_path)
     }
 
     /// Verifies a downloaded package by checking it exists and has non-zero size.
@@ -87,12 +157,33 @@ impl AutoUpdater {
             }
             Ok(meta) => {
                 info!(
-                    "Package file verified: {:?} ({} bytes). SHA-256 hash check pending crypto integration.",
+                    "Package file verified: {:?} ({} bytes). Performing SHA-256 hash verification...",
                     package_path, meta.len()
                 );
-                // TODO: Compute SHA-256 of file contents and compare against expected_sha256.
-                // Requires adding `sha2` crate as a dependency.
-                true
+                // Compute SHA-256 of the file contents and compare with the expected hash.
+                use sha2::{Digest, Sha256};
+                let mut file = match std::fs::File::open(package_path) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        warn!("Unable to open file for hash verification: {}", e);
+                        return false;
+                    }
+                };
+                let mut hasher = Sha256::new();
+                if std::io::copy(&mut file, &mut hasher).is_ok() {
+                    let result = hasher.finalize();
+                    let computed_hash = format!("{:x}", result);
+                    if computed_hash.eq_ignore_ascii_case(_expected_sha256) {
+                        info!("Package hash verified successfully.");
+                        true
+                    } else {
+                        warn!("Package hash mismatch. Expected {}, got {}.", _expected_sha256, computed_hash);
+                        false
+                    }
+                } else {
+                    warn!("Failed to read file contents for hash verification.");
+                    false
+                }
             }
             Err(e) => {
                 warn!("Package verification failed: cannot read metadata for {:?}: {}", package_path, e);
@@ -171,5 +262,43 @@ mod tests {
         let updater = AutoUpdater::new("0.6.0");
         let dir = updater.download_dir();
         assert!(dir.to_string_lossy().contains("Aether"));
+    }
+
+    #[test]
+    fn test_auto_updater_integrity_verification_sha256() {
+        use std::io::Write;
+        let temp_dir = std::env::temp_dir().join("aether_test_update_sha");
+        let _ = std::fs::create_dir_all(&temp_dir);
+        let test_file = temp_dir.join("test_pkg.bin");
+        let payload = b"Aether Update Binary Payload Test 12345";
+        let mut file = std::fs::File::create(&test_file).unwrap();
+        file.write_all(payload).unwrap();
+        drop(file);
+
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(payload);
+        let expected_hash = format!("{:x}", hasher.finalize());
+
+        assert!(AutoUpdater::verify_package_integrity(&test_file, &expected_hash));
+        assert!(!AutoUpdater::verify_package_integrity(
+            &test_file,
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        ));
+
+        let _ = std::fs::remove_file(&test_file);
+    }
+
+    #[test]
+    fn test_auto_updater_download_package_unreachable_url() {
+        let updater = AutoUpdater::new("0.6.0");
+        let update_info = UpdateInfo {
+            version: "0.7.0".to_string(),
+            download_url: "http://127.0.0.1:9/nonexistent.msix".to_string(),
+            sha256_hash: "abcd".to_string(),
+            release_notes: "notes".to_string(),
+        };
+        let result = updater.download_package(&update_info);
+        assert!(result.is_err());
     }
 }

@@ -4,6 +4,7 @@
 //! material selection, and performance prediction into a cohesive pipeline guarded
 //! by mandatory security capability checks and schema validation gates.
 
+use crate::security_gate::{AiSecurityGate, UntrustedAiProposal};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -16,6 +17,7 @@ pub struct ComposerOutput {
     pub predicted_memory_mb: f32,
     pub passes_security_gate: bool,
     pub requires_user_approval: bool,
+    pub rejection_reason: Option<String>,
 }
 
 pub struct AiDesktopComposer;
@@ -23,8 +25,37 @@ pub struct AiDesktopComposer;
 impl AiDesktopComposer {
     /// Processes a natural language desktop prompt through the AI Desktop Composer pipeline.
     pub fn compose_desktop(prompt: &str) -> ComposerOutput {
-        let is_cyberpunk = prompt.to_lowercase().contains("cyberpunk") || prompt.to_lowercase().contains("neon");
-        let is_minimal = prompt.to_lowercase().contains("minimal") || prompt.to_lowercase().contains("clean");
+        let gate = AiSecurityGate::new();
+        Self::compose_desktop_with_gate(prompt, &gate)
+    }
+
+    /// Processes a prompt using a specific `AiSecurityGate` instance.
+    pub fn compose_desktop_with_gate(prompt: &str, gate: &AiSecurityGate) -> ComposerOutput {
+        // Sanitization & injection check
+        let lower = prompt.to_lowercase();
+        let has_injection = lower.contains("system32")
+            || lower.contains("cmd.exe")
+            || lower.contains("powershell")
+            || lower.contains("format ")
+            || lower.contains("../")
+            || lower.contains("..\\");
+
+        if has_injection {
+            return ComposerOutput {
+                intent_summary: "Rejected malicious or unsafe prompt".to_string(),
+                generated_theme_id: String::new(),
+                layout_preset: String::new(),
+                recommended_material: String::new(),
+                predicted_cpu_pct: 0.0,
+                predicted_memory_mb: 0.0,
+                passes_security_gate: false,
+                requires_user_approval: false,
+                rejection_reason: Some("Security violation: Prompt contains prohibited system tokens or traversal patterns".to_string()),
+            };
+        }
+
+        let is_cyberpunk = lower.contains("cyberpunk") || lower.contains("neon");
+        let is_minimal = lower.contains("minimal") || lower.contains("clean");
 
         let (theme_id, layout, material, cpu, mem) = if is_cyberpunk {
             ("theme.cyberpunk.neon".to_string(), "grid_3x3".to_string(), "Glass".to_string(), 0.08, 18.0)
@@ -34,6 +65,16 @@ impl AiDesktopComposer {
             ("theme.default.dark".to_string(), "flex_auto".to_string(), "Mica".to_string(), 0.05, 12.0)
         };
 
+        let proposal = UntrustedAiProposal::SynthesizeLayout {
+            preset: layout.clone(),
+            theme_id: theme_id.clone(),
+        };
+
+        let (passes, reason) = match gate.validate_and_authorize(&proposal, true) {
+            Ok(_) => (true, None),
+            Err(e) => (false, Some(e.to_string())),
+        };
+
         ComposerOutput {
             intent_summary: format!("Synthesized desktop setup for prompt: '{}'", prompt),
             generated_theme_id: theme_id,
@@ -41,8 +82,9 @@ impl AiDesktopComposer {
             recommended_material: material,
             predicted_cpu_pct: cpu,
             predicted_memory_mb: mem,
-            passes_security_gate: true,
-            requires_user_approval: true,
+            passes_security_gate: passes,
+            requires_user_approval: true, // Desktop theme / layout changes always require user confirmation
+            rejection_reason: reason,
         }
     }
 }
@@ -57,5 +99,13 @@ mod tests {
         assert_eq!(output.generated_theme_id, "theme.cyberpunk.neon");
         assert!(output.passes_security_gate);
         assert!(output.requires_user_approval);
+        assert!(output.rejection_reason.is_none());
+    }
+
+    #[test]
+    fn test_ai_desktop_composer_rejects_injection() {
+        let output = AiDesktopComposer::compose_desktop("Open cmd.exe and format ../../windows");
+        assert!(!output.passes_security_gate);
+        assert!(output.rejection_reason.is_some());
     }
 }

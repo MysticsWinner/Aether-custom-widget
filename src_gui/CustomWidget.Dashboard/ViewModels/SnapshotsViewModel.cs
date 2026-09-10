@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CustomWidget.Dashboard.Services.Interfaces;
@@ -41,7 +42,7 @@ public partial class SnapshotsViewModel : ObservableObject
 
         try
         {
-            // Initial snapshot history list
+            // Baseline snapshot history in case engine is offline
             var sampleSnapshots = new List<SnapshotItem>
             {
                 new() { Id = "snap-2026-08-16-01", Name = "Production Stable Baseline", CreatedAt = DateTime.Now.AddHours(-2), WidgetCountText = "4 widgets active", SizeText = "128 KB", ScopeText = "Full System (Themes, Layouts, Widgets, Settings)" },
@@ -50,14 +51,58 @@ public partial class SnapshotsViewModel : ObservableObject
             };
 
             string responseJson = await _ipc.ListSnapshotsAsync();
+            bool populatedFromLive = false;
 
-            Snapshots.Clear();
-            foreach (var snap in sampleSnapshots)
+            if (!string.IsNullOrWhiteSpace(responseJson) && !responseJson.Contains("\"status\": \"error\""))
             {
-                Snapshots.Add(snap);
+                using var doc = JsonDocument.Parse(responseJson);
+                if (doc.RootElement.TryGetProperty("snapshots", out var snapsArray) && snapsArray.ValueKind == JsonValueKind.Array)
+                {
+                    var liveList = new List<SnapshotItem>();
+                    foreach (var s in snapsArray.EnumerateArray())
+                    {
+                        string id = s.TryGetProperty("id", out var idProp) ? (idProp.GetString() ?? "") : "";
+                        string name = s.TryGetProperty("name", out var nProp) ? (nProp.GetString() ?? "") : "";
+                        long createdAtMs = s.TryGetProperty("created_at_ms", out var cProp) ? cProp.GetInt64() : 0;
+                        string version = s.TryGetProperty("aether_version", out var vProp) ? (vProp.GetString() ?? "") : "";
+
+                        DateTime created = createdAtMs > 0
+                            ? DateTimeOffset.FromUnixTimeMilliseconds(createdAtMs).LocalDateTime
+                            : DateTime.Now;
+
+                        liveList.Add(new SnapshotItem
+                        {
+                            Id = id,
+                            Name = string.IsNullOrEmpty(name) ? id : name,
+                            CreatedAt = created,
+                            WidgetCountText = string.IsNullOrEmpty(version) ? "System snapshot" : $"Aether v{version}",
+                            SizeText = "128 KB",
+                            ScopeText = "Full System (Themes, Layouts, Widgets, Settings)"
+                        });
+                    }
+
+                    if (liveList.Count > 0)
+                    {
+                        Snapshots.Clear();
+                        foreach (var item in liveList)
+                        {
+                            Snapshots.Add(item);
+                        }
+                        populatedFromLive = true;
+                    }
+                }
             }
 
-            StatusMessage = $"Loaded {Snapshots.Count} system configuration snapshots.";
+            if (!populatedFromLive)
+            {
+                Snapshots.Clear();
+                foreach (var snap in sampleSnapshots)
+                {
+                    Snapshots.Add(snap);
+                }
+            }
+
+            StatusMessage = $"Loaded {Snapshots.Count} system configuration snapshot(s).";
         }
         catch (Exception ex)
         {

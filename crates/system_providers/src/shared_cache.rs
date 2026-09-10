@@ -6,6 +6,7 @@ use crate::providers::wasapi_audio::{AudioSpectrumTelemetry, MediaPlaybackTeleme
 use ipc_protocol::MetricPayload;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use tracing::debug;
 
@@ -126,12 +127,25 @@ impl From<MetricPayload> for TelemetrySnapshot {
     }
 }
 
-/// Thread-safe in-memory cache holding the latest system telemetry snapshot.
-/// Implements "Collect Once, Publish Everywhere" core architectural principle.
+/// Thread-safe in-memory telemetry publication store implementing the "Collect Once, Publish Everywhere" principle.
+///
+/// Architecture Guarantee:
+/// - Scalar metric queries (`get_cpu_pct`, `get_memory_used_mb`, `get_gpu_pct`, etc.) are WAIT-FREE,
+///   zero-allocation reads directly backed by cacheline-friendly `AtomicU32` and `AtomicU64` registers.
+/// - Readers NEVER acquire a lock or block the telemetry producer thread during scalar metric queries.
+/// - Full snapshots are published with release-acquire sequence numbers for stale snapshot detection.
 #[derive(Debug, Clone)]
 pub struct SharedTelemetryCache {
     snapshot: Arc<RwLock<TelemetrySnapshot>>,
-    update_count: Arc<RwLock<u64>>,
+    update_count: Arc<AtomicU64>,
+    sequence: Arc<AtomicU64>,
+    timestamp_ms: Arc<AtomicU64>,
+    cpu_pct_bits: Arc<AtomicU32>,
+    gpu_pct_bits: Arc<AtomicU32>,
+    memory_used_mb_bits: Arc<AtomicU32>,
+    memory_total_mb_bits: Arc<AtomicU32>,
+    net_recv_bytes_per_sec: Arc<AtomicU64>,
+    net_sent_bytes_per_sec: Arc<AtomicU64>,
 }
 
 impl SharedTelemetryCache {
@@ -139,17 +153,37 @@ impl SharedTelemetryCache {
     pub fn new() -> Self {
         Self {
             snapshot: Arc::new(RwLock::new(TelemetrySnapshot::default())),
-            update_count: Arc::new(RwLock::new(0)),
+            update_count: Arc::new(AtomicU64::new(0)),
+            sequence: Arc::new(AtomicU64::new(0)),
+            timestamp_ms: Arc::new(AtomicU64::new(0)),
+            cpu_pct_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
+            gpu_pct_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
+            memory_used_mb_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
+            memory_total_mb_bits: Arc::new(AtomicU32::new(16384.0f32.to_bits())),
+            net_recv_bytes_per_sec: Arc::new(AtomicU64::new(0)),
+            net_sent_bytes_per_sec: Arc::new(AtomicU64::new(0)),
         }
     }
 
     /// Atomically updates the entire telemetry snapshot.
+    /// Scalar atomic registers are updated first with Release semantics, followed by the sequence counter.
     pub fn update_snapshot(&self, new_snapshot: TelemetrySnapshot) {
+        // 1. Publish wait-free atomic scalar registers
+        self.cpu_pct_bits.store(new_snapshot.cpu_usage_pct.to_bits(), Ordering::Release);
+        self.gpu_pct_bits.store(new_snapshot.gpu_usage_pct.to_bits(), Ordering::Release);
+        self.memory_used_mb_bits.store(new_snapshot.memory_used_mb.to_bits(), Ordering::Release);
+        self.memory_total_mb_bits.store(new_snapshot.memory_total_mb.to_bits(), Ordering::Release);
+        self.net_recv_bytes_per_sec.store(new_snapshot.net_recv_bytes_per_sec, Ordering::Release);
+        self.net_sent_bytes_per_sec.store(new_snapshot.net_sent_bytes_per_sec, Ordering::Release);
+        self.timestamp_ms.store(new_snapshot.timestamp_ms, Ordering::Release);
+
+        // 2. Increment monotonic sequence counter
+        self.sequence.fetch_add(1, Ordering::Release);
+        self.update_count.fetch_add(1, Ordering::Release);
+
+        // 3. Update full composite snapshot
         if let Ok(mut snap) = self.snapshot.write() {
             *snap = new_snapshot;
-        }
-        if let Ok(mut count) = self.update_count.write() {
-            *count += 1;
         }
         debug!("SharedTelemetryCache snapshot updated successfully.");
     }
@@ -159,24 +193,61 @@ impl SharedTelemetryCache {
         self.snapshot.read().map(|s| s.clone()).unwrap_or_default()
     }
 
-    /// Returns the latest CPU usage percentage from shared cache.
+    /// Returns the latest CPU usage percentage from shared cache (wait-free, zero-allocation).
+    #[inline]
     pub fn get_cpu_pct(&self) -> f32 {
-        self.snapshot.read().map(|s| s.cpu_usage_pct).unwrap_or(0.0)
+        f32::from_bits(self.cpu_pct_bits.load(Ordering::Acquire))
     }
 
-    /// Returns the latest GPU usage percentage from shared cache.
+    /// Returns the latest GPU usage percentage from shared cache (wait-free, zero-allocation).
+    #[inline]
     pub fn get_gpu_pct(&self) -> f32 {
-        self.snapshot.read().map(|s| s.gpu_usage_pct).unwrap_or(0.0)
+        f32::from_bits(self.gpu_pct_bits.load(Ordering::Acquire))
     }
 
-    /// Returns the latest RAM used in megabytes from shared cache.
+    /// Returns the latest RAM used in megabytes from shared cache (wait-free, zero-allocation).
+    #[inline]
     pub fn get_memory_used_mb(&self) -> f32 {
-        self.snapshot.read().map(|s| s.memory_used_mb).unwrap_or(0.0)
+        f32::from_bits(self.memory_used_mb_bits.load(Ordering::Acquire))
     }
 
-    /// Returns the latest RAM total in megabytes from shared cache.
+    /// Returns the latest RAM total in megabytes from shared cache (wait-free, zero-allocation).
+    #[inline]
     pub fn get_memory_total_mb(&self) -> f32 {
-        self.snapshot.read().map(|s| s.memory_total_mb).unwrap_or(16384.0)
+        f32::from_bits(self.memory_total_mb_bits.load(Ordering::Acquire))
+    }
+
+    /// Returns network received bytes per second (wait-free).
+    #[inline]
+    pub fn get_net_recv_bytes_per_sec(&self) -> u64 {
+        self.net_recv_bytes_per_sec.load(Ordering::Acquire)
+    }
+
+    /// Returns network sent bytes per second (wait-free).
+    #[inline]
+    pub fn get_net_sent_bytes_per_sec(&self) -> u64 {
+        self.net_sent_bytes_per_sec.load(Ordering::Acquire)
+    }
+
+    /// Returns snapshot timestamp in milliseconds epoch (wait-free).
+    #[inline]
+    pub fn timestamp_ms(&self) -> u64 {
+        self.timestamp_ms.load(Ordering::Acquire)
+    }
+
+    /// Returns monotonic sequence number incremented upon every snapshot update (wait-free).
+    #[inline]
+    pub fn sequence(&self) -> u64 {
+        self.sequence.load(Ordering::Acquire)
+    }
+
+    /// Checks if the cached telemetry snapshot is stale relative to `current_time_ms`.
+    pub fn is_stale(&self, current_time_ms: u64, max_age_ms: u64) -> bool {
+        let ts = self.timestamp_ms.load(Ordering::Acquire);
+        if ts == 0 {
+            return false;
+        }
+        current_time_ms.saturating_sub(ts) > max_age_ms
     }
 
     /// Returns the latest dedicated GPU telemetry from shared cache.
@@ -209,9 +280,10 @@ impl SharedTelemetryCache {
         self.snapshot.read().map(|s| s.network_diagnostics.clone()).unwrap_or_default()
     }
 
-    /// Returns total cache update count.
+    /// Returns total cache update count (wait-free).
+    #[inline]
     pub fn update_count(&self) -> u64 {
-        self.update_count.read().map(|g| *g).unwrap_or(0)
+        self.update_count.load(Ordering::Acquire)
     }
 }
 
@@ -224,12 +296,16 @@ impl Default for SharedTelemetryCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::AtomicBool;
+    use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn test_shared_cache_collect_once_publish_everywhere() {
         let cache = SharedTelemetryCache::new();
         assert_eq!(cache.get_cpu_pct(), 0.0);
         assert_eq!(cache.update_count(), 0);
+        assert_eq!(cache.sequence(), 0);
 
         let mut snapshot = TelemetrySnapshot {
             timestamp_ms: 1000,
@@ -257,5 +333,55 @@ mod tests {
         assert_eq!(cache.get_network_diagnostics().ping_latency_ms, 9);
         assert_eq!(cache.get_snapshot(), snapshot);
         assert_eq!(cache.update_count(), 1);
+        assert_eq!(cache.sequence(), 1);
+        assert_eq!(cache.timestamp_ms(), 1000);
+        assert!(!cache.is_stale(1050, 100));
+        assert!(cache.is_stale(1200, 100));
+    }
+
+    #[test]
+    fn test_shared_cache_concurrent_readers_and_writer() {
+        let cache = Arc::new(SharedTelemetryCache::new());
+        let running = Arc::new(AtomicBool::new(true));
+
+        let mut handles = Vec::new();
+
+        // Spawn 4 reader threads querying scalar metrics at high frequency
+        for _ in 0..4 {
+            let c = cache.clone();
+            let r = running.clone();
+            handles.push(thread::spawn(move || {
+                let mut reads = 0;
+                while r.load(Ordering::Relaxed) {
+                    let cpu = c.get_cpu_pct();
+                    let mem = c.get_memory_used_mb();
+                    let _seq = c.sequence();
+                    assert!(cpu >= 0.0 && cpu <= 100.0);
+                    assert!(mem >= 0.0);
+                    reads += 1;
+                }
+                reads
+            }));
+        }
+
+        // Writer thread publishing snapshots
+        let c_writer = cache.clone();
+        let writer_handle = thread::spawn(move || {
+            for i in 1..=100 {
+                let mut snap = TelemetrySnapshot::default();
+                snap.cpu_usage_pct = (i % 100) as f32;
+                snap.memory_used_mb = (i * 10) as f32;
+                snap.timestamp_ms = i as u64 * 10;
+                c_writer.update_snapshot(snap);
+                thread::sleep(Duration::from_micros(200));
+            }
+        });
+
+        writer_handle.join().unwrap();
+        running.store(false, Ordering::Relaxed);
+
+        let total_reads: usize = handles.into_iter().map(|h| h.join().unwrap()).sum();
+        assert!(total_reads > 1000, "Readers must complete thousands of wait-free reads");
+        assert_eq!(cache.sequence(), 100);
     }
 }

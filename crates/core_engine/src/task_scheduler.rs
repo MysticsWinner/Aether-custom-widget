@@ -173,6 +173,15 @@ impl TaskScheduler {
         }
     }
 
+    /// Cancels all running scheduled tasks and returns measured cancellation latency.
+    pub fn cancel_all_measured(&mut self) -> Duration {
+        let start = std::time::Instant::now();
+        for handle in self.tasks.drain(..) {
+            handle.abort();
+        }
+        start.elapsed()
+    }
+
     /// Returns the number of currently active scheduled tasks.
     pub fn active_task_count(&self) -> usize {
         self.tasks.iter().filter(|h| !h.is_finished()).count()
@@ -219,6 +228,87 @@ mod tests {
 
         scheduler.cancel_all();
         assert_eq!(scheduler.active_task_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_cadence_accuracy_and_jitter() {
+        let mut scheduler = TaskScheduler::new();
+        let tick_count = Arc::new(AtomicUsize::new(0));
+
+        let count_clone = tick_count.clone();
+        // Schedule a 10ms cadence task
+        scheduler.schedule_periodic(Duration::from_millis(10), move || {
+            let c = count_clone.clone();
+            async move {
+                c.fetch_add(1, Ordering::SeqCst);
+            }
+        });
+
+        // Run for 55ms -> should trigger ~5-6 ticks with bounded jitter
+        sleep(Duration::from_millis(55)).await;
+        let count = tick_count.load(Ordering::SeqCst);
+        assert!(
+            count >= 4 && count <= 8,
+            "Cadence accuracy violated: expected 4-8 ticks in 55ms for 10ms period, got {}",
+            count
+        );
+
+        scheduler.cancel_all();
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_cancellation_latency_under_load() {
+        let mut scheduler = TaskScheduler::new();
+        // Spawn 50 high-frequency concurrent scheduled tasks
+        for _ in 0..50 {
+            scheduler.schedule_periodic(Duration::from_millis(5), || async {
+                tokio::task::yield_now().await;
+            });
+        }
+
+        assert_eq!(scheduler.active_task_count(), 50);
+
+        let latency = scheduler.cancel_all_measured();
+        assert_eq!(scheduler.active_task_count(), 0);
+        // Abort on 50 tasks must be non-blocking and complete in < 25ms
+        assert!(
+            latency < Duration::from_millis(25),
+            "Cancellation latency too high: {:?}",
+            latency
+        );
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_fairness_and_starvation_prevention() {
+        let mut scheduler = TaskScheduler::new();
+        let counters: Vec<Arc<AtomicUsize>> = (0..10)
+            .map(|_| Arc::new(AtomicUsize::new(0)))
+            .collect();
+
+        // Register 10 concurrent periodic tasks
+        for counter in &counters {
+            let c = counter.clone();
+            scheduler.schedule_periodic(Duration::from_millis(10), move || {
+                let cnt = c.clone();
+                async move {
+                    cnt.fetch_add(1, Ordering::SeqCst);
+                }
+            });
+        }
+
+        sleep(Duration::from_millis(60)).await;
+        scheduler.cancel_all();
+
+        // Verify that NO task was starved (every task executed at least 2 ticks)
+        for (idx, counter) in counters.iter().enumerate() {
+            let ticks = counter.load(Ordering::SeqCst);
+            assert!(
+                ticks >= 2,
+                "Task #{} starved! Only executed {} ticks in 60ms",
+                idx,
+                ticks
+            );
+        }
     }
 
     #[tokio::test]

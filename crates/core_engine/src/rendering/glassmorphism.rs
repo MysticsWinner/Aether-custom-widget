@@ -4,7 +4,7 @@
 //! and HDR dithering pipelines for glassmorphism desktop widgets.
 
 use serde::{Deserialize, Serialize};
-use theme_engine::{MaterialSpec, MaterialType};
+use theme_engine::MaterialSpec;
 use tracing::debug;
 use widget_sdk::rendering::{BatchRenderCanvas, Color, RectF, RenderCanvas, RenderEffect};
 
@@ -41,6 +41,17 @@ impl GlassmorphismPipeline {
     pub fn with_dithering(mut self, enable: bool) -> Self {
         self.enable_dithering = enable;
         self
+    }
+
+    /// Sets whether fallback rendering mode is active (for compatibility or low-end hardware).
+    pub fn with_fallback_mode(mut self, fallback: bool) -> Self {
+        self.fallback_mode = fallback;
+        self
+    }
+
+    /// Returns whether fallback rendering mode is active.
+    pub fn is_fallback_mode(&self) -> bool {
+        self.fallback_mode
     }
 
     /// Applies the specified `MaterialSpec` onto the render canvas.
@@ -118,6 +129,7 @@ fn parse_hex_color(hex: &str, opacity: f32) -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use theme_engine::MaterialType;
 
     #[test]
     fn test_glassmorphism_pipeline_initialization() {
