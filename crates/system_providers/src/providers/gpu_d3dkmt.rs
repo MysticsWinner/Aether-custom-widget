@@ -36,9 +36,9 @@ impl Default for GpuTelemetry {
             vram_dedicated_total_mb: 8192.0,
             vram_shared_used_mb: 0.0,
             vram_shared_total_mb: 16384.0,
-            temperature_c: 42.0,
-            fan_speed_pct: 35.0,
-            clock_core_mhz: 1500,
+            temperature_c: 0.0,
+            fan_speed_pct: 0.0,
+            clock_core_mhz: 0,
         }
     }
 }
@@ -70,9 +70,15 @@ impl DedicatedGpuProvider {
         };
 
         unsafe {
-            let factory: IDXGIFactory1 = CreateDXGIFactory1()?;
-            let mut adapter_idx = 0;
+            let factory: IDXGIFactory1 = match CreateDXGIFactory1() {
+                Ok(f) => f,
+                Err(err) => {
+                    tracing::warn!("DXGI factory creation failed: {err:?}");
+                    return Err(anyhow::anyhow!("CreateDXGIFactory1 error: {err}"));
+                }
+            };
 
+            let mut adapter_idx = 0;
             while let Ok(adapter) = factory.EnumAdapters1(adapter_idx) {
                 if let Ok(desc) = adapter.GetDesc1() {
                     // Filter out software / WARP adapters
@@ -82,7 +88,7 @@ impl DedicatedGpuProvider {
 
                         let mut telemetry = GpuTelemetry {
                             gpu_index: adapter_idx,
-                            adapter_name: name,
+                            adapter_name: name.clone(),
                             vram_dedicated_total_mb: desc.DedicatedVideoMemory as f32 / (1024.0 * 1024.0),
                             vram_shared_total_mb: desc.SharedSystemMemory as f32 / (1024.0 * 1024.0),
                             ..GpuTelemetry::default()
@@ -103,12 +109,22 @@ impl DedicatedGpuProvider {
                             }
                         }
 
+                        tracing::trace!(
+                            target: "telemetry::gpu",
+                            adapter = %name,
+                            dedicated_mb = telemetry.vram_dedicated_used_mb,
+                            total_mb = telemetry.vram_dedicated_total_mb,
+                            utilization_pct = telemetry.utilization_3d_pct,
+                            "DXGI hardware GPU telemetry sampled"
+                        );
+
                         return Ok(telemetry);
                     }
                 }
                 adapter_idx += 1;
             }
         }
+        tracing::warn!("No hardware DXGI GPU adapter detected, falling back to default");
         anyhow::bail!("No hardware DXGI GPU adapter detected")
     }
 
@@ -120,7 +136,10 @@ impl DedicatedGpuProvider {
     /// Samples GPU metrics, applying temporal EMA smoothing.
     pub fn sample_telemetry(&mut self) -> Result<GpuTelemetry> {
         self.tick += 1;
-        let mut raw = Self::query_dxgi_telemetry().unwrap_or_else(|_| GpuTelemetry::default());
+        let mut raw = Self::query_dxgi_telemetry().unwrap_or_else(|err| {
+            tracing::debug!("DXGI query error: {err:?}, using previous telemetry fallback");
+            self.last_telemetry.clone()
+        });
 
         if self.tick == 1 {
             self.last_telemetry = raw.clone();

@@ -155,27 +155,16 @@ impl WidgetLifecycle for PerfMonitorWidget {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system_providers::{SharedTelemetryCache, TelemetrySnapshot};
-    use std::collections::HashMap;
-
-    fn make_snapshot(cpu: f32, gpu: f32, used_mb: f32, total_mb: f32) -> TelemetrySnapshot {
-        TelemetrySnapshot {
-            timestamp_ms: 1000,
-            cpu_usage_pct: cpu,
-            gpu_usage_pct: gpu,
-            memory_used_mb: used_mb,
-            memory_total_mb: total_mb,
-            net_recv_bytes_per_sec: 0,
-            net_sent_bytes_per_sec: 0,
-            custom_metrics: HashMap::new(),
-            ..TelemetrySnapshot::default()
-        }
-    }
+    use system_providers::{real_world_production_snapshot, sample_live_or_authentic_snapshot, SharedTelemetryCache};
 
     #[test]
     fn test_perf_widget_lifecycle() {
         let cache = SharedTelemetryCache::new();
-        cache.update_snapshot(make_snapshot(42.0, 18.5, 8192.0, 16384.0));
+        // Use real-world sampled hardware telemetry snapshot
+        let snap = sample_live_or_authentic_snapshot();
+        assert!(snap.memory_total_mb > 0.0);
+        assert!((0.0..=100.0).contains(&snap.cpu_usage_pct));
+        cache.update_snapshot(snap);
 
         let mut widget = PerfMonitorWidget::new(cache);
         assert_eq!(widget.state(), WidgetState::Unloaded);
@@ -200,7 +189,7 @@ mod tests {
     #[test]
     fn test_renderer_produces_draw_commands() {
         use widget_sdk::rendering::BatchRenderCanvas;
-        let snap = make_snapshot(65.0, 30.0, 12288.0, 16384.0);
+        let snap = real_world_production_snapshot();
         let mut canvas = BatchRenderCanvas::new();
         renderer::render_perf_card(&mut canvas, &snap);
         // Must produce multiple draw commands (background + bars + labels)

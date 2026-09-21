@@ -77,6 +77,7 @@ public sealed class NamedPipeClient
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
+                DashboardLogger.Info(LogSource, "IPC request cancelled by user cancellation token.");
                 return BuildErrorJson("IPC request was cancelled by user.");
             }
             catch (OperationCanceledException)

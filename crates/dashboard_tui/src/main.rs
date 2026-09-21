@@ -60,6 +60,9 @@ struct App {
     metrics: StatusResponse,
     ipc_state: IpcState,
     uptime_secs: u64,
+    consecutive_failures: u32,
+    last_successful_poll: Option<Instant>,
+    show_diagnostics: bool,
 }
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -76,9 +79,12 @@ impl App {
             Ok(resp) => {
                 self.metrics = resp;
                 self.ipc_state = IpcState::Connected;
+                self.consecutive_failures = 0;
+                self.last_successful_poll = Some(Instant::now());
             }
             Err(e) => {
-                warn!("IPC poll error: {e:?}");
+                self.consecutive_failures += 1;
+                tracing::warn!(target: "tui::ipc", failures = self.consecutive_failures, "IPC poll error: {e:?}");
                 self.ipc_state = IpcState::Error;
             }
         }
@@ -94,6 +100,7 @@ fn query_ipc() -> Result<StatusResponse> {
 
     let cmd = serde_json::to_string(&ControlCommand::GetStatus)?;
 
+    tracing::trace!(target: "tui::ipc", "Opening named pipe for GetStatus query");
     let mut pipe = OpenOptions::new()
         .read(true)
         .write(true)
@@ -108,6 +115,7 @@ fn query_ipc() -> Result<StatusResponse> {
 
     let resp: StatusResponse = serde_json::from_slice(raw)
         .map_err(|e| anyhow::anyhow!("JSON parse error: {e}"))?;
+    tracing::trace!(target: "tui::ipc", cpu = resp.cpu_pct, ram_used = resp.memory_used_mb, "Received engine status response");
     Ok(resp)
 }
 
@@ -164,6 +172,7 @@ async fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Re
                 match (key.code, key.modifiers) {
                     (KeyCode::Char('q'), _)
                     | (KeyCode::Char('c'), KeyModifiers::CONTROL) => return Ok(()),
+                    (KeyCode::Char('d'), _) => app.show_diagnostics = !app.show_diagnostics,
                     _ => {}
                 }
             }
@@ -319,9 +328,15 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
 
     // IPC status
     let (ipc_label, ipc_color) = match app.ipc_state {
-        IpcState::Connected  => ("● IPC Connected", Color::Green),
-        IpcState::Connecting => ("○ Connecting…",   Color::Yellow),
-        IpcState::Error      => ("✗ IPC Error – start core_engine first", Color::Red),
+        IpcState::Connected  => ("● IPC Connected".to_string(), Color::Green),
+        IpcState::Connecting => ("○ Connecting…".to_string(),   Color::Yellow),
+        IpcState::Error      => {
+            if app.last_successful_poll.is_some() {
+                (format!("⚠ Cached Fallback (Retry #{})", app.consecutive_failures), Color::Yellow)
+            } else {
+                ("✗ IPC Error – start core_engine first".to_string(), Color::Red)
+            }
+        }
     };
     let status_p = Paragraph::new(ipc_label)
         .style(Style::default().fg(ipc_color))
@@ -341,7 +356,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(widgets_p, cols[1]);
 
     // Quit hint + uptime
-    let hint = Paragraph::new(format!("q/Ctrl+C quit  ↑{}s", app.uptime_secs))
+    let hint = Paragraph::new(format!("'d' Diag | 'q' Quit  ↑{}s", app.uptime_secs))
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Right);
     f.render_widget(hint, cols[2]);

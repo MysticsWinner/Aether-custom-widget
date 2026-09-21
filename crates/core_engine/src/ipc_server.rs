@@ -162,6 +162,10 @@ impl IpcSharedState {
 
 /// Runs the IPC server loop.  Never returns under normal operation;
 /// call via `tokio::spawn`.
+pub static TOTAL_IPC_CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static ACTIVE_IPC_CONNECTIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static TOTAL_COMMANDS_DISPATCHED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 #[cfg(windows)]
 pub async fn run_ipc_server(state: IpcSharedState) -> Result<()> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -195,24 +199,64 @@ pub async fn run_ipc_server(state: IpcSharedState) -> Result<()> {
             continue;
         }
 
-        info!("IPC: client connected.");
+        let conn_id = TOTAL_IPC_CONNECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        ACTIVE_IPC_CONNECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let connect_instant = std::time::Instant::now();
+        info!(target: "ipc", conn_id, "IPC: Named pipe client connected");
         let state_ref = state.clone();
 
         tokio::spawn(async move {
             let mut pipe = server;
-            let mut buf = vec![0u8; 8192];
+            let mut buf = vec![0u8; 16384];
+            let mut total_bytes_in = 0usize;
+            let mut total_bytes_out = 0usize;
+            let mut cmd_count = 0u32;
 
-            match pipe.read(&mut buf).await {
-                Ok(0) => warn!("IPC: client disconnected before sending data."),
-                Ok(n) => {
-                    let raw = String::from_utf8_lossy(&buf[..n]);
-                    let response = dispatch_command(&raw, &state_ref);
-                    if let Err(e) = pipe.write_all(response.as_bytes()).await {
-                        warn!("IPC write error: {e:?}");
+            loop {
+                match pipe.read(&mut buf).await {
+                    Ok(0) => {
+                        let duration = connect_instant.elapsed();
+                        info!(
+                            target: "ipc",
+                            conn_id,
+                            commands = cmd_count,
+                            bytes_read = total_bytes_in,
+                            bytes_written = total_bytes_out,
+                            duration_ms = duration.as_millis(),
+                            "IPC: Named pipe client disconnected"
+                        );
+                        break;
+                    }
+                    Ok(n) => {
+                        total_bytes_in += n;
+                        cmd_count += 1;
+                        TOTAL_COMMANDS_DISPATCHED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let raw = String::from_utf8_lossy(&buf[..n]);
+                        let dispatch_start = std::time::Instant::now();
+                        let response = dispatch_command(&raw, &state_ref);
+                        let dispatch_micros = dispatch_start.elapsed().as_micros();
+                        tracing::trace!(
+                            target: "ipc",
+                            conn_id,
+                            cmd_index = cmd_count,
+                            request_bytes = n,
+                            duration_us = dispatch_micros,
+                            response_bytes = response.len(),
+                            "IPC: Command dispatched and response generated"
+                        );
+                        if let Err(e) = pipe.write_all(response.as_bytes()).await {
+                            warn!(target: "ipc", conn_id, "IPC write error: {e:?}");
+                            break;
+                        }
+                        total_bytes_out += response.len();
+                    }
+                    Err(e) => {
+                        warn!(target: "ipc", conn_id, "IPC pipe read error: {e:?}");
+                        break;
                     }
                 }
-                Err(e) => error!("IPC read error: {e:?}"),
             }
+            ACTIVE_IPC_CONNECTIONS.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
         });
     }
 }
@@ -409,11 +453,21 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             info!("IPC: GetDiagnostics requested.");
             let pid = std::process::id();
             let tick_count = state.cache.update_count();
+            let total_conns = TOTAL_IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Relaxed);
+            let active_conns = ACTIVE_IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Relaxed);
+            let total_cmds = TOTAL_COMMANDS_DISPATCHED.load(std::sync::atomic::Ordering::Relaxed);
+            let snap = state.cache.get_snapshot();
             serde_json::json!({
                 "status": "ok",
                 "pid": pid,
                 "tick_count": tick_count,
+                "total_connections": total_conns,
+                "active_connections": active_conns,
+                "total_commands_dispatched": total_cmds,
                 "subsystem_count": 9,
+                "cpu_usage_pct": snap.cpu_usage_pct,
+                "memory_used_mb": snap.memory_used_mb,
+                "memory_total_mb": snap.memory_total_mb,
                 "engine_version": env!("CARGO_PKG_VERSION"),
             }).to_string()
         }

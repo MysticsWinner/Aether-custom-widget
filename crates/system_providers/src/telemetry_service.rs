@@ -6,8 +6,8 @@ use crate::providers::{
     NetworkProvider, ProcessMetricsProvider,
 };
 use crate::shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
-use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::{debug, info};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use tracing::{debug, info, trace, warn};
 
 /// Central Telemetry Service orchestrating hardware metric collection under the "Collect Once, Publish Everywhere" model.
 pub struct TelemetryService {
@@ -28,8 +28,7 @@ pub struct TelemetryService {
 }
 
 impl TelemetryService {
-    /// Creates a new `TelemetryService` attached to a `SharedTelemetryCache`.
-    pub fn new(cache: SharedTelemetryCache) -> Self {
+    pub fn new() -> Self {
         Self {
             cpu_provider: Box::new(CpuProvider::new()),
             memory_provider: Box::new(MemoryProvider::new()),
@@ -44,70 +43,98 @@ impl TelemetryService {
             wasapi_audio: WasapiAudioProvider::new(),
             crypto_financial: CryptoFinancialProvider::new(),
             network_diagnostics: NetworkDiagnosticsProvider::new(),
-            cache,
+            cache: SharedTelemetryCache::new(),
         }
+    }
+
+    pub fn with_cache(cache: SharedTelemetryCache) -> Self {
+        let mut service = Self::new();
+        service.cache = cache;
+        service
+    }
+
+    /// Returns a reference to the `SharedTelemetryCache`.
+    pub fn cache(&self) -> SharedTelemetryCache {
+        self.cache.clone()
     }
 
     /// Executes a SINGLE PASS collection tick across all hardware sensors and updates the shared cache.
     /// Crucial Rule: Collect ONCE per tick, Publish EVERYWHERE. Widgets read from SharedCache only.
     pub fn collect_once(&mut self) -> anyhow::Result<TelemetrySnapshot> {
+        let tick_start = Instant::now();
         let now_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis() as u64;
 
-        let cpu_val = match self.cpu_provider.sample()? {
-            MetricValue::Percentage(v) => v,
-            _ => 0.0,
+        let cpu_val = match self.cpu_provider.sample() {
+            Ok(MetricValue::Percentage(v)) => v,
+            Ok(_) => 0.0,
+            Err(err) => {
+                warn!(target: "telemetry", "CPU provider sample error: {err:?}, holding zero/fallback");
+                0.0
+            }
         };
 
-        let (mem_used, mem_total) = match self.memory_provider.sample()? {
-            MetricValue::MemoryStats { used_mb, total_mb } => (used_mb, total_mb),
-            MetricValue::Megabytes(v) => (v, 16384.0), // legacy fallback
-            _ => (0.0, 16384.0),
+        let (mem_used, mem_total) = match self.memory_provider.sample() {
+            Ok(MetricValue::MemoryStats { used_mb, total_mb }) => (used_mb, total_mb),
+            Ok(MetricValue::Megabytes(v)) => (v, 16384.0),
+            Ok(_) => (0.0, 16384.0),
+            Err(err) => {
+                warn!(target: "telemetry", "Memory provider sample error: {err:?}, using cached baseline");
+                (0.0, 16384.0)
+            }
         };
 
-        let gpu_val = match self.gpu_provider.sample()? {
-            MetricValue::Percentage(v) => v,
-            _ => 0.0,
+        let gpu_val = match self.gpu_provider.sample() {
+            Ok(MetricValue::Percentage(v)) => v,
+            Ok(_) => 0.0,
+            Err(err) => {
+                debug!(target: "telemetry", "GPU provider sample error: {err:?}");
+                0.0
+            }
         };
 
-        let (net_rx, net_tx) = match self.network_provider.sample()? {
-            MetricValue::NetworkStats {
+        let (net_rx, net_tx) = match self.network_provider.sample() {
+            Ok(MetricValue::NetworkStats {
                 rx_bytes_per_sec,
                 tx_bytes_per_sec,
-            } => (rx_bytes_per_sec, tx_bytes_per_sec),
-            MetricValue::BytesPerSec(v) => (v, v / 4), // legacy fallback
-            _ => (0, 0),
+            }) => (rx_bytes_per_sec, tx_bytes_per_sec),
+            Ok(MetricValue::BytesPerSec(v)) => (v, v / 4),
+            Ok(_) => (0, 0),
+            Err(err) => {
+                debug!(target: "telemetry", "Network provider sample error: {err:?}");
+                (0, 0)
+            }
         };
 
-        let (bat_pct, bat_secs, is_charging) = match self.battery_provider.sample()? {
-            MetricValue::BatteryStats {
+        let (bat_pct, bat_secs, is_charging) = match self.battery_provider.sample() {
+            Ok(MetricValue::BatteryStats {
                 charge_pct,
                 remaining_secs,
                 is_charging,
-            } => (charge_pct, remaining_secs, is_charging),
+            }) => (charge_pct, remaining_secs, is_charging),
             _ => (100.0, 0, true),
         };
 
-        let (vol_pct, is_muted) = match self.audio_provider.sample()? {
-            MetricValue::AudioStats {
+        let (vol_pct, is_muted) = match self.audio_provider.sample() {
+            Ok(MetricValue::AudioStats {
                 master_volume_pct,
                 is_muted,
-            } => (master_volume_pct, is_muted),
+            }) => (master_volume_pct, is_muted),
             _ => (75.0, false),
         };
 
         let (open_apps, browser_tabs, audio_apps, gaming_apps, dev_apps, other_apps) =
-            match self.process_provider.sample()? {
-                MetricValue::ProcessStats {
+            match self.process_provider.sample() {
+                Ok(MetricValue::ProcessStats {
                     open_apps_count,
                     browser_tabs_count,
                     audio_playing_apps_count,
                     gaming_apps_count,
                     dev_suite_apps_count,
                     other_apps_count,
-                } => (
+                }) => (
                     open_apps_count,
                     browser_tabs_count,
                     audio_playing_apps_count,
@@ -115,19 +142,19 @@ impl TelemetryService {
                     dev_suite_apps_count,
                     other_apps_count,
                 ),
-                _ => (5, 12, 1, 0, 2, 2),
+                _ => (0, 0, 0, 0, 0, 0),
             };
 
         let (total_gpus, int_gpus, ded_gpus, total_displays, ext_displays, virt_displays) =
-            match self.display_provider.sample()? {
-                MetricValue::DisplayTopologyStats {
+            match self.display_provider.sample() {
+                Ok(MetricValue::DisplayTopologyStats {
                     total_gpu_count,
                     integrated_gpu_count,
                     dedicated_gpu_count,
                     total_display_count,
                     external_display_count,
                     virtual_display_count,
-                } => (
+                }) => (
                     total_gpu_count,
                     integrated_gpu_count,
                     dedicated_gpu_count,
@@ -180,7 +207,16 @@ impl TelemetryService {
             custom_metrics: Default::default(),
         };
 
-        debug!("Single-pass telemetry collection completed at {} ms.", now_ms);
+        let elapsed_us = tick_start.elapsed().as_micros();
+        trace!(
+            target: "telemetry",
+            duration_us = elapsed_us,
+            timestamp_ms = now_ms,
+            cpu = cpu_val,
+            ram_used_mb = mem_used,
+            gpu = gpu_val,
+            "Single-pass telemetry collection completed"
+        );
 
         // Publish to Shared Cache for all widgets to consume without Windows API access
         self.cache.update_snapshot(snapshot.clone());

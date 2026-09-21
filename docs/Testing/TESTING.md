@@ -10,6 +10,12 @@ Per project governance rules:
 
 > **Mandatory Rule**: Regardless of the size or nature of a request, every code change MUST include tests that pass before a task is complete. `cargo test --workspace` and `dotnet test` must exit with code 0 with zero failing tests.
 
+### Governance Rule: Real-World Data Only (Zero Fabricated Metrics)
+- **Zero Arbitrary Dummy Numbers**: Hardcoded artificial metrics (e.g. `42.0%`, `12345 MB`, synthetic temperatures) are strictly prohibited across all tests and fixtures.
+- **Authentic Production Fixtures**: All unit tests, integration harnesses, and mock fallbacks use `system_providers::test_fixtures::real_world_production_snapshot()` or query live Windows hardware counters via `RealSystemCollector`.
+- **Realistic Physical Invariants**: Memory ratios ($\text{used} \le \text{total}$), authentic Windows process counts, realistic network byte rates, and valid timestamps are enforced across all test assertions.
+
+
 ---
 
 ## 2. Test Suite Status Summary

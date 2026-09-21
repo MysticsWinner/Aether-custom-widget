@@ -143,8 +143,10 @@ impl MultiReaderSnapshotBuffer {
         self.active_slot_index.store(target_slot, Ordering::Release);
         self.header.timestamp_ms.store(payload.timestamp_ms, Ordering::Relaxed);
 
+        let final_seq = current_seq.wrapping_add(2);
         // Even sequence signals stable commit
-        self.header.sequence.store(current_seq.wrapping_add(2), Ordering::Release);
+        self.header.sequence.store(final_seq, Ordering::Release);
+        tracing::trace!(target: "ipc::shm", seq = final_seq, ts = payload.timestamp_ms, "Committed SHM telemetry payload");
     }
 
     /// Reads the latest stable payload (Safe for arbitrary concurrent Readers).
@@ -153,12 +155,13 @@ impl MultiReaderSnapshotBuffer {
         self.header.validate()?;
 
         if !self.is_producer_alive() {
+            tracing::warn!(target: "ipc::shm", "Producer process is inactive or terminated");
             return Err(ShmReadError::WriterInactive);
         }
 
         const MAX_RETRIES: u32 = 10;
         let mut last_observed_seq = 0;
-        for _ in 0..MAX_RETRIES {
+        for retry in 0..MAX_RETRIES {
             let seq1 = self.header.sequence.load(Ordering::Acquire);
             last_observed_seq = seq1;
             if seq1 == 0 {
@@ -168,6 +171,7 @@ impl MultiReaderSnapshotBuffer {
                 // Writer currently modifying
                 if !self.is_producer_alive() {
                     // Writer died or crashed while sequence was odd!
+                    tracing::error!(target: "ipc::shm", sequence = seq1, "Writer crashed mid-write");
                     return Err(ShmReadError::WriterCrashedMidWrite { sequence: seq1 });
                 }
                 std::hint::spin_loop();
@@ -183,16 +187,21 @@ impl MultiReaderSnapshotBuffer {
 
             let seq2 = self.header.sequence.load(Ordering::Acquire);
             if seq1 == seq2 {
+                if retry > 0 {
+                    tracing::debug!(target: "ipc::shm", retries = retry, "SHM seqlock read succeeded after retry");
+                }
                 return Ok(payload);
             }
             std::hint::spin_loop();
         }
 
         if last_observed_seq % 2 != 0 {
+            tracing::error!(target: "ipc::shm", sequence = last_observed_seq, "Writer terminated during active write");
             Err(ShmReadError::WriterCrashedMidWrite {
                 sequence: last_observed_seq,
             })
         } else {
+            tracing::warn!(target: "ipc::shm", retries = MAX_RETRIES, "SHM torn read detected after max retries");
             Err(ShmReadError::TornRead { retries: MAX_RETRIES })
         }
     }
@@ -460,24 +469,31 @@ mod tests {
         assert_eq!(buf.read_latest(), Err(ShmReadError::NoDataAvailable));
 
         let mut p1 = MetricPayload::default();
-        p1.cpu_usage_pct = 42.0;
+        p1.cpu_usage_pct = 14.8;
+        p1.memory_used_mb = 6144.0;
+        p1.memory_total_mb = 16384.0;
         p1.timestamp_ms = 1000;
         buf.publish(p1);
 
         let r1 = buf.read_latest().expect("Reader 1 should succeed");
-        assert_eq!(r1.cpu_usage_pct, 42.0);
+        assert_eq!(r1.cpu_usage_pct, 14.8);
+        assert_eq!(r1.memory_used_mb, 6144.0);
 
         // Multiple readers can read simultaneously without modifying shared buffer
         let r2 = buf.read_latest().expect("Reader 2 should succeed");
-        assert_eq!(r2.cpu_usage_pct, 42.0);
+        assert_eq!(r2.cpu_usage_pct, 14.8);
+        assert_eq!(r2.memory_used_mb, 6144.0);
 
         let mut p2 = MetricPayload::default();
-        p2.cpu_usage_pct = 99.5;
+        p2.cpu_usage_pct = 28.4;
+        p2.memory_used_mb = 7168.0;
+        p2.memory_total_mb = 16384.0;
         p2.timestamp_ms = 2000;
         buf.publish(p2);
 
         let r3 = buf.read_latest().expect("Reader 3 should read updated payload");
-        assert_eq!(r3.cpu_usage_pct, 99.5);
+        assert_eq!(r3.cpu_usage_pct, 28.4);
+        assert_eq!(r3.memory_used_mb, 7168.0);
     }
 
     #[test]

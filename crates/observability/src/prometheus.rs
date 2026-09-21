@@ -132,39 +132,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_prometheus_exporter_formatting() {
-        let snap = TelemetrySnapshot {
-            timestamp_ms: 1000,
-            cpu_usage_pct: 12.5,
-            memory_used_mb: 2048.0,
-            memory_total_mb: 16384.0,
-            gpu_usage_pct: 33.0,
-            net_recv_bytes_per_sec: 10000,
-            net_sent_bytes_per_sec: 2500,
-            open_apps_count: 5,
-            browser_tabs_count: 10,
-            audio_playing_apps_count: 1,
-            gaming_apps_count: 0,
-            dev_suite_apps_count: 2,
-            other_apps_count: 2,
-            master_volume_pct: 80.0,
-            is_muted: false,
-            battery_charge_pct: 95.0,
-            battery_remaining_secs: 7200,
-            is_charging: true,
-            total_gpu_count: 1,
-            integrated_gpu_count: 1,
-            dedicated_gpu_count: 0,
-            total_display_count: 1,
-            external_display_count: 0,
-            virtual_display_count: 0,
-            custom_metrics: Default::default(),
-            ..TelemetrySnapshot::default()
-        };
+        let snap = system_providers::sample_live_or_authentic_snapshot();
 
         let metrics = PrometheusExporter::format_snapshot(&snap, 3);
-        assert!(metrics.contains("aether_cpu_usage_percent 12.50"));
-        assert!(metrics.contains("aether_memory_used_mb 2048.00"));
-        assert!(metrics.contains("aether_gpu_usage_percent 33.00"));
+        assert!(metrics.contains(&format!("aether_cpu_usage_percent {:.2}", snap.cpu_usage_pct)));
+        assert!(metrics.contains(&format!("aether_memory_used_mb {:.2}", snap.memory_used_mb)));
+        assert!(metrics.contains(&format!("aether_gpu_usage_percent {:.2}", snap.gpu_usage_pct)));
         assert!(metrics.contains("aether_active_widgets_count 3"));
     }
 

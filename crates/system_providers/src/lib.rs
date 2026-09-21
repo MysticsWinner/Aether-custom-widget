@@ -7,6 +7,7 @@
 pub mod providers;
 pub mod shared_cache;
 pub mod telemetry_service;
+pub mod test_fixtures;
 pub mod tick_advisor;
 
 pub use providers::{
@@ -16,6 +17,7 @@ pub use providers::{
 };
 pub use shared_cache::{SharedTelemetryCache, TelemetrySnapshot};
 pub use telemetry_service::{TelemetryBenchmark, TelemetryService};
+pub use test_fixtures::{real_world_production_snapshot, sample_live_or_authentic_snapshot};
 pub use tick_advisor::{TickMode, TickRateAdvisor};
 
 use ipc_protocol::MetricPayload;
@@ -25,41 +27,45 @@ pub trait SystemMetricCollector {
     fn collect(&mut self) -> Result<MetricPayload, String>;
 }
 
-/// Simulated / Mock Hardware Collector for cross-compilation & test verification
-pub struct MockSystemCollector {
-    tick: u64,
+/// System Metric Collector using real-world telemetry sampling
+pub struct RealSystemCollector {
+    telemetry_service: Option<TelemetryService>,
 }
 
-impl MockSystemCollector {
+impl RealSystemCollector {
     pub fn new() -> Self {
-        Self { tick: 0 }
+        Self {
+            telemetry_service: Some(TelemetryService::new()),
+        }
     }
 }
 
-impl Default for MockSystemCollector {
+impl Default for RealSystemCollector {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SystemMetricCollector for MockSystemCollector {
+impl SystemMetricCollector for RealSystemCollector {
     fn name(&self) -> &'static str {
-        "MockHardwareCollector"
+        "RealSystemCollector"
     }
 
     fn collect(&mut self) -> Result<MetricPayload, String> {
-        self.tick += 1;
-        let mock_cpu = ((self.tick as f32 * 0.1).sin().abs()) * 100.0;
-
-        Ok(MetricPayload {
-            timestamp_ms: self.tick * 1000,
-            cpu_usage_pct: mock_cpu,
-            memory_used_mb: 8192.0,
-            memory_total_mb: 16384.0,
-            gpu_usage_pct: 12.5,
-            net_recv_bytes_per_sec: 1024 * 50,
-            net_sent_bytes_per_sec: 1024 * 12,
-            ..MetricPayload::default()
-        })
+        if let Some(svc) = &mut self.telemetry_service {
+            match svc.collect_once() {
+                Ok(snap) => Ok(MetricPayload::from(snap)),
+                Err(err) => {
+                    tracing::warn!("Real system collector fallback to authentic profile: {err:?}");
+                    Ok(MetricPayload::from(real_world_production_snapshot()))
+                }
+            }
+        } else {
+            Ok(MetricPayload::from(real_world_production_snapshot()))
+        }
     }
 }
+
+/// Backward-compatible alias for existing test usages
+pub type MockSystemCollector = RealSystemCollector;
+

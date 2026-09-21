@@ -28,7 +28,12 @@ graph LR
 - **Pipe Address**: `\\.\pipe\CustomWidgetEngineControlPipe`
 - **Transport**: Windows Named Pipe (`tokio::net::windows::named_pipe::ServerOptions`)
 - **Protocol**: JSON Line-delimited UTF-8 strings (`\n`)
-- **Concurrency**: Asynchronous multi-client listener loop with non-blocking I/O
+- **Concurrency**: Asynchronous multi-client listener loop with persistent connection streaming (chunked reads up to 16 KB)
+- **Connection Telemetry**: Atomic live tracking of `TOTAL_IPC_CONNECTIONS`, `ACTIVE_IPC_CONNECTIONS`, and `TOTAL_COMMANDS_DISPATCHED`
+- **Structured Logging & Diagnostics**:
+  - Every connection acceptance, client disconnection, and duration is logged with structured `tracing` fields.
+  - Every incoming command and dispatch latency is instrumented at microsecond precision (`dispatch_latency_us`).
+  - Corrupted frames or EOF conditions trigger clean resource teardown with structured warnings.
 - **Latency**: `< 8 µs` roundtrip
 
 ### Channel 2: High-Frequency Telemetry Channel (Shared Memory)

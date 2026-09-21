@@ -29,21 +29,11 @@ mod tests {
 
     #[test]
     fn test_prometheus_exporter_formatting() {
-        let snap = TelemetrySnapshot {
-            timestamp_ms: 1000,
-            cpu_usage_pct: 12.5,
-            gpu_usage_pct: 34.0,
-            memory_used_mb: 512.0,
-            memory_total_mb: 16384.0,
-            net_recv_bytes_per_sec: 1024,
-            net_sent_bytes_per_sec: 2048,
-            custom_metrics: std::collections::HashMap::new(),
-            ..TelemetrySnapshot::default()
-        };
+        let snap = system_providers::sample_live_or_authentic_snapshot();
 
         let metrics = PrometheusExporter::format_snapshot(&snap, 3);
-        assert!(metrics.contains("aether_cpu_usage_percent 12.50"));
-        assert!(metrics.contains("aether_memory_used_mb 512.00"));
+        assert!(metrics.contains(&format!("aether_cpu_usage_percent {:.2}", snap.cpu_usage_pct)));
+        assert!(metrics.contains(&format!("aether_memory_used_mb {:.2}", snap.memory_used_mb)));
         assert!(metrics.contains("aether_active_widgets_count 3"));
     }
 

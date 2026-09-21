@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
-use tracing::debug;
+use tracing::{debug, info, trace, warn};
 
 /// Classification of event reliability and delivery semantics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -164,7 +164,16 @@ impl EventBus {
             }
         }
 
-        self.sender.send(event)
+        match self.sender.send(event) {
+            Ok(receiver_count) => {
+                trace!(target: "event_bus", receiver_count, "Event broadcast successfully");
+                Ok(receiver_count)
+            }
+            Err(e) => {
+                trace!(target: "event_bus", "Event broadcast completed with 0 active receivers");
+                Err(e)
+            }
+        }
     }
 
     /// Replays events dispatched since `since_sequence`.
@@ -185,6 +194,12 @@ impl EventBus {
 
         // Check if there is a gap between requested sequence and oldest available
         if since_sequence > 0 && since_sequence + 1 < oldest_available {
+            warn!(
+                target: "event_bus",
+                requested = since_sequence,
+                oldest_available,
+                "Event replay gap detected — forcing state reconciliation with authoritative snapshot"
+            );
             let snapshot = self.get_authoritative_snapshot().await;
             ReplayResult::GapDetected {
                 requested_sequence: since_sequence,
@@ -193,6 +208,7 @@ impl EventBus {
                 events,
             }
         } else {
+            trace!(target: "event_bus", requested = since_sequence, count = events.len(), "Continuous event replay served");
             ReplayResult::Continuous(events)
         }
     }

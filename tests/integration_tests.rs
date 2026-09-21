@@ -70,16 +70,12 @@ async fn test_01_core_engine_subsystem_integration_lifecycle() {
 async fn test_02_ipc_protocol_ring_buffer_integration() {
     let mut ring_buffer = SharedMemoryRingBuffer::new();
 
-    let payload = MetricPayload {
-        timestamp_ms: 123456789,
-        cpu_usage_pct: 42.5,
-        memory_used_mb: 1024.0,
-        memory_total_mb: 16384.0,
-        gpu_usage_pct: 12.0,
-        net_recv_bytes_per_sec: 5000,
-        net_sent_bytes_per_sec: 2500,
-        ..MetricPayload::default()
-    };
+    // Use real-world sampled hardware telemetry metrics
+    let snap = system_providers::sample_live_or_authentic_snapshot();
+    let payload = MetricPayload::from(snap);
+    assert!(payload.timestamp_ms > 0);
+    assert!((0.0..=100.0).contains(&payload.cpu_usage_pct));
+    assert!(payload.memory_total_mb > 0.0);
 
     // Assert successful push & pop
     assert!(ring_buffer.push(payload));

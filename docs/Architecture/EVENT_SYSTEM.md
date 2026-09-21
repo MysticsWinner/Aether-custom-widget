@@ -40,7 +40,13 @@ pub enum EventReliability {
 | `SystemStateChanged(SystemState)` | `Replayable` | 128-slot Replay buffer & State cache | Power, fullscreen, or safe-mode transitions |
 | `ProfileSwitched { profile_name }`| `Replayable` | 128-slot Replay buffer & State cache | Context-aware profile activations |
 | `CapabilityRevoked { token_id }`  | `Replayable` | 128-slot Replay buffer | Security capability token revocation |
+| `SubsystemSignal { signal }`      | `Replayable` | 128-slot Replay buffer | State degradation / health notifications (`STATE_DEGRADED`, etc.) |
 | `ConfigCommitted { key, value }`   | `Durable`    | Atomic Disk Transaction (`ConfigManager`) | Persisted desktop layout & user settings |
+
+### Structured Logging & Observability:
+- Every `publish()` call logs subscriber count, event reliability tier, and delivery state.
+- Unsubscribed/idle drops for ephemeral ticks are logged cleanly at `trace` level.
+- Replay operations log requested sequences, continuous catch-up lengths, and structured warnings on gap detection.
 
 ---
 

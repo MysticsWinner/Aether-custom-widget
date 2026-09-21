@@ -254,11 +254,17 @@ impl SubsystemManager {
                 }
 
                 if let Err(err) = tick_res {
-                    warn!("Error ticking subsystem '{}': {:?}", name, err);
+                    warn!(target: "subsystem", subsystem = name, error = ?err, "Subsystem tick failed — transitioning to Degraded");
                     let mut lock = self.statuses.write().await;
                     lock.insert(name, SubsystemHealth::Degraded);
                     let mut states = self.lifecycle_states.write().await;
                     states.insert(name, SubsystemLifecycleState::Degraded);
+                    let _ = self.bus.publish(crate::event_bus::CoreEvent::SubsystemSignal {
+                        subsystem: name.to_string(),
+                        signal: "STATE_DEGRADED".to_string(),
+                    });
+                } else {
+                    tracing::trace!(target: "subsystem", subsystem = name, duration_us = elapsed.as_micros(), "Subsystem tick succeeded");
                 }
             }
         }

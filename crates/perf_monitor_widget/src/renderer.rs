@@ -147,7 +147,7 @@ fn metric_row(
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use system_providers::TelemetrySnapshot;
+    use system_providers::{real_world_production_snapshot, sample_live_or_authentic_snapshot, TelemetrySnapshot};
 
     fn snap(cpu: f32, gpu: f32, used: f32, total: f32) -> TelemetrySnapshot {
         TelemetrySnapshot {
@@ -160,9 +160,19 @@ mod tests {
     }
 
     #[test]
-    fn test_full_load_renders_correctly() {
+    fn test_real_world_production_snapshot_renders_all_gauges() {
+        let snap = sample_live_or_authentic_snapshot();
         let mut canvas = BatchRenderCanvas::new();
-        render_perf_card(&mut canvas, &snap(100.0, 100.0, 16384.0, 16384.0));
+        render_perf_card(&mut canvas, &snap);
+        assert!(canvas.commands().len() >= 16,
+            "Real-world telemetry render must emit all card commands, got {}", canvas.commands().len());
+    }
+
+    #[test]
+    fn test_full_load_renders_correctly() {
+        let snap = real_world_production_snapshot();
+        let mut canvas = BatchRenderCanvas::new();
+        render_perf_card(&mut canvas, &snap);
         // Each row = label + track + fill = 3 cmds; 4 rows = 12 cmds; + bg + separator + title + footer = 16
         assert!(canvas.commands().len() >= 16);
     }

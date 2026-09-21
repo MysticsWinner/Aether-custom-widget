@@ -29,9 +29,11 @@ use widget_sdk::contrast::ContrastGuard;
 use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
 use widget_sdk::rendering::Color;
 
-/// Helper creating an isolated test environment with IPC shared state
+/// Helper creating an isolated test environment with IPC shared state populated with real-world hardware telemetry
 fn setup_master_ipc_state() -> IpcSharedState {
     let cache = SharedTelemetryCache::default();
+    let snap = system_providers::sample_live_or_authentic_snapshot();
+    cache.update_snapshot(snap);
     let desktop_window = Arc::new(DesktopWidgetWindow::new());
     IpcSharedState::new(
         cache,
@@ -52,6 +54,10 @@ fn setup_master_ipc_state() -> IpcSharedState {
 #[test]
 fn test_master_audit_all_widgets_full_lifecycle_transitions() {
     let cache = SharedTelemetryCache::default();
+    let snap = system_providers::sample_live_or_authentic_snapshot();
+    assert!(snap.memory_total_mb > 0.0);
+    assert!((0.0..=100.0).contains(&snap.cpu_usage_pct));
+    cache.update_snapshot(snap);
 
     // Instantiate all 4 built-in widgets
     let mut perf_widget = PerfMonitorWidget::new(cache.clone());
