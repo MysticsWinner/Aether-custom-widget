@@ -57,7 +57,7 @@ pub fn real_world_production_snapshot() -> TelemetrySnapshot {
 /// If live sampling encounters permission or platform constraints, falls back gracefully
 /// to `real_world_production_snapshot()`.
 pub fn sample_live_or_authentic_snapshot() -> TelemetrySnapshot {
-    let mut service = TelemetryService::new();
+    let mut service = TelemetryService::default();
     match service.collect_once() {
         Ok(snap) => {
             // Verify real-world sanity constraints

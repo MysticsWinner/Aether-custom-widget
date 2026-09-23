@@ -28,7 +28,7 @@ pub struct TelemetryService {
 }
 
 impl TelemetryService {
-    pub fn new() -> Self {
+    pub fn new(cache: SharedTelemetryCache) -> Self {
         Self {
             cpu_provider: Box::new(CpuProvider::new()),
             memory_provider: Box::new(MemoryProvider::new()),
@@ -43,14 +43,12 @@ impl TelemetryService {
             wasapi_audio: WasapiAudioProvider::new(),
             crypto_financial: CryptoFinancialProvider::new(),
             network_diagnostics: NetworkDiagnosticsProvider::new(),
-            cache: SharedTelemetryCache::new(),
+            cache,
         }
     }
 
     pub fn with_cache(cache: SharedTelemetryCache) -> Self {
-        let mut service = Self::new();
-        service.cache = cache;
-        service
+        Self::new(cache)
     }
 
     /// Returns a reference to the `SharedTelemetryCache`.
@@ -223,10 +221,11 @@ impl TelemetryService {
 
         Ok(snapshot)
     }
+}
 
-    /// Returns a reference to the `SharedTelemetryCache`.
-    pub fn cache(&self) -> SharedTelemetryCache {
-        self.cache.clone()
+impl Default for TelemetryService {
+    fn default() -> Self {
+        Self::new(SharedTelemetryCache::new())
     }
 }
 
@@ -236,7 +235,7 @@ pub struct TelemetryBenchmark;
 impl TelemetryBenchmark {
     pub fn run_benchmark() {
         let cache = SharedTelemetryCache::new();
-        let mut service = TelemetryService::new(cache.clone());
+        let mut service = TelemetryService::with_cache(cache.clone());
 
         // 1. Single Collect Once Pass
         service.collect_once().unwrap();

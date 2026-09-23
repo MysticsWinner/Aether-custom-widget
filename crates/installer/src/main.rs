@@ -70,29 +70,38 @@ impl AetherInstaller {
 
     /// Discovers compiled executables from build target folders and deploys them to the install directory.
     pub fn deploy_known_executables(&self) -> anyhow::Result<()> {
-        let exe_names = ["core_engine.exe", "dashboard_tui.exe", "CustomWidget.Dashboard.exe"];
-        
+        let exe_mappings = [
+            ("core_engine.exe", "core_engine.exe"),
+            ("dashboard_tui.exe", "dashboard_tui.exe"),
+            ("aether-dashboard.exe", "dashboard_tui.exe"),
+            ("CustomWidget.Dashboard.exe", "CustomWidget.Dashboard.exe"),
+        ];
+
         let search_dirs = [
             PathBuf::from("target").join("release"),
             PathBuf::from("target").join("debug"),
             PathBuf::from("src_gui").join("CustomWidget.Dashboard").join("bin").join("Release").join("net8.0-windows10.0.26100.0").join("win-x64"),
+            PathBuf::from("src_gui").join("CustomWidget.Dashboard").join("bin").join("Debug").join("net8.0-windows10.0.26100.0").join("win-x64"),
         ];
 
-        for exe in &exe_names {
+        for (source_name, target_name) in &exe_mappings {
             let mut deployed = false;
+            let dest = self.install_dir.join(target_name);
+            if dest.exists() && target_name == &"dashboard_tui.exe" {
+                continue; // already deployed
+            }
             for dir in &search_dirs {
-                let candidate = dir.join(exe);
+                let candidate = dir.join(source_name);
                 if candidate.exists() {
-                    let dest = self.install_dir.join(exe);
                     fs::copy(&candidate, &dest)?;
-                    fs::copy(&candidate, self.standalone_dist_dir.join(exe)).ok();
+                    fs::copy(&candidate, self.standalone_dist_dir.join(target_name)).ok();
                     info!("✔ Deployed binary executable: {:?} -> {:?}", candidate, dest);
                     deployed = true;
                     break;
                 }
             }
-            if !deployed {
-                info!("ℹ Binary '{}' not found in build targets; will be compiled on full release build.", exe);
+            if !deployed && !dest.exists() {
+                info!("ℹ Binary '{}' not found in build targets; will be compiled on full release build.", source_name);
             }
         }
 

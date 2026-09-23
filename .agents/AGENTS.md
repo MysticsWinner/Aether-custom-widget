@@ -129,8 +129,8 @@ fn test_ipc_dispatch_get_status_returns_json() { ... }
 - **Target OS**: Windows 11, x86_64 & ARM64
 - **Phase**: 16 (Production Release Candidate — Diagnostics & Integration)
 - **Root**: `d:\Code\Aether-custom-widget\`
-- **Workspace manifest**: `Cargo.toml` at repo root
-- **Current test count**: 121 -- run `cargo test --workspace` to verify. This number is subjected to change but only expected to increase over the time.
+- **Workspace manifest**: `Cargo.toml` at repo root (33 member crates)
+- **Current test count**: 363 Rust + 54 C# GUI (417 total) -- run `cargo test --workspace` & `dotnet test src_gui/CustomWidget.Dashboard.Tests` to verify. This number is subjected to change but only expected to increase over time.
 
 
 ### Core Architecture Principle -- "Collect Once, Publish Everywhere"
@@ -138,28 +138,44 @@ fn test_ipc_dispatch_get_status_returns_json() { ... }
 - Widgets read exclusively from `SharedTelemetryCache` -- zero repeated OS API calls per widget.
 - Widgets emit `DrawCommand` batches; the render host composites via DirectComposition / Direct2D.
 
-### Crate Map
+### Crate Map (33 Rust crates + C# GUI)
 
 | Crate | Path | Responsibility |
 |---|---|---|
-| `core_engine` | `crates/core_engine` | Tokio async host daemon; subsystem orchestrator; IPC pipe server; event bus |
-| `system_providers` | `crates/system_providers` | Hardware collectors (CPU via `GetSystemTimes`, RAM via `GlobalMemoryStatusEx`, GPU simulation) + `SharedTelemetryCache` |
-| `widget_sdk` | `crates/widget_sdk` | `WidgetLifecycle` trait, `RenderCanvas`, `BatchRenderCanvas`, `DrawCommand`, animations, events, settings |
+| `core_engine` | `crates/core_engine` | Tokio async host daemon; subsystem orchestrator; IPC pipe server; event bus; rendering pipeline; desktop overlay |
+| `system_providers` | `crates/system_providers` | Hardware collectors (CPU, RAM, GPU, Network, Battery, Audio, Process, Display, WASAPI FFT, Crypto, Network Diagnostics) + `SharedTelemetryCache` + `TelemetryService` + `TickRateAdvisor` |
+| `widget_sdk` | `crates/widget_sdk` | `WidgetLifecycle` trait, `RenderCanvas`, `BatchRenderCanvas`, `DrawCommand`, reactive signals, settings, frame scheduling, LRU resource cache, SVG, FrameArena |
 | `perf_monitor_widget` | `crates/perf_monitor_widget` | Built-in performance widget -- CPU%, GPU%, RAM used/free with dark glassmorphism card renderer |
 | `widget_parser` | `crates/widget_parser` | TOML widget manifest schema (`WidgetManifest`, `WidgetElement`, `LayoutSpec`) |
-| `ipc_protocol` | `crates/ipc_protocol` | Shared IPC types: `ControlCommand` enum, `MetricPayload` struct (serde JSON) |
-| `plugin_runtime` | `crates/plugin_runtime` | AppContainer sandbox supervisor, API version compatibility checker |
-| `layout_engine` | `crates/layout_engine` | Flexbox layout computation |
-| `theme_engine` | `crates/theme_engine` | JSON theme schema, hot-reload watcher, token resolver |
+| `ipc_protocol` | `crates/ipc_protocol` | Shared IPC types: `ControlCommand` enum (60+ variants), `MetricPayload` struct, shared-memory ring buffer |
+| `plugin_runtime` | `crates/plugin_runtime` | AppContainer sandbox supervisor, API version compatibility checker, memory guard |
+| `layout_engine` | `crates/layout_engine` | Flexbox layout computation via taffy |
+| `theme_engine` | `crates/theme_engine` | 12-category design token system, JSON theme parser, hot-reload watcher, cascading inheritance, token resolver |
 | `animation_engine` | `crates/animation_engine` | Easing curves, spring physics, timeline scheduling |
-| `lua_runtime` | `crates/lua_runtime` | Lua scripting bridge for widget logic |
-| `package_manager` | `crates/package_manager` | npm-style widget installer with Ed25519 signature verification |
-| `cloud_sync` | `crates/cloud_sync` | CRDT-based config sync with offline mode |
-| `ai_engine` | `crates/ai_engine` | AI layout/theme/widget synthesis, voice commands, workflow automation |
-| `production_engine` | `crates/production_engine` | Security audits, stress testing, auto-updater, crash analytics |
+| `lua_runtime` | `crates/lua_runtime` | Sandboxed Lua 5.4 scripting bridge with hot code reload |
+| `package_manager` | `crates/package_manager` | npm-style widget installer with Ed25519 signature verification, marketplace catalog |
+| `cloud_sync` | `crates/cloud_sync` | CRDT-based config sync with Lamport vector clocks, offline SQLite WAL cache, AES-256-GCM encryption |
+| `ai_engine` | `crates/ai_engine` | AI layout/theme/widget synthesis, wallpaper theme generator, performance advisor |
+| `production_engine` | `crates/production_engine` | Security audits, stress testing, auto-updater, chaos harness, master release suite |
 | `dashboard_tui` | `crates/dashboard_tui` | ratatui terminal dashboard -- polls IPC pipe, renders animated CPU/GPU/RAM gauges |
-| `installer` | `crates/installer` | Windows NSIS-style setup installer |
-| `CustomWidget.Dashboard` | `src_gui/CustomWidget.Dashboard` | WinUI 3 C# management dashboard (requires VS2022 + Windows App SDK 1.5) |
+| `installer` | `crates/installer` | Windows setup wizard packaging binaries into `%LOCALAPPDATA%\Aether\` |
+| `recovery_manager` | `crates/recovery_manager` | Crash recovery, circuit breakers, Safe Mode sentinel, quarantine management |
+| `config_manager` | `crates/config_manager` | Transactional atomic config persistence with 5-gen rolling backups, snapshot manager |
+| `capability_broker` | `crates/capability_broker` | Permission broker, runtime capability tokens, `WidgetFirewall` network proxy, BLAKE3 integrity |
+| `watchdog` | `crates/watchdog` | Heartbeat supervisor daemon |
+| `event_recorder` | `crates/event_recorder` | Time-travel event stream recorder and replayer |
+| `observability` | `crates/observability` | Prometheus exporter, ETW tracing, minidump writer, flight recorder |
+| `dev_tools` | `crates/dev_tools` | File-watcher hot-reloader, widget inspector, layout grid overlay, `aether` CLI |
+| `enterprise` | `crates/enterprise` | Group Policy engine, SHA-256 audit logger, Windows Hello `AuthGate` |
+| `weather_widget` | `crates/weather_widget` | Multi-city weather forecast widget |
+| `network_monitor_widget` | `crates/network_monitor_widget` | Network adapter throughput widget |
+| `ai_assistant_widget` | `crates/ai_assistant_widget` | Conversational AI desktop assistant widget |
+| `audio_visualizer_widget` | `crates/audio_visualizer_widget` | WASAPI FFT audio spectrum + SMTC widget |
+| `hardware_pro_widget` | `crates/hardware_pro_widget` | GPU VRAM + CPU core topology matrix widget |
+| `dock_launcher_widget` | `crates/dock_launcher_widget` | Desktop app launcher dock widget |
+| `weather_particles_widget` | `crates/weather_particles_widget` | Atmospheric particle effects widget (rain/snow/embers) |
+| `crypto_stocks_widget` | `crates/crypto_stocks_widget` | Financial market price ticker widget |
+| `CustomWidget.Dashboard` | `src_gui/CustomWidget.Dashboard` | WinUI 3 C# management dashboard -- 13 MVVM pages (requires VS2022 + Windows App SDK 1.5) |
 
 ### Key Interfaces
 

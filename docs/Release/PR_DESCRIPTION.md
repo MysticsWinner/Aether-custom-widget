@@ -136,3 +136,39 @@ Every architectural claim has been hardened, validated against the Windows runti
   - `sample_live_or_authentic_snapshot()` queries real Win32 hardware counters with graceful fallback to authentic physical telemetry.
 - **Purged Crates**: `perf_monitor_widget`, `observability`, `system_providers`, `ipc_protocol`, `integration_tests`, and `master_release_audit_tests` now strictly test against realistic Windows hardware telemetry.
 
+---
+
+## 📋 Comprehensive Repository Audit, Defect Registry & Build Resilience
+
+### 1. Master Architecture & Code-Level Audit Report (`AETHER_MASTER_REPORT.md`)
+- Delivered an authoritative, 1,000+ line technical, architectural, operational, and code-level master audit covering all 33 Rust workspace crates and the C# WinUI 3 management dashboard.
+- Evaluated structural invariants, concurrency models, subsystem & widget lifecycles, memory safety, IPC protocols, and hardware abstraction layers.
+- Cross-referenced all empirical findings with architectural documentation and project governance rules.
+
+### 2. Standardized Defect & Improvement Registries (`docs/Bugs/`)
+- **Central Defect Hub (`docs/Bugs/README.md`)**: Established structured defect categorization, severity scales (P0–P3), and lifecycle tracking standards.
+- **Confirmed Bugs Registry (`docs/Bugs/BUGS.md`)**: Tracked confirmed defects (BUG-001 through BUG-004), including audio volume stubbing, IPC pipe reconnection throttling, and AppContainer job limit metrics.
+- **Technical Debt Register (`docs/Bugs/TECH_DEBT.md`)**: Documented cleanup items (TD-001 through TD-007), including unused struct field warnings, duplicate conversion helpers, and manual string parsing.
+- **Architectural Observations (`docs/Bugs/ARCHITECTURE_CONCERNS.md`)**: Cataloged architectural friction points (AC-001 through AC-008), including synchronous startup benchmarks, event bus broadcast buffering, and unified snapshot models.
+- **Future Enhancements (`docs/Bugs/FUTURE_IDEAS.md`)**: Formalized roadmap proposals (FI-001 through FI-008), including DirectX 12 direct compositing, Lua JIT runtime bindings, and cross-platform architecture abstractions.
+
+### 3. Build Target & Concurrency Remediation
+- **Universal Target Configuration (`.cargo/config.toml`)**: Corrected machine-specific path references causing OS Error 5 access-denied failures, ensuring seamless builds across developer profiles.
+- **Telemetry Type Conversions (`crates/system_providers`)**:
+  - Implemented reciprocal `From<TelemetrySnapshot> for MetricPayload` and `From<&TelemetrySnapshot> for MetricPayload` for lossless telemetry serialization.
+  - Aligned `TelemetryService::new(cache)` and `TelemetryService::default()` constructors across all providers, test fixtures, and benchmarks.
+- **Event Bus Decoupling (`crates/core_engine/src/subsystems.rs`)**:
+  - Added optional `Arc<EventBus>` reference to `SubsystemManager` to reliably publish `SubsystemSignal` degradation alerts without thread contention.
+- **Clean Compilation**: Purged unused imports in `core_engine` and `dashboard_tui`.
+
+### 4. Local Binary Installer Packaging (`crates/installer`)
+- Updated `AetherInstaller::deploy_known_executables` to map `aether-dashboard.exe` -> `dashboard_tui.exe` and automatically discover both Debug and Release build artifacts from WinUI 3 output trees.
+- Executed local installer wizard packaging all compiled executables (`AetherSetup.exe`, `core_engine.exe`, `dashboard_tui.exe`, `CustomWidget.Dashboard.exe`) and runtime assets into `%LOCALAPPDATA%\Aether\bin`.
+- Verified 100% binary compliance with zero source files (`.rs`, `.cs`, `Cargo.toml`) in the deployed package.
+
+### 5. Verified Test Suite Baselines
+- **Rust Backend**: **363 passed, 0 failed, 0 skipped** across 33 workspace crates (`cargo test --workspace`).
+- **Rust Compilation**: **0 errors** across all crates (`cargo check --workspace`).
+- **C# GUI Dashboard**: **54 passed, 0 failed, 0 skipped** (`dotnet test src_gui/CustomWidget.Dashboard.Tests`).
+- **Total Passing Automated Tests**: **417 tests passing with 100% pass rate**.
+

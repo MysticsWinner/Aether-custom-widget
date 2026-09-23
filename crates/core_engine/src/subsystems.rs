@@ -138,6 +138,7 @@ pub struct SubsystemManager {
     lifecycle_states: Arc<RwLock<HashMap<&'static str, SubsystemLifecycleState>>>,
     execution_stats: Arc<RwLock<HashMap<&'static str, SubsystemExecutionStats>>>,
     last_tick_times: HashMap<&'static str, Instant>,
+    bus: Option<Arc<EventBus>>,
 }
 
 impl SubsystemManager {
@@ -149,6 +150,7 @@ impl SubsystemManager {
             lifecycle_states: Arc::new(RwLock::new(HashMap::new())),
             execution_stats: Arc::new(RwLock::new(HashMap::new())),
             last_tick_times: HashMap::new(),
+            bus: None,
         }
     }
 
@@ -163,6 +165,7 @@ impl SubsystemManager {
     /// subsystems in reverse order to ensure clean resource release and zero orphans.
     pub async fn initialize_all(&mut self, bus: Arc<EventBus>) -> anyhow::Result<()> {
         info!("Initializing {} registered subsystems in dependency order...", self.subsystems.len());
+        self.bus = Some(bus.clone());
         let mut initialized_indices = Vec::new();
 
         for (idx, sys) in self.subsystems.iter_mut().enumerate() {
@@ -259,10 +262,12 @@ impl SubsystemManager {
                     lock.insert(name, SubsystemHealth::Degraded);
                     let mut states = self.lifecycle_states.write().await;
                     states.insert(name, SubsystemLifecycleState::Degraded);
-                    let _ = self.bus.publish(crate::event_bus::CoreEvent::SubsystemSignal {
-                        subsystem: name.to_string(),
-                        signal: "STATE_DEGRADED".to_string(),
-                    });
+                    if let Some(bus) = &self.bus {
+                        let _ = bus.publish(crate::event_bus::CoreEvent::SubsystemSignal {
+                            subsystem: name.to_string(),
+                            signal: "STATE_DEGRADED".to_string(),
+                        });
+                    }
                 } else {
                     tracing::trace!(target: "subsystem", subsystem = name, duration_us = elapsed.as_micros(), "Subsystem tick succeeded");
                 }

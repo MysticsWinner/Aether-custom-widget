@@ -14,12 +14,19 @@
 
 | Collector | Metric Source | Implementation |
 |---|---|---|
-| `CpuProvider` | System Idle/Kernel/User Time | Win32 `GetSystemTimes` with Task Manager EMA smoothing |
+| `CpuProvider` | System Idle/Kernel/User Time | Win32 `GetSystemTimes` with Task Manager EMA smoothing (α=0.25), sub-quantum tick holding |
+| `MemoryProvider` | Used/Total Physical RAM | Win32 `GlobalMemoryStatusEx` with EMA smoothing (α=0.3) |
+| `GpuProvider` | VRAM Memory Budget Usage % | DXGI `IDXGIAdapter3::QueryVideoMemoryInfo` with EMA smoothing |
+| `NetworkProvider` | Real-time Octet Throughput | Win32 `GetIfTable2` with time-scaled Δt and EMA smoothing |
+| `BatteryProvider` | Charge %, Remaining Seconds, Charging State | Win32 `GetSystemPowerStatus` |
+| `AudioProvider` | Master Volume %, Mute State | **Stub: returns hardcoded 75% (see BUG-001)** |
+| `ProcessMetricsProvider` | Running Process Count & Category Estimation | Win32 `EnumProcesses` with heuristic app classification |
+| `DisplayTopologyProvider` | Monitor Count, GPU Count, External/Virtual Displays | Win32 `GetSystemMetrics(SM_CMONITORS)` + DXGI adapter enumeration |
 | `CpuTopologyProvider` | Logical/Physical Core Topology & P/E Cores | Win32 `GetLogicalProcessorInformationEx` |
-| `MemoryProvider` | Used/Total Physical RAM | Win32 `GlobalMemoryStatusEx` |
 | `DedicatedGpuProvider` | Dedicated/Shared VRAM & 3D Engine % | Windows D3DKMT & DXGI `IDXGIAdapter3::QueryVideoMemoryInfo` |
-| `NetworkProvider` | Real-time Octet Throughput | Win32 `GetIfTable2` |
 | `WasapiAudioProvider` | Real-Time 16-Band FFT & Peak dB | Windows Core Audio WASAPI Loopback & SMTC Session Manager |
+| `CryptoFinancialProvider` | Live Financial & Crypto Asset Prices | Simulated price data (planned: real API integration) |
+| `NetworkDiagnosticsProvider` | Ping Latency, Bandwidth Quality, Connection Status | Extended network diagnostics |
 
 ---
 

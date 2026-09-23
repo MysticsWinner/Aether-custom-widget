@@ -127,6 +127,43 @@ impl From<MetricPayload> for TelemetrySnapshot {
     }
 }
 
+impl From<TelemetrySnapshot> for MetricPayload {
+    fn from(snap: TelemetrySnapshot) -> Self {
+        Self {
+            timestamp_ms: snap.timestamp_ms,
+            cpu_usage_pct: snap.cpu_usage_pct,
+            memory_used_mb: snap.memory_used_mb,
+            memory_total_mb: snap.memory_total_mb,
+            gpu_usage_pct: snap.gpu_usage_pct,
+            net_recv_bytes_per_sec: snap.net_recv_bytes_per_sec,
+            net_sent_bytes_per_sec: snap.net_sent_bytes_per_sec,
+            open_apps_count: snap.open_apps_count,
+            browser_tabs_count: snap.browser_tabs_count,
+            audio_playing_apps_count: snap.audio_playing_apps_count,
+            gaming_apps_count: snap.gaming_apps_count,
+            dev_suite_apps_count: snap.dev_suite_apps_count,
+            other_apps_count: snap.other_apps_count,
+            master_volume_pct: snap.master_volume_pct,
+            is_muted: snap.is_muted,
+            battery_charge_pct: snap.battery_charge_pct,
+            battery_remaining_secs: snap.battery_remaining_secs,
+            is_charging: snap.is_charging,
+            total_gpu_count: snap.total_gpu_count,
+            integrated_gpu_count: snap.integrated_gpu_count,
+            dedicated_gpu_count: snap.dedicated_gpu_count,
+            total_display_count: snap.total_display_count,
+            external_display_count: snap.external_display_count,
+            virtual_display_count: snap.virtual_display_count,
+        }
+    }
+}
+
+impl From<&TelemetrySnapshot> for MetricPayload {
+    fn from(snap: &TelemetrySnapshot) -> Self {
+        Self::from(snap.clone())
+    }
+}
+
 /// Thread-safe in-memory telemetry publication store implementing the "Collect Once, Publish Everywhere" principle.
 ///
 /// Architecture Guarantee:

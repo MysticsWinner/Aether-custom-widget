@@ -35,7 +35,7 @@ pub struct RealSystemCollector {
 impl RealSystemCollector {
     pub fn new() -> Self {
         Self {
-            telemetry_service: Some(TelemetryService::new()),
+            telemetry_service: Some(TelemetryService::default()),
         }
     }
 }

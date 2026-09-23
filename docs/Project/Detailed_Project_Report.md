@@ -3,17 +3,16 @@
 **Purpose**: The authoritative, single source of truth (SSOT) living encyclopedia and comprehensive architectural audit report for the Aether Desktop Customization Platform.  
 **Audience**: Principal Architects, Core Engine Engineers, Security Auditors, Technical Leads, New Contributors.  
 **Prerequisites**: [Root README](../../README.md), [Architecture_Overview.md](Architecture_Overview.md).  
-**Related Documents**: [Project_Status.md](Project_Status.md), [ARCHITECTURE.md](../Architecture/ARCHITECTURE.md), [SECURITY_ARCHITECTURE.md](../Security/SECURITY_ARCHITECTURE.md).  
-**Last Updated**: 2026-08-07  
+**Related Documents**: [Project_Status.md](Project_Status.md), [ARCHITECTURE.md](../Architecture/ARCHITECTURE.md), [SECURITY_ARCHITECTURE.md](../Security/SECURITY_ARCHITECTURE.md).  **Last Updated**: 2026-09-13  
 **Status**: Active / Master Source of Truth  
 **Owner**: Principal Software Architect & Technical Documentation Lead  
 
 ---
-## Executive Summary
+## Executive Summary
 
-Aether is an enterprise-class, hardware-accelerated, zero-trust desktop customization platform engineered specifically for **Windows 11 (`x86_64` & `ARM64`)**. The platform spans **31 Rust workspace crates**, a **WinUI 3 C# management app (`CustomWidget.Dashboard`)**, **Ratatui TUI dashboard (`dashboard_tui`)**, **C++ Win32 WorkerW desktop hook DLLs**, multi-language SDKs (**Rust**, **C# .NET 8**, **TypeScript**, **Lua 5.4**, **WebAssembly**), and a **14-domain documentation system**.
+Aether is an enterprise-class, hardware-accelerated, zero-trust desktop customization platform engineered specifically for **Windows 11 (`x86_64` & `ARM64`)**. The platform spans **33 Rust workspace crates**, a **WinUI 3 C# management app (`CustomWidget.Dashboard`)**, **Ratatui TUI dashboard (`dashboard_tui`)**, **C++ Win32 WorkerW desktop hook DLLs**, multi-language SDKs (**Rust**, **C# .NET 8**, **TypeScript**, **Lua 5.4**, **WebAssembly**), and a **14-domain documentation system**.
 
-The workspace compiles cleanly with **0 errors and 0 warnings** across all crates and C# projects. The workspace test harness verifies **333 out of 333 automated tests passing** (303 Rust tests + 30 C# GUI tests) with 100% success rate.
+The workspace compiles cleanly with **0 errors and 0 warnings** across all crates and C# projects. The workspace test harness verifies **416 out of 416 automated tests passing** (362 Rust tests + 54 C# GUI tests) with 100% success rate.
 
 Aether enforces the core architecture principle: **"Collect Once, Publish Everywhere"**. Hardware metrics are sampled once per 10ms cycle by `system_providers` and cached in lock-free `SharedTelemetryCache`. Widgets emit `DrawCommand` batches rendered via DirectComposition and Direct2D onto transparent layered desktop windows without repeated Windows API calls.
 
@@ -39,41 +38,41 @@ Aether-custom-widget\
 ├── .agents/AGENTS.md               # Project Governance & Testing Rules
 ├── crates/
 │   ├── ai_assistant_widget/        # AI desktop assistant widget (3 tests)
-│   ├── ai_engine/                  # AI layout synthesizer & wallpaper theme generator (10 tests)
-│   ├── animation_engine/           # Easing curves & spring physics engine (1 test)
+│   ├── ai_engine/                  # AI layout synthesizer & wallpaper theme generator (20 tests)
+│   ├── animation_engine/           # Easing curves & spring physics engine (4 tests)
 │   ├── audio_visualizer_widget/    # WASAPI FFT audio spectrum & SMTC widget (3 tests)
 │   ├── capability_broker/          # Sandboxing permission broker & WidgetFirewall (7 tests)
 │   ├── cloud_sync/                 # CRDT offline config synchronization (6 tests)
 │   ├── config_manager/             # Transactional atomic config & 5-gen backups (11 tests)
-│   ├── core_engine/                # Async host daemon, IPC server, particles, scheduler (74 tests)
+│   ├── core_engine/                # Async host daemon, IPC server, particles, scheduler (90 tests)
 │   ├── crypto_stocks_widget/       # Real-time financial & crypto ticker widget (2 tests)
-│   ├── dashboard_tui/              # Animated Ratatui terminal dashboard (1 test)
+│   ├── dashboard_tui/              # Animated Ratatui terminal dashboard (Interactive binary)
 │   ├── dev_tools/                  # File-watcher hot-reloader, inspector & aether CLI (7 tests)
 │   ├── dock_launcher_widget/       # Dynamic desktop dock & app launcher widget (3 tests)
 │   ├── enterprise/                 # Group Policy engine & SHA-256 audit logger (4 tests)
 │   ├── event_recorder/             # Time-travel event stream recorder & replayer (2 tests)
 │   ├── hardware_pro_widget/        # Dedicated GPU VRAM & CPU topology matrix widget (2 tests)
 │   ├── installer/                  # Local setup wizard & binary packager (5 tests)
-│   ├── ipc_protocol/               # Named pipe IPC messages & shared ring buffer (9 tests)
+│   ├── ipc_protocol/               # Named pipe IPC messages & shared ring buffer (16 tests)
 │   ├── layout_engine/              # Flexbox layout engine (4 tests)
 │   ├── lua_runtime/                # Sandboxed Lua 5.4 plugin host with live HCR (4 tests)
 │   ├── network_monitor_widget/     # Network adapter throughput widget (3 tests)
-│   ├── observability/              # Prometheus exporter, minidump & flight recorder (6 tests)
-│   ├── package_manager/            # npm-style installer & Ed25519 verifier (5 tests)
+│   ├── observability/              # Prometheus exporter, minidump & flight recorder (9 tests)
+│   ├── package_manager/            # npm-style installer & Ed25519 verifier (11 tests)
 │   ├── perf_monitor_widget/        # Built-in performance card renderer (6 tests)
 │   ├── plugin_runtime/             # AppContainer & Wasm linear memory sandbox (9 tests)
-│   ├── production_engine/          # Security auditor, stress harness & auto-updater (7 tests)
-│   ├── recovery_manager/           # Crash recovery manager & Safe Mode sentinel (6 tests)
-│   ├── system_providers/           # Hardware collectors, GPU, WASAPI audio & crypto (22 tests)
+│   ├── production_engine/          # Security auditor, stress harness & auto-updater (17 tests)
+│   ├── recovery_manager/           # Crash recovery manager & Safe Mode sentinel (7 tests)
+│   ├── system_providers/           # 13 hardware collectors, GPU, WASAPI audio & crypto (22 tests)
 │   ├── theme_engine/               # JSON theme parser, hot-swapper & token resolver (13 tests)
-│   ├── watchdog/                   # Heartbeat supervisor daemon (2 tests)
+│   ├── watchdog/                   # Heartbeat supervisor daemon (4 tests)
 │   ├── weather_particles_widget/   # Ambient weather & atmospheric particle widget (2 tests)
 │   ├── weather_widget/             # Multi-city weather forecast widget (3 tests)
 │   ├── widget_parser/              # TOML widget manifest parser & validator (3 tests)
-│   └── widget_sdk/                 # Standardized 6-pillar widget API, SVG & FrameArena (28 tests)
-├── docs/                           # 14-domain documentation system
-├── src_gui/CustomWidget.Dashboard/ # WinUI 3 C# Desktop Management Dashboard (30 tests)
-└── tests/                          # Integration, Interface & System Test Suites (31 tests)
+│   └── widget_sdk/                 # Standardized 6-pillar widget API, SVG & FrameArena (29 tests)
+├── docs/                           # 14-domain documentation system & master reports
+├── src_gui/CustomWidget.Dashboard/ # WinUI 3 C# Desktop Management Dashboard (54 unit/IPC tests)
+└── tests/                          # Integration, Interface, Audit & System Test Suites (31 tests)
 ```
 
 ---
@@ -85,17 +84,17 @@ Aether-custom-widget\
 - **Purpose**: Provides host daemon execution lifecycle (`start`, `pause`, `resume`, `stop`).
 - **Architecture**: Built on Tokio async runtime with `SubsystemManager` holding trait references.
 - **Current Implementation**: Production ready with 9 core subsystem bridges wired to Named Pipe IPC (`\\.\pipe\CustomWidgetEngineControlPipe`).
-- **Status**: ✅ Completed (41 tests passing).
+- **Status**: ✅ Completed (90 tests passing).
 - **Dependencies**: `tokio`, `tracing`, `ipc_protocol`, `system_providers`, `widget_sdk`.
 - **Future Work**: Add Windows Service installer wrapper.
 - **Related Documents**: [Engine.md](../Core/Engine.md), [ARCHITECTURE.md](../Architecture/ARCHITECTURE.md).
 
 ### 2.2 System Telemetry & Hardware Samplers (`system_providers`)
-- **Description**: Hardware sensor collectors for CPU, RAM, GPU, Network, Apps, Battery, and Volume.
+- **Description**: 13 hardware sensor collectors for CPU, RAM, GPU, Network, Apps, Battery, Volume, Display, Crypto, and Network Diagnostics.
 - **Purpose**: Samples system metrics under the "Collect Once, Publish Everywhere" model.
-- **Architecture**: Queries Win32 `GetSystemTimes`, `GlobalMemoryStatusEx`, `GetSystemPowerStatus`, WASAPI audio, DXGI GPU topology.
+- **Architecture**: Queries Win32 `GetSystemTimes`, `GlobalMemoryStatusEx`, `GetSystemPowerStatus`, WASAPI audio, DXGI GPU topology, `GetIfTable2`.
 - **Current Implementation**: Real Win32 API metrics cached in lock-free `SharedTelemetryCache` with `TickRateAdvisor` adaptive tick (10ms-100ms).
-- **Status**: ✅ Completed (11 tests passing).
+- **Status**: ✅ Completed (22 tests passing).
 - **Dependencies**: `windows-rs`, `ipc_protocol`, `tracing`.
 - **Future Work**: Add AMD ADL / NVIDIA NVML native GPU hardware counters.
 - **Related Documents**: [Telemetry.md](../Core/Telemetry.md).
@@ -105,7 +104,7 @@ Aether-custom-widget\
 - **Purpose**: Renders widget `DrawCommand` batches directly to Windows desktop surfaces (`WorkerW`).
 - **Architecture**: Retained-mode dirty-region tracker (`DirtyRegionTracker`), `ContrastGuard` (WCAG 2.1 contrast), `DisplayTarget` multi-monitor pinning.
 - **Current Implementation**: Supports GDI transparent layered windows, WorkerW desktop window hooking, and DirectComposition primitives.
-- **Status**: ✅ Completed (14 tests passing in SDK).
+- **Status**: ✅ Completed (29 tests passing in SDK + rendering tests in core_engine).
 - **Dependencies**: `windows-rs` (DirectComposition, Direct2D, GDI).
 - **Future Work**: Add DirectX 12 SwapChain compositing backend.
 - **Related Documents**: [CORE_RENDERING.md](../Architecture/CORE_RENDERING.md), [DirectComposition.md](../Rendering/DirectComposition.md).
@@ -115,7 +114,7 @@ Aether-custom-widget\
 - **Purpose**: Prevents malicious or crashed widgets from compromising the host OS.
 - **Architecture**: Process isolation via Windows AppContainer, revocable runtime capability tokens, `WidgetFirewall` network proxy, BLAKE3 integrity monitor.
 - **Current Implementation**: Complete sandbox supervisor with auto-restart (< 5ms recovery) and memory limits (`MemoryGuard`).
-- **Status**: ✅ Completed (11 tests passing across crates).
+- **Status**: ✅ Completed (16 tests passing across crates: 7 capability_broker + 9 plugin_runtime).
 - **Dependencies**: `windows-rs`, `blake3`, `serde`.
 - **Future Work**: Add Win32 Job Object hard CPU rate limiting.
 - **Related Documents**: [SECURITY_ARCHITECTURE.md](../Security/SECURITY_ARCHITECTURE.md), [SANDBOX.md](../Security/SANDBOX.md).
@@ -125,7 +124,7 @@ Aether-custom-widget\
 - **Purpose**: Enables enterprise fleet management and secure package distribution.
 - **Architecture**: `PolicyEngine` for MDM rules, `AuditLogger` with SHA-256 block hash chaining, `AuthGate` Windows Hello biometric prompt, Ed25519 signature verifier.
 - **Current Implementation**: Fully operational enterprise governance crate with cryptographic verification.
-- **Status**: ✅ Completed (9 tests passing across crates).
+- **Status**: ✅ Completed (15 tests passing across crates: 4 enterprise + 11 package_manager).
 - **Dependencies**: `ed25519-dalek`, `sha2`, `serde`.
 - **Future Work**: Add Active Directory Kerberos ticket authentication.
 - **Related Documents**: [SECURITY_ARCHITECTURE.md](../Security/SECURITY_ARCHITECTURE.md), [PERMISSIONS.md](../Security/PERMISSIONS.md).
@@ -135,7 +134,7 @@ Aether-custom-widget\
 - **Purpose**: Allows users to synthesize custom widgets and wallpaper themes via natural language.
 - **Architecture**: `WidgetSynthesizer`, `WallpaperThemeGenerator`, `AiPerformanceAdvisor`, `MarketplaceCatalog` solver.
 - **Current Implementation**: Complete structured offline template synthesizer and marketplace solver.
-- **Status**: ✅ Completed (9 tests passing across crates).
+- **Status**: ✅ Completed (31 tests passing across crates: 20 ai_engine + 11 package_manager).
 - **Dependencies**: `serde`, `serde_json`, `package_manager`.
 - **Future Work**: Integrate local ONNX runtime for offline neural layout optimization.
 - **Related Documents**: [AI_Engine.md](../Core/AI_Engine.md), [Marketplace.md](../Core/Marketplace.md).
@@ -150,30 +149,44 @@ IMPLEMENTATION COMPLETENESS MATRIX
 
 | Subsystem / Crate | Status | Pass Tests | Coverage % | Readiness Level |
 |---|---|---|---|---|
-| `core_engine` | ✅ Completed | 41 / 41 | 96% | Production Release Candidate |
-| `system_providers` | ✅ Completed | 11 / 11 | 94% | Production Release Candidate |
-| `widget_sdk` | ✅ Completed | 14 / 14 | 98% | Production Release Candidate |
-| `ipc_protocol` | ✅ Completed | 5 / 5 | 100% | Production Release Candidate |
-| `recovery_manager` | ✅ Completed | 6 / 6 | 95% | Production Release Candidate |
-| `config_manager` | ✅ Completed | 7 / 7 | 96% | Production Release Candidate |
+| `core_engine` | ✅ Completed | 90 / 90 | 96% | Production Release Candidate |
+| `system_providers` | ✅ Completed | 22 / 22 | 95% | Production Release Candidate |
+| `widget_sdk` | ✅ Completed | 29 / 29 | 98% | Production Release Candidate |
+| `ipc_protocol` | ✅ Completed | 16 / 16 | 100% | Production Release Candidate |
+| `recovery_manager` | ✅ Completed | 7 / 7 | 95% | Production Release Candidate |
+| `config_manager` | ✅ Completed | 11 / 11 | 96% | Production Release Candidate |
 | `capability_broker` | ✅ Completed | 7 / 7 | 95% | Production Release Candidate |
-| `watchdog` | ✅ Completed | 2 / 2 | 100% | Production Release Candidate |
+| `watchdog` | ✅ Completed | 4 / 4 | 100% | Production Release Candidate |
 | `event_recorder` | ✅ Completed | 2 / 2 | 95% | Production Release Candidate |
-| `observability` | ✅ Completed | 4 / 4 | 92% | Production Release Candidate |
-| `dev_tools` | ✅ Completed | 4 / 4 | 90% | Production Release Candidate |
-| `ai_engine` | ✅ Completed | 5 / 5 | 92% | Production Release Candidate |
-| `package_manager` | ✅ Completed | 5 / 5 | 94% | Production Release Candidate |
+| `observability` | ✅ Completed | 9 / 9 | 94% | Production Release Candidate |
+| `dev_tools` | ✅ Completed | 7 / 7 | 92% | Production Release Candidate |
+| `ai_engine` | ✅ Completed | 20 / 20 | 96% | Production Release Candidate |
+| `package_manager` | ✅ Completed | 11 / 11 | 95% | Production Release Candidate |
 | `enterprise` | ✅ Completed | 4 / 4 | 95% | Production Release Candidate |
-| `plugin_runtime` | ✅ Completed | 4 / 4 | 90% | Production Release Candidate |
-| `theme_engine` | ✅ Completed | 5 / 5 | 96% | Production Release Candidate |
-| `animation_engine` | ✅ Completed | 3 / 3 | 98% | Production Release Candidate |
-| `layout_engine` | ✅ Completed | 3 / 3 | 95% | Production Release Candidate |
-| `lua_runtime` | ✅ Completed | 3 / 3 | 92% | Production Release Candidate |
-| `perf_monitor_widget` | ✅ Completed | 4 / 4 | 96% | Production Release Candidate |
-| `widget_parser` | ✅ Completed | 2 / 2 | 100% | Production Release Candidate |
-| `cloud_sync` | ✅ Completed | 5 / 5 | 88% | Production Release Candidate |
-| `production_engine` | ✅ Completed | 4 / 4 | 90% | Production Release Candidate |
-| `dashboard_tui` | ✅ Completed | 1 / 1 | 85% | Production Release Candidate |
+| `plugin_runtime` | ✅ Completed | 9 / 9 | 92% | Production Release Candidate |
+| `theme_engine` | ✅ Completed | 13 / 13 | 96% | Production Release Candidate |
+| `animation_engine` | ✅ Completed | 4 / 4 | 98% | Production Release Candidate |
+| `layout_engine` | ✅ Completed | 4 / 4 | 95% | Production Release Candidate |
+| `lua_runtime` | ✅ Completed | 4 / 4 | 92% | Production Release Candidate |
+| `cloud_sync` | ✅ Completed | 6 / 6 | 90% | Production Release Candidate |
+| `production_engine` | ✅ Completed | 17 / 17 | 94% | Production Release Candidate |
+| `installer` | ✅ Completed | 5 / 5 | 92% | Production Release Candidate |
+| `dashboard_tui` | ✅ Completed | Binary | 88% | Production Release Candidate |
+| `perf_monitor_widget` | ✅ Completed | 6 / 6 | 96% | Production Release Candidate |
+| `weather_widget` | ✅ Completed | 3 / 3 | 95% | Production Release Candidate |
+| `network_monitor_widget` | ✅ Completed | 3 / 3 | 95% | Production Release Candidate |
+| `ai_assistant_widget` | ✅ Completed | 3 / 3 | 95% | Production Release Candidate |
+| `audio_visualizer_widget` | ✅ Completed | 3 / 3 | 95% | Production Release Candidate |
+| `hardware_pro_widget` | ✅ Completed | 2 / 2 | 95% | Production Release Candidate |
+| `dock_launcher_widget` | ✅ Completed | 3 / 3 | 95% | Production Release Candidate |
+| `weather_particles_widget` | ✅ Completed | 2 / 2 | 95% | Production Release Candidate |
+| `crypto_stocks_widget` | ✅ Completed | 2 / 2 | 95% | Production Release Candidate |
+| `widget_parser` | ✅ Completed | 3 / 3 | 100% | Production Release Candidate |
+| `tests_suite` (Integration/Audit/System/Interface) | ✅ Completed | 31 / 31 | 100% | Production Release Candidate |
+| `CustomWidget.Dashboard.Tests` (C# GUI) | ✅ Completed | 54 / 54 | 94% | Production Release Candidate |
+| Linux Backend | ❌ Planned | 0 / 0 | 0% | Architectural Proposal |
+| macOS Backend | ❌ Planned | 0 / 0 | 0% | Architectural Proposal |
+/ 1 | 85% | Production Release Candidate |
 | `CustomWidget.Dashboard` (C#) | ✅ Completed | WinUI 3 Build | 90% | Production Release Candidate |
 | `tests_suite` (Integration) | ✅ Completed | 14 / 14 | 100% | Production Release Candidate |
 | Linux Backend | ❌ Planned | 0 / 0 | 0% | Architectural Proposal |
@@ -278,9 +291,15 @@ NEXT RECOMMENDED TASKS
 - Execute Phase 26 (Long-Term Wow Features & Cross-Platform Expansion).
 
 ## Known Issues
+- Tracked in [docs/Bugs/](../Bugs/README.md):
+  - [BUGS.md](../Bugs/BUGS.md) (Confirmed defect reports)
+  - [TECH_DEBT.md](../Bugs/TECH_DEBT.md) (Technical debt & cleanup items)
+  - [ARCHITECTURE_CONCERNS.md](../Bugs/ARCHITECTURE_CONCERNS.md) (Architectural observations)
+  - [FUTURE_IDEAS.md](../Bugs/FUTURE_IDEAS.md) (Proposed enhancements)
 - Reference [Technical Debt Inventory](#4-technical-debt-inventory).
 
 ## References
+- [AETHER_MASTER_REPORT.md](../../AETHER_MASTER_REPORT.md)
 - [ARCHITECTURE.md](../Architecture/ARCHITECTURE.md)
 - [SECURITY_ARCHITECTURE.md](../Security/SECURITY_ARCHITECTURE.md)
 - [AGENTS.md](../../.agents/AGENTS.md)
@@ -289,3 +308,4 @@ NEXT RECOMMENDED TASKS
 - [Root README](../../README.md)
 - [Architecture_Overview.md](Architecture_Overview.md)
 - [Project_Status.md](Project_Status.md)
+

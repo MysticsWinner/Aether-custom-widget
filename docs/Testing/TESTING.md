@@ -21,37 +21,43 @@ Per project governance rules:
 ## 2. Test Suite Status Summary
 
 ```
-Total Automated Tests: 343 / 343 Passing (100% Pass Rate)
-├── Rust Backend & Integration Suite: 313 Tests
-└── C# WinUI 3 GUI Dashboard Suite: 30 Tests
+Total Automated Tests: 417 / 417 Passing (100% Pass Rate)
+├── Rust Backend & Integration Suite: 363 Tests
+└── C# WinUI 3 GUI Dashboard Suite: 54 Tests
 Rust Test Execution Command: cargo test --workspace
 C# GUI Test Execution Command: dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj
 Compilation Verification: cargo check --workspace && dotnet build src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj
 ```
 
 ```mermaid
-pie title Automated Test Distribution (343 Total Passing Tests)
-    "core_engine (74)" : 74
-    "widget_sdk (28)" : 28
-    "production_engine (15)" : 15
+pie title Automated Test Distribution (416 Total Passing Tests)
+    "core_engine (90)" : 90
+    "CustomWidget.Dashboard.Tests (54)" : 54
+    "tests/ integration harness (31)" : 31
+    "widget_sdk (29)" : 29
+    "system_providers (22)" : 22
+    "ai_engine (20)" : 20
+    "production_engine (17)" : 17
+    "ipc_protocol (16)" : 16
     "theme_engine (13)" : 13
-    "system_providers (13)" : 13
-    "animation_engine (13)" : 13
     "package_manager (11)" : 11
     "config_manager (11)" : 11
-    "ai_engine (11)" : 11
-    "ipc_protocol (10)" : 10
     "observability (9)" : 9
     "plugin_runtime (9)" : 9
-    "recovery_manager (8)" : 8
+    "dev_tools (7)" : 7
     "capability_broker (7)" : 7
-    "perf_monitor_widget (6)" : 6
+    "recovery_manager (7)" : 7
     "cloud_sync (6)" : 6
-    "enterprise, watchdog & lua (12)" : 12
+    "perf_monitor_widget (6)" : 6
+    "installer (5)" : 5
+    "watchdog (4)" : 4
+    "enterprise (4)" : 4
+    "layout_engine (4)" : 4
+    "lua_runtime (4)" : 4
+    "animation_engine (4)" : 4
     "showcase widgets (17)" : 17
-    "tests/ integration harness (30)" : 30
-    "WinUI 3 GUI ViewModel & Telemetry Tests (30)" : 30
 ```
+
 
 ---
 

@@ -25,7 +25,6 @@ use ratatui::{
 };
 use serde::Deserialize;
 use std::{io, time::{Duration, Instant}};
-use tracing::warn;
 
 const PIPE_NAME: &str = r"\\.\pipe\CustomWidgetEngineControlPipe";
 const POLL_MS: u64 = 500;
