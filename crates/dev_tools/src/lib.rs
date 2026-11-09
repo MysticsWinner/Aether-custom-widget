@@ -5,7 +5,7 @@ pub mod hot_reload;
 pub mod inspector;
 pub mod layout_grid;
 
-pub use aether_cli::{WidgetBuilder, WidgetProjectTemplate};
+pub use aether_cli::{ScaffoldedWidgetProject, WidgetBuilder, WidgetProjectTemplate};
 pub use cli::{AetherCli, CliCommand};
 pub use discovery::WidgetDiscoveryScanner;
 pub use hot_reload::DevHotReloader;
@@ -53,7 +53,44 @@ mod tests {
             manifest_path: "widget.toml".to_string(),
         };
         assert!(AetherCli::format_ipc_command(&load_cmd).contains("LoadWidget"));
+
+        let gc_cmd = CliCommand::Gc {
+            aggressive: true,
+            trim_working_set: true,
+        };
+        let formatted_gc = AetherCli::format_ipc_command(&gc_cmd);
+        assert!(formatted_gc.contains("TriggerGarbageCollection"));
+        assert!(formatted_gc.contains("\"aggressive\":true"));
+
+        let dev_cmd = CliCommand::SetDevMode {
+            enabled: true,
+            aggressive_gc: true,
+            interval_secs: 15,
+        };
+        let formatted_dev = AetherCli::format_ipc_command(&dev_cmd);
+        assert!(formatted_dev.contains("SetGarbageCollectionPolicy"));
+        assert!(formatted_dev.contains("\"interval_secs\":15"));
+
+        let stats_cmd = CliCommand::GcStats;
+        assert_eq!(AetherCli::format_ipc_command(&stats_cmd), "\"GetGarbageCollectionStats\"");
+
+        let create_args = vec![
+            "aether".to_string(),
+            "widget".to_string(),
+            "create".to_string(),
+            "neo_clock".to_string(),
+        ];
+        let parsed = AetherCli::parse_args(&create_args).expect("Should parse widget create command");
+        assert_eq!(
+            parsed,
+            CliCommand::WidgetCreate {
+                name: "neo_clock".to_string(),
+                template: None
+            }
+        );
+        assert!(AetherCli::format_ipc_command(&parsed).contains("ScaffoldWidget"));
     }
+
 
     #[test]
     fn test_layout_grid_overlay_draw_commands() {

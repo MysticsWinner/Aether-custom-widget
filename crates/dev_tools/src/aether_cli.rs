@@ -5,6 +5,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 /// Supported widget development templates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -13,6 +14,14 @@ pub enum WidgetProjectTemplate {
     Wasm,
     Lua,
     TypeScript,
+}
+
+/// Summary report returned after scaffolding a new widget crate to disk.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScaffoldedWidgetProject {
+    pub widget_name: String,
+    pub crate_dir: PathBuf,
+    pub files_created: Vec<PathBuf>,
 }
 
 /// Developer CLI project builder and packager.
@@ -72,6 +81,64 @@ cpu_usage = "sys.cpu_usage"
         let hash = format!("{:x}", md5_or_stub(name.as_bytes()));
         Ok(format!("{}.cwp (bundled {} files, SHA-256: {})", name, files.len(), hash))
     }
+
+    /// Generates a Cargo.toml manifest for a newly scaffolded Rust widget crate.
+    pub fn scaffold_cargo_toml(name: &str) -> String {
+        format!(
+            r#"[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+widget_sdk = {{ path = "../widget_sdk" }}
+system_providers = {{ path = "../system_providers" }}
+"#
+        )
+    }
+
+    /// Scaffolds a complete widget project directory (`Cargo.toml`, `widget.toml`, and entrypoint source)
+    /// onto disk inside `base_dir/<name>`.
+    pub fn scaffold_to_disk(
+        name: &str,
+        template: WidgetProjectTemplate,
+        base_dir: &Path,
+    ) -> Result<ScaffoldedWidgetProject> {
+        let sanitized = name.trim();
+        if sanitized.is_empty() || sanitized.contains(['/', '\\', '.']) {
+            anyhow::bail!("Invalid widget name: '{name}'");
+        }
+
+        let crate_dir = base_dir.join(sanitized);
+        let src_dir = crate_dir.join("src");
+        std::fs::create_dir_all(&src_dir)?;
+
+        let mut files_created = Vec::new();
+
+        let manifest_path = crate_dir.join("widget.toml");
+        std::fs::write(&manifest_path, Self::scaffold_manifest(sanitized, template))?;
+        files_created.push(manifest_path);
+
+        let cargo_path = crate_dir.join("Cargo.toml");
+        std::fs::write(&cargo_path, Self::scaffold_cargo_toml(sanitized))?;
+        files_created.push(cargo_path);
+
+        let entry_filename = match template {
+            WidgetProjectTemplate::Rust | WidgetProjectTemplate::Wasm => "lib.rs",
+            WidgetProjectTemplate::Lua => "main.lua",
+            WidgetProjectTemplate::TypeScript => "index.ts",
+        };
+        let entry_path = src_dir.join(entry_filename);
+        std::fs::write(&entry_path, Self::scaffold_entrypoint(sanitized, template))?;
+        files_created.push(entry_path);
+
+        Ok(ScaffoldedWidgetProject {
+            widget_name: sanitized.to_string(),
+            crate_dir,
+            files_created,
+        })
+    }
 }
 
 fn md5_or_stub(bytes: &[u8]) -> u64 {
@@ -105,5 +172,26 @@ mod tests {
         let pkg = WidgetBuilder::package_cwp("my_dock", &files).unwrap();
         assert!(pkg.contains("my_dock.cwp"));
         assert!(pkg.contains("bundled 2 files"));
+    }
+
+    #[test]
+    fn test_widget_builder_scaffold_to_disk_creates_files() {
+        let temp_root = std::env::temp_dir().join("aether_scaffold_widget_test");
+        let _ = std::fs::remove_dir_all(&temp_root);
+
+        let project =
+            WidgetBuilder::scaffold_to_disk("solar_clock_widget", WidgetProjectTemplate::Rust, &temp_root)
+                .expect("Scaffolding widget project should succeed");
+
+        assert_eq!(project.widget_name, "solar_clock_widget");
+        assert_eq!(project.files_created.len(), 3);
+        for file in &project.files_created {
+            assert!(file.exists(), "Expected scaffolded file {:?} to exist", file);
+        }
+
+        // Reject invalid path traversal names
+        assert!(WidgetBuilder::scaffold_to_disk("../bad", WidgetProjectTemplate::Rust, &temp_root).is_err());
+
+        let _ = std::fs::remove_dir_all(&temp_root);
     }
 }

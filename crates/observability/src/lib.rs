@@ -13,7 +13,6 @@ pub use prometheus::{PrometheusExporter, PrometheusHttpServer};
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system_providers::TelemetrySnapshot;
     use tempfile::tempdir;
 
     #[test]

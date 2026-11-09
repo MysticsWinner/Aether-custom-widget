@@ -87,6 +87,21 @@ impl AudioVisualizerWidget {
     pub fn hit_tree(&self) -> &HitTestTree {
         &self.hit_tree
     }
+
+    /// Returns the active material specification for the visualizer card.
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    /// Returns the performance budget allocated to the visualizer widget.
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
+
+    /// Returns the widget render configuration.
+    pub fn config(&self) -> &RenderConfig {
+        &self.config
+    }
 }
 
 impl WidgetLifecycle for AudioVisualizerWidget {
@@ -113,14 +128,18 @@ impl WidgetLifecycle for AudioVisualizerWidget {
 
         let mut canvas = BatchRenderCanvas::new();
 
-        // 1. Background Card with Blur Effect
+        // 1. Background Card with Blur Effect (governed by material & render config)
+        let _target_fps = self.budget.target_fps;
+        let effective_opacity = (self.material.tint_opacity * self.config.opacity).clamp(0.1, 1.0);
         canvas.draw_effect(
-            RenderEffect::GaussianBlur { radius: 15.0 },
+            RenderEffect::GaussianBlur {
+                radius: self.material.blur_radius,
+            },
             RectF::new(0.0, 0.0, 380.0, 200.0),
         );
         canvas.draw_rect(
             RectF::new(0.0, 0.0, 380.0, 200.0),
-            Color::rgba(0.07, 0.07, 0.10, 0.92),
+            Color::rgba(0.07, 0.07, 0.10, effective_opacity),
             16.0,
         );
 

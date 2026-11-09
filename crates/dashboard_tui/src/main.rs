@@ -31,7 +31,6 @@ const POLL_MS: u64 = 500;
 
 // ── IPC response schema ───────────────────────────────────────────────────────
 
-#[allow(dead_code)]
 #[derive(Debug, Default, Deserialize, Clone)]
 struct StatusResponse {
     #[serde(default)]
@@ -287,7 +286,11 @@ fn draw_metrics(f: &mut Frame, area: Rect, app: &App) {
     // RAM gauge
     let total = app.metrics.memory_total_mb;
     let used  = app.metrics.memory_used_mb.min(total);
-    let free  = (total - used).max(0.0);
+    let free  = if app.metrics.memory_free_mb > 0.0 {
+        app.metrics.memory_free_mb
+    } else {
+        (total - used).max(0.0)
+    };
     let ram_pct = if total > 0.0 { used / total } else { 0.0 };
     let ram_gauge = Gauge::default()
         .block(
@@ -327,7 +330,13 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
 
     // IPC status
     let (ipc_label, ipc_color) = match app.ipc_state {
-        IpcState::Connected  => ("● IPC Connected".to_string(), Color::Green),
+        IpcState::Connected  => (
+            format!(
+                "● IPC Connected ({})",
+                if app.metrics.status.is_empty() { "ok" } else { &app.metrics.status }
+            ),
+            Color::Green,
+        ),
         IpcState::Connecting => ("○ Connecting…".to_string(),   Color::Yellow),
         IpcState::Error      => {
             if app.last_successful_poll.is_some() {

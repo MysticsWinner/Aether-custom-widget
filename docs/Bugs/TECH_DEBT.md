@@ -23,7 +23,7 @@
 - **Severity**: Medium
 - **Component**: `system_providers` — `GpuProvider`, `AudioProvider`, `ProcessMetricsProvider`
 - **Impact**: Several providers return hardcoded or heuristically estimated values when real Win32 API calls fail or are unimplemented. See also BUG-001 and BUG-002.
-- **Status**: Open (existing, carried forward with new detail)
+- **Status**: Resolved — `AudioProvider` now queries COM `IAudioEndpointVolume` and `ProcessMetricsProvider` inspects real process image paths via `QueryFullProcessImageNameW`.
 
 ## TD-004: C# Named Pipe sync call blocks WinUI 3 UI thread on startup
 
@@ -37,7 +37,7 @@
 - **Severity**: High
 - **Component**: `core_engine` — `crates/core_engine/src/rendering/workerw.rs`
 - **Impact**: Desktop overlay may detach or render incorrectly when display resolution changes or monitors are hot-plugged.
-- **Status**: Open (existing, carried forward)
+- **Status**: Resolved — implemented `DesktopSurfaceManager::on_display_change` and `clamp_widget_to_bounds` along with per-virtual-desktop layout profile persistence in `VirtualDesktopManager`.
 
 ## TD-006: `WidgetState` enum has 13 variants but docs claim 11
 
@@ -51,4 +51,4 @@
 - **Severity**: Low
 - **Component**: `dock_launcher_widget`, `audio_visualizer_widget`, `hardware_pro_widget`, `crypto_stocks_widget`, `weather_particles_widget`
 - **Impact**: `cargo check` emits warnings about `material`, `budget`, and `config` fields that are defined in widget structs but never read. These fields were likely added as placeholders for future design-token and performance-budget integration.
-- **Status**: Open
+- **Status**: Resolved — wired `material`, `budget`, `config`, and `is_high_load` into widget rendering passes and public accessors across all 5 showcase widget crates (`0` compiler warnings).

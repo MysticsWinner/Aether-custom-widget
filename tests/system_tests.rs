@@ -128,7 +128,7 @@ async fn test_system_adaptive_power_and_glassmorphism_pipeline_e2e() {
     use core_engine::rendering::glassmorphism::GlassmorphismPipeline;
     use core_engine::task_scheduler::{AdaptivePowerGovernor, PowerProfile};
     use theme_engine::{MaterialSpec, MaterialType};
-    use widget_sdk::{BatchRenderCanvas, RectF};
+    use widget_sdk::BatchRenderCanvas;
 
     // 1. Test Adaptive Power Governor switching across system states
     let mut governor = AdaptivePowerGovernor::new();

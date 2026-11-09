@@ -6,14 +6,11 @@
 //! AI Voice intent parsing, and Master Release Candidate stress testing across all 15 phases.
 
 use ai_engine::{VoiceIntentParser, WorkflowAutomationEngine, WorkflowRule};
-use cloud_sync::{
-    AccountEntity, CloudSyncManager, DeviceEntity, LayoutEntity, PluginEntity, SettingsEntity,
-    SyncEntity, ThemeEntity,
-};
+use cloud_sync::{CloudSyncManager, LayoutEntity, SyncEntity, ThemeEntity};
 use core_engine::{
-    AiSubsystem, CloudSyncSubsystem, CoreEvent, Engine, EngineConfig, MarketplaceSubsystem,
-    MasterPerformanceSuite, PluginSandboxSubsystem, ProductionSubsystem, ProfilerSubsystem,
-    RainmeterBenchmark, RenderSubsystem, TelemetrySubsystem, ThemeEngineSubsystem,
+    AiSubsystem, CloudSyncSubsystem, Engine, EngineConfig, MarketplaceSubsystem,
+    PluginSandboxSubsystem, ProductionSubsystem, ProfilerSubsystem, RenderSubsystem,
+    TelemetrySubsystem, ThemeEngineSubsystem,
 };
 use ipc_protocol::{ControlCommand, SharedMemoryRingBuffer, MetricPayload};
 use package_manager::PackageManager;
@@ -315,10 +312,10 @@ async fn test_13_crypto_financial_and_network_diagnostics_integration() {
 
 #[tokio::test]
 async fn test_14_ambient_weather_particles_and_frame_arena_integration() {
-    use core_engine::rendering::virtual_desktops::{DpiMonitorScale, VirtualDesktopManager, VirtualDesktopPinning};
+    use core_engine::rendering::virtual_desktops::{VirtualDesktopManager, VirtualDesktopPinning};
     use observability::FlightRecorder;
     use weather_particles_widget::WeatherParticlesWidget;
-    use widget_sdk::lifecycle::{TickContext, WidgetLifecycle, WidgetState};
+    use widget_sdk::lifecycle::{TickContext, WidgetLifecycle};
     use widget_sdk::FrameArena;
 
     let recorder = FlightRecorder::new(100);

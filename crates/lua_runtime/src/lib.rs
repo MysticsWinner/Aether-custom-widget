@@ -139,6 +139,22 @@ impl EmbeddedLuaPluginHost {
             })?;
             globals.set("is_widget_locked", lock_fn)?;
 
+            // ── Garbage Collection & Memory Management Bindings ───────────
+            let gc_fn = lua.create_function(|lua, aggressive: Option<bool>| {
+                let _is_aggressive = aggressive.unwrap_or(false);
+                let _ = lua.gc_collect();
+                if _is_aggressive {
+                    let _ = lua.gc_collect();
+                }
+                Ok(lua.used_memory())
+            })?;
+            globals.set("trigger_gc", gc_fn)?;
+
+            let mem_fn = lua.create_function(|lua, (): ()| {
+                Ok(lua.used_memory() as f64 / 1024.0)
+            })?;
+            globals.set("get_lua_memory_kb", mem_fn)?;
+
             // Initialize global state preservation table
             let state_table = lua.create_table()?;
             globals.set("__widget_state", state_table)?;
@@ -153,10 +169,34 @@ impl EmbeddedLuaPluginHost {
         Ok(())
     }
 
+    /// Performs garbage collection on the Lua virtual machine.
+    ///
+    /// In aggressive mode (e.g. dev mode or hot-reload), runs multiple full collection cycles.
+    /// Returns the number of bytes reclaimed or current allocated bytes.
+    pub fn collect_garbage(&self, aggressive: bool) -> Result<usize, LuaRuntimeError> {
+        let before = self.lua.used_memory();
+        self.lua.gc_collect()?;
+        if aggressive {
+            self.lua.gc_collect()?;
+        }
+        let after = self.lua.used_memory();
+        let reclaimed = before.saturating_sub(after);
+        tracing::debug!(target: "lua_plugin", "Lua GC completed: reclaimed {} bytes, remaining {} bytes", reclaimed, after);
+        Ok(reclaimed)
+    }
+
+    /// Returns the current total memory allocated by the Lua VM in bytes.
+    pub fn used_memory_bytes(&self) -> usize {
+        self.lua.used_memory()
+    }
+
     /// Hot-reloads script while preserving in-memory `__widget_state` global table.
+    /// Automatically performs aggressive garbage collection to release old script closures.
     pub fn hot_reload_script(&self, new_script: &str) -> Result<(), LuaRuntimeError> {
         self.lua.load(new_script).exec()?;
-        tracing::info!("Successfully hot-reloaded Lua widget script with state preservation");
+        // Reclaim unreferenced ASTs and functions from previous script version
+        let _ = self.collect_garbage(true);
+        tracing::info!("Successfully hot-reloaded Lua widget script with state preservation & GC pass");
         Ok(())
     }
 
@@ -175,6 +215,7 @@ impl EmbeddedLuaPluginHost {
     }
 }
 
+
 impl Default for EmbeddedLuaPluginHost {
     fn default() -> Self {
         Self::new().expect("Failed to initialize default EmbeddedLuaPluginHost")
@@ -189,6 +230,13 @@ mod tests {
     #[test]
     fn test_lua_extended_telemetry_bindings() {
         let host = EmbeddedLuaPluginHost::new().unwrap();
+        let mut snap = TelemetrySnapshot::default();
+        snap.open_apps_count = 5;
+        snap.browser_tabs_count = 12;
+        snap.battery_charge_pct = 85.0;
+        snap.total_gpu_count = 2;
+        host.cache().update_snapshot(snap);
+
         let script = r#"
             local apps = get_open_apps_count()
             local tabs = get_browser_tabs_count()
@@ -272,4 +320,34 @@ mod tests {
         assert!(res.contains("CPU=54.5%"));
         assert!(res.contains("Pos=(320,180)"));
     }
+
+    #[test]
+    fn test_lua_garbage_collection_and_memory_reclamation() {
+        let host = EmbeddedLuaPluginHost::new().unwrap();
+        
+        // Allocate temporary tables to increase memory
+        let script = r#"
+            local temp = {}
+            for i = 1, 1000 do
+                temp[i] = "transient_string_data_" .. i
+            end
+            local mem_before = get_lua_memory_kb()
+            assert(mem_before > 0.0)
+            
+            -- Trigger GC from script
+            local mem_after = trigger_gc(true)
+            assert(mem_after > 0)
+        "#;
+        assert!(host.execute_script(script).is_ok());
+
+        // Test host-level GC methods
+        let used = host.used_memory_bytes();
+        assert!(used > 0);
+
+        let reclaimed = host.collect_garbage(true).unwrap();
+        // Should succeed without error
+        let _ = reclaimed;
+        assert!(host.used_memory_bytes() > 0);
+    }
 }
+

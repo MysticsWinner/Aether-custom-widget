@@ -15,6 +15,7 @@ public partial class DiagnosticsViewModel : ObservableObject
     private const string LogSource = "DiagnosticsViewModel";
     private readonly ILogCollectorService _logCollector;
     private readonly IAetherIpcService _ipc;
+    private readonly IMemoryManagerService? _memoryManager;
 
     [ObservableProperty] private string _commandText = "\"GetStatus\"";
     [ObservableProperty] private string _responseText = "";
@@ -23,6 +24,9 @@ public partial class DiagnosticsViewModel : ObservableObject
     [ObservableProperty] private int _warnCount;
     [ObservableProperty] private int _errorCount;
     [ObservableProperty] private string _errorBadgeText = "";
+    [ObservableProperty] private bool _isDevelopmentMode;
+    [ObservableProperty] private bool _isAggressiveGc;
+    [ObservableProperty] private string _gcStatusMessage = "GC ready";
 
     /// <summary>
     /// All log entries (unfiltered). Bound to the log viewer ListView.
@@ -34,14 +38,25 @@ public partial class DiagnosticsViewModel : ObservableObject
     /// </summary>
     public string[] LogLevels { get; } = ["All", "TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 
-    public DiagnosticsViewModel(ILogCollectorService logCollector, IAetherIpcService ipc)
+    public DiagnosticsViewModel(
+        ILogCollectorService logCollector,
+        IAetherIpcService ipc,
+        IMemoryManagerService? memoryManager = null)
     {
         _logCollector = logCollector;
         _ipc = ipc;
+        _memoryManager = memoryManager;
+
+        if (_memoryManager != null)
+        {
+            _isDevelopmentMode = _memoryManager.IsDevelopmentMode;
+            _isAggressiveGc = _memoryManager.IsAggressiveGcEnabled;
+        }
 
         _logCollector.OnNewLog += OnNewLogEntry;
-        DashboardLogger.Debug(LogSource, "DiagnosticsViewModel initialized");
+        DashboardLogger.Debug(LogSource, $"DiagnosticsViewModel initialized (DevMode={IsDevelopmentMode}, AggressiveGC={IsAggressiveGc})");
     }
+
 
     private void OnNewLogEntry(LogEntry entry)
     {
@@ -105,6 +120,75 @@ public partial class DiagnosticsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Executes immediate garbage collection across the dashboard process and instructs core_engine to collect.
+    /// </summary>
+    [RelayCommand]
+    private async Task CollectGarbageAsync()
+    {
+        IsBusy = true;
+        GcStatusMessage = "Running GC pass...";
+        try
+        {
+            if (_memoryManager != null)
+            {
+                _memoryManager.OptimizeMemory(aggressive: true, compactLoh: true);
+                var stats = _memoryManager.GetLastStats();
+                string engineResp = await _memoryManager.TriggerEngineGarbageCollectionAsync(aggressive: true, trimWorkingSet: true);
+                GcStatusMessage = $"Reclaimed {stats.ReclaimedBytes / 1024}KB in GUI. Engine GC: {engineResp.Truncate(60)}";
+                DashboardLogger.Info(LogSource, $"Manual GC completed: {GcStatusMessage}");
+            }
+            else
+            {
+                GC.Collect(2, GCCollectionMode.Forced, true, true);
+                GC.WaitForPendingFinalizers();
+                GcStatusMessage = "Direct GC completed";
+            }
+        }
+        catch (Exception ex)
+        {
+            GcStatusMessage = $"GC error: {ex.Message}";
+            DashboardLogger.Warn(LogSource, "GC failed", ex);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Toggles development mode garbage collection policy.
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleDevModeAsync()
+    {
+        IsDevelopmentMode = !IsDevelopmentMode;
+        if (_memoryManager != null)
+        {
+            _memoryManager.IsDevelopmentMode = IsDevelopmentMode;
+            // Inform engine daemon of updated policy
+            string cmd = $"{{\"SetGarbageCollectionPolicy\":{{\"dev_mode\":{IsDevelopmentMode.ToString().ToLowerInvariant()},\"aggressive\":{IsAggressiveGc.ToString().ToLowerInvariant()},\"interval_secs\":{(IsDevelopmentMode ? 15 : 300)}}}}}";
+            await _ipc.SendRawCommandAsync(cmd);
+        }
+        GcStatusMessage = $"Dev mode {(IsDevelopmentMode ? "enabled (15s GC)" : "disabled (5min GC)")}";
+    }
+
+    /// <summary>
+    /// Toggles aggressive garbage collection flag.
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleAggressiveGcAsync()
+    {
+        IsAggressiveGc = !IsAggressiveGc;
+        if (_memoryManager != null)
+        {
+            _memoryManager.IsAggressiveGcEnabled = IsAggressiveGc;
+            string cmd = $"{{\"SetGarbageCollectionPolicy\":{{\"dev_mode\":{IsDevelopmentMode.ToString().ToLowerInvariant()},\"aggressive\":{IsAggressiveGc.ToString().ToLowerInvariant()},\"interval_secs\":{(IsDevelopmentMode ? 15 : 300)}}}}}";
+            await _ipc.SendRawCommandAsync(cmd);
+        }
+        GcStatusMessage = $"Aggressive GC {(IsAggressiveGc ? "active" : "inactive")}";
+    }
+
+    /// <summary>
     /// Returns all log entries as a single string for export.
     /// </summary>
     public string ExportLogsAsText()
@@ -113,6 +197,7 @@ public partial class DiagnosticsViewModel : ObservableObject
             AllEntries.Select(e => $"[{e.Timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{e.Level}] {e.Target}: {e.Message}"));
     }
 }
+
 
 /// <summary>
 /// String extension for truncation.

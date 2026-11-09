@@ -28,13 +28,18 @@ pub enum WorkerWSurfaceState {
     },
 }
 
-/// Manages the desktop background WorkerW surface lifecycle and shell crash recovery.
+/// Manages the desktop background WorkerW surface lifecycle, shell crash recovery,
+/// and display resolution / monitor hot-plug re-attachment (`WM_DISPLAYCHANGE`).
 #[derive(Debug, Clone)]
 pub struct DesktopSurfaceManager {
     state: WorkerWSurfaceState,
     recovery_attempts: u32,
     max_recovery_attempts: u32,
     last_health_check_ms: u64,
+    last_display_width: u32,
+    last_display_height: u32,
+    last_monitor_count: u32,
+    display_change_rebinds: u32,
 }
 
 impl DesktopSurfaceManager {
@@ -45,6 +50,10 @@ impl DesktopSurfaceManager {
             recovery_attempts: 0,
             max_recovery_attempts: 5,
             last_health_check_ms: current_time_ms(),
+            last_display_width: 1920,
+            last_display_height: 1080,
+            last_monitor_count: 1,
+            display_change_rebinds: 0,
         }
     }
 
@@ -160,6 +169,63 @@ impl DesktopSurfaceManager {
     pub fn force_rebind(&mut self) -> anyhow::Result<isize> {
         self.state = WorkerWSurfaceState::Rebinding;
         self.acquire_surface()
+    }
+
+    /// Handles `WM_DISPLAYCHANGE` or monitor hot-plug topology changes by detecting resolution
+    /// or monitor count transitions and automatically re-acquiring the `WorkerW` desktop surface.
+    pub fn on_display_change(
+        &mut self,
+        new_width: u32,
+        new_height: u32,
+        monitor_count: u32,
+    ) -> anyhow::Result<Option<isize>> {
+        if new_width == self.last_display_width
+            && new_height == self.last_display_height
+            && monitor_count == self.last_monitor_count
+        {
+            return Ok(None);
+        }
+
+        info!(
+            "Display topology changed ({}x{} @ {} monitors -> {}x{} @ {} monitors); re-attaching WorkerW surface",
+            self.last_display_width,
+            self.last_display_height,
+            self.last_monitor_count,
+            new_width,
+            new_height,
+            monitor_count
+        );
+
+        self.last_display_width = new_width.max(1);
+        self.last_display_height = new_height.max(1);
+        self.last_monitor_count = monitor_count.max(1);
+        self.display_change_rebinds += 1;
+        self.state = WorkerWSurfaceState::Rebinding;
+
+        match self.acquire_surface() {
+            Ok(hwnd) => Ok(Some(hwnd)),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Returns the number of times the surface has rebound due to display resolution or monitor changes.
+    pub fn display_change_rebinds(&self) -> u32 {
+        self.display_change_rebinds
+    }
+
+    /// Clamps widget coordinates so a widget remains visible within the active screen bounds
+    /// after a resolution reduction or monitor disconnect.
+    pub fn clamp_widget_to_bounds(
+        x: i32,
+        y: i32,
+        widget_w: u32,
+        widget_h: u32,
+        screen_w: u32,
+        screen_h: u32,
+    ) -> (i32, i32) {
+        let max_x = (screen_w.saturating_sub(widget_w)) as i32;
+        let max_y = (screen_h.saturating_sub(widget_h)) as i32;
+        (x.clamp(0, max_x.max(0)), y.clamp(0, max_y.max(0)))
     }
 }
 
@@ -319,5 +385,26 @@ mod tests {
         let res = manager.check_health_and_rebind();
         assert!(res.is_err(), "Must fail gracefully when recovery attempts are exhausted");
         assert!(matches!(manager.state(), WorkerWSurfaceState::Failed { .. }));
+    }
+
+    #[test]
+    fn test_workerw_display_resolution_change_and_coordinate_clamping() {
+        let mut manager = DesktopSurfaceManager::new();
+        assert_eq!(manager.display_change_rebinds(), 0);
+
+        // No-op when resolution & monitor count are unchanged
+        let unchanged = manager.on_display_change(1920, 1080, 1);
+        assert!(unchanged.is_ok());
+        assert_eq!(unchanged.unwrap(), None);
+        assert_eq!(manager.display_change_rebinds(), 0);
+
+        // Trigger resolution change to 3840x2160 across 2 monitors
+        let _rebound = manager.on_display_change(3840, 2160, 2);
+        assert_eq!(manager.display_change_rebinds(), 1);
+
+        // Verify coordinate clamping when resolution shrinks to 1920x1080
+        let (cx, cy) = DesktopSurfaceManager::clamp_widget_to_bounds(3200, 1800, 300, 200, 1920, 1080);
+        assert_eq!(cx, 1620);
+        assert_eq!(cy, 880);
     }
 }

@@ -530,6 +530,8 @@ impl MetricProvider for BatteryProvider {
 // ─── Audio Provider ───────────────────────────────────────────────────────────
 
 /// Master Audio Volume Metric Collector Provider.
+/// Queries Windows Core Audio (WASAPI) `IMMDeviceEnumerator` and `IAudioEndpointVolume`
+/// for real-time system master scalar volume and hardware/software mute state.
 #[derive(Debug)]
 pub struct AudioProvider {
     volume_pct: f32,
@@ -538,10 +540,41 @@ pub struct AudioProvider {
 
 impl AudioProvider {
     pub fn new() -> Self {
+        let (volume_pct, is_muted) = Self::query_system_audio().unwrap_or((0.0, false));
         Self {
-            volume_pct: 75.0,
-            is_muted: false,
+            volume_pct,
+            is_muted,
         }
+    }
+
+    #[cfg(windows)]
+    pub fn query_system_audio() -> Result<(f32, bool)> {
+        use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
+        use windows::Win32::Media::Audio::{
+            eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
+        };
+        use windows::Win32::System::Com::{
+            CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED,
+        };
+
+        unsafe {
+            // Initialize COM on the calling thread if not already initialized.
+            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+            let endpoint = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)?;
+            let volume_ctrl: IAudioEndpointVolume =
+                endpoint.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)?;
+            let scalar = volume_ctrl.GetMasterVolumeLevelScalar()?;
+            let muted = volume_ctrl.GetMute()?.as_bool();
+            let pct = (scalar * 100.0).clamp(0.0, 100.0);
+            Ok((pct, muted))
+        }
+    }
+
+    #[cfg(not(windows))]
+    pub fn query_system_audio() -> Result<(f32, bool)> {
+        Ok((0.0, false))
     }
 }
 
@@ -557,6 +590,10 @@ impl MetricProvider for AudioProvider {
     }
 
     fn sample(&mut self) -> Result<MetricValue> {
+        if let Ok((vol, muted)) = Self::query_system_audio() {
+            self.volume_pct = vol;
+            self.is_muted = muted;
+        }
         Ok(MetricValue::AudioStats {
             master_volume_pct: self.volume_pct,
             is_muted: self.is_muted,
@@ -566,8 +603,20 @@ impl MetricProvider for AudioProvider {
 
 // ─── Process Metrics Provider ─────────────────────────────────────────────────
 
+/// Classification category for a running operating system process executable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProcessCategory {
+    Browser,
+    AudioMedia,
+    Gaming,
+    DevSuite,
+    SystemBackground,
+    OtherApp,
+}
+
 /// Process & Application Lifecycle Metric Collector Provider.
-/// Enumerates active running processes via Win32 `EnumProcesses`.
+/// Enumerates active running processes via Win32 `EnumProcesses` and classifies
+/// real executable image names via `QueryFullProcessImageNameW`.
 #[derive(Debug)]
 pub struct ProcessMetricsProvider;
 
@@ -576,11 +625,67 @@ impl ProcessMetricsProvider {
         Self
     }
 
+    /// Classifies an executable basename (case-insensitive) into a `ProcessCategory`.
+    pub fn classify_executable(exe_name: &str) -> ProcessCategory {
+        let lower = exe_name
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or(exe_name)
+            .trim()
+            .to_ascii_lowercase();
+
+        if lower.is_empty() {
+            return ProcessCategory::SystemBackground;
+        }
+
+        match lower.as_str() {
+            "chrome.exe" | "msedge.exe" | "firefox.exe" | "brave.exe" | "opera.exe"
+            | "vivaldi.exe" | "arc.exe" | "waterfox.exe" => ProcessCategory::Browser,
+
+            "spotify.exe" | "music.ui.exe" | "vlc.exe" | "foobar2000.exe" | "audiodg.exe"
+            | "wmplayer.exe" | "itunes.exe" | "aimp.exe" | "tidal.exe" => {
+                ProcessCategory::AudioMedia
+            }
+
+            "steam.exe" | "steamwebhelper.exe" | "epicgameslauncher.exe" | "galaxyclient.exe"
+            | "playnite.exe" | "riotclientservices.exe" | "battle.net.exe" | "upc.exe"
+            | "eadesktop.exe" => ProcessCategory::Gaming,
+
+            "code.exe" | "devenv.exe" | "rust-analyzer.exe" | "cargo.exe" | "rustc.exe"
+            | "rider64.exe" | "idea64.exe" | "clion64.exe" | "pycharm64.exe" | "nvim.exe"
+            | "vim.exe" | "windowsterminal.exe" | "powershell.exe" | "pwsh.exe" | "cmd.exe"
+            | "git.exe" | "node.exe" | "dotnet.exe" | "cursor.exe" | "windsurf.exe" => {
+                ProcessCategory::DevSuite
+            }
+
+            "svchost.exe" | "conhost.exe" | "csrss.exe" | "smss.exe" | "services.exe"
+            | "lsass.exe" | "wininit.exe" | "winlogon.exe" | "dwm.exe" | "fontdrvhost.exe"
+            | "sihost.exe" | "taskhostw.exe" | "runtimebroker.exe" | "searchindexer.exe"
+            | "spoolsv.exe" | "dllhost.exe" | "wmiprvse.exe" | "ctfmon.exe" | "system"
+            | "registry" => ProcessCategory::SystemBackground,
+
+            _ => ProcessCategory::OtherApp,
+        }
+    }
+
     #[cfg(windows)]
-    fn count_processes() -> u32 {
+    fn query_classified_processes() -> (u32, u32, u32, u32, u32, u32) {
+        use windows::core::PWSTR;
+        use windows::Win32::Foundation::CloseHandle;
         use windows::Win32::System::ProcessStatus::EnumProcesses;
+        use windows::Win32::System::Threading::{
+            OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+            PROCESS_QUERY_LIMITED_INFORMATION,
+        };
+
+        let mut browser_count = 0u32;
+        let mut audio_count = 0u32;
+        let mut gaming_count = 0u32;
+        let mut dev_count = 0u32;
+        let mut other_count = 0u32;
+
         unsafe {
-            let mut pids = [0u32; 1024];
+            let mut pids = [0u32; 2048];
             let mut bytes_returned = 0u32;
             if EnumProcesses(
                 pids.as_mut_ptr(),
@@ -589,16 +694,53 @@ impl ProcessMetricsProvider {
             )
             .is_ok()
             {
-                bytes_returned / (std::mem::size_of::<u32>() as u32)
-            } else {
-                10
+                let count = (bytes_returned as usize) / std::mem::size_of::<u32>();
+                for &pid in &pids[..count.min(pids.len())] {
+                    if pid == 0 || pid == 4 {
+                        continue;
+                    }
+                    if let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+                        let mut buf = [0u16; 512];
+                        let mut size = buf.len() as u32;
+                        let ok = QueryFullProcessImageNameW(
+                            handle,
+                            PROCESS_NAME_WIN32,
+                            PWSTR(buf.as_mut_ptr()),
+                            &mut size,
+                        )
+                        .is_ok();
+                        let _ = CloseHandle(handle);
+
+                        if ok && size > 0 {
+                            let path_str = String::from_utf16_lossy(&buf[..size as usize]);
+                            match Self::classify_executable(&path_str) {
+                                ProcessCategory::Browser => browser_count += 1,
+                                ProcessCategory::AudioMedia => audio_count += 1,
+                                ProcessCategory::Gaming => gaming_count += 1,
+                                ProcessCategory::DevSuite => dev_count += 1,
+                                ProcessCategory::OtherApp => other_count += 1,
+                                ProcessCategory::SystemBackground => {}
+                            }
+                        }
+                    }
+                }
             }
         }
+
+        let open_apps = browser_count + audio_count + gaming_count + dev_count + other_count;
+        (
+            open_apps,
+            browser_count,
+            audio_count,
+            gaming_count,
+            dev_count,
+            other_count,
+        )
     }
 
     #[cfg(not(windows))]
-    fn count_processes() -> u32 {
-        10
+    fn query_classified_processes() -> (u32, u32, u32, u32, u32, u32) {
+        (0, 0, 0, 0, 0, 0)
     }
 }
 
@@ -614,17 +756,15 @@ impl MetricProvider for ProcessMetricsProvider {
     }
 
     fn sample(&mut self) -> Result<MetricValue> {
-        let count = Self::count_processes();
-        let open_apps = (count / 20).max(1);
-        let browser_tabs = (open_apps * 2).max(1);
-        let dev_suite = if count > 50 { 2 } else { 1 };
+        let (open_apps, browser_tabs, audio_apps, gaming_apps, dev_suite, other_apps) =
+            Self::query_classified_processes();
         Ok(MetricValue::ProcessStats {
             open_apps_count: open_apps,
             browser_tabs_count: browser_tabs,
-            audio_playing_apps_count: 1,
-            gaming_apps_count: 0,
+            audio_playing_apps_count: audio_apps,
+            gaming_apps_count: gaming_apps,
             dev_suite_apps_count: dev_suite,
-            other_apps_count: open_apps.saturating_sub(dev_suite + 1),
+            other_apps_count: other_apps,
         })
     }
 }
@@ -794,6 +934,77 @@ mod tests {
             assert!(total_display_count >= 1, "At least 1 display must be reported");
         } else {
             panic!("Expected DisplayTopologyStats variant");
+        }
+    }
+
+    #[test]
+    fn test_audio_provider_wasapi_volume_and_mute_in_range() {
+        let mut audio = AudioProvider::new();
+        let val = audio.sample().unwrap();
+        if let MetricValue::AudioStats {
+            master_volume_pct,
+            is_muted: _,
+        } = val
+        {
+            assert!(
+                (0.0..=100.0).contains(&master_volume_pct),
+                "Master volume % out of range: {master_volume_pct}"
+            );
+        } else {
+            panic!("Expected AudioStats variant");
+        }
+    }
+
+    #[test]
+    fn test_process_metrics_provider_real_executable_classification() {
+        assert_eq!(
+            ProcessMetricsProvider::classify_executable(
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+            ),
+            ProcessCategory::Browser
+        );
+        assert_eq!(
+            ProcessMetricsProvider::classify_executable(r"C:\Users\dev\AppData\Local\Programs\Microsoft VS Code\Code.exe"),
+            ProcessCategory::DevSuite
+        );
+        assert_eq!(
+            ProcessMetricsProvider::classify_executable(r"C:\Program Files\Spotify\Spotify.exe"),
+            ProcessCategory::AudioMedia
+        );
+        assert_eq!(
+            ProcessMetricsProvider::classify_executable(r"C:\Program Files (x86)\Steam\steam.exe"),
+            ProcessCategory::Gaming
+        );
+        assert_eq!(
+            ProcessMetricsProvider::classify_executable(r"C:\Windows\System32\svchost.exe"),
+            ProcessCategory::SystemBackground
+        );
+        assert_eq!(
+            ProcessMetricsProvider::classify_executable(r"C:\Program Files\CustomApp\MyApp.exe"),
+            ProcessCategory::OtherApp
+        );
+
+        let mut proc = ProcessMetricsProvider::new();
+        let val = proc.sample().unwrap();
+        if let MetricValue::ProcessStats {
+            open_apps_count,
+            browser_tabs_count,
+            audio_playing_apps_count,
+            gaming_apps_count,
+            dev_suite_apps_count,
+            other_apps_count,
+        } = val
+        {
+            assert_eq!(
+                open_apps_count,
+                browser_tabs_count
+                    + audio_playing_apps_count
+                    + gaming_apps_count
+                    + dev_suite_apps_count
+                    + other_apps_count
+            );
+        } else {
+            panic!("Expected ProcessStats variant");
         }
     }
 }

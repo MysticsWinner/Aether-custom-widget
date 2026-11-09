@@ -124,7 +124,7 @@ impl DockLauncherWidget {
         match event {
             PointerEvent::Move { x, y } => {
                 let mut found_hover = None;
-                for (i, item) in self.items.iter().enumerate() {
+                for (i, _item) in self.items.iter().enumerate() {
                     let base_x = 25.0 + (i as f32 * 90.0);
                     if x >= base_x && x <= base_x + 60.0 && y >= 10.0 && y <= 70.0 {
                         found_hover = Some(i);
@@ -175,6 +175,21 @@ impl DockLauncherWidget {
     pub fn items(&self) -> &[DockItem] {
         &self.items
     }
+
+    /// Returns the active material specification for the dock surface.
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    /// Returns the performance budget allocated to the dock widget.
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
+
+    /// Returns the widget render configuration.
+    pub fn config(&self) -> &RenderConfig {
+        &self.config
+    }
 }
 
 impl WidgetLifecycle for DockLauncherWidget {
@@ -201,14 +216,18 @@ impl WidgetLifecycle for DockLauncherWidget {
 
         let mut canvas = BatchRenderCanvas::new();
 
-        // 1. Background Glass Capsule
+        // 1. Background Glass Capsule (governed by material & render config)
+        let _target_fps = self.budget.target_fps;
+        let effective_opacity = (self.material.tint_opacity * self.config.opacity).clamp(0.1, 1.0);
         canvas.draw_effect(
-            RenderEffect::GaussianBlur { radius: 20.0 },
+            RenderEffect::GaussianBlur {
+                radius: self.material.blur_radius * 0.5,
+            },
             RectF::new(0.0, 0.0, 500.0, 80.0),
         );
         canvas.draw_rect(
             RectF::new(0.0, 0.0, 500.0, 80.0),
-            Color::rgba(0.09, 0.11, 0.15, 0.90),
+            Color::rgba(0.09, 0.11, 0.15, effective_opacity),
             24.0,
         );
 

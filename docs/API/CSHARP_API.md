@@ -34,17 +34,33 @@ The WinUI 3 Dashboard provides 6 background services registered via Dependency I
 | Service Interface | Concrete Implementation | Responsibility |
 |:---|:---|:---|
 | `IAetherIpcService` | `Services/AetherIpcService.cs` | Async Named Pipe client (`NamedPipeClient`), chunked memory-stream reader, JSON command dispatch, auto-reconnect |
-| `IMemoryManagerService` | `Services/MemoryManagerService.cs` | Process working set tracking, optimized GC triggers, and RAM budget enforcement |
+| `IMemoryManagerService` | `Services/MemoryManagerService.cs` | Process working set tracking, development mode flags, Large Object Heap (LOH) compaction, optimized/forced GC triggers, and engine IPC GC coordination |
 | `IProcessManagerService` | `Services/ProcessManagerService.cs` | Host daemon lifecycle supervisor, process startup & shutdown |
 | `ITelemetryPollerService` | `Services/TelemetryPollerService.cs` | High-frequency telemetry polling loop with DispatcherQueue UI dispatch |
 | `IWidgetSettingsService` | `Services/WidgetSettingsService.cs` | Persistent JSON settings storage and per-widget options |
 | `ILogCollectorService` | `Services/LogCollectorService.cs` | Thread-safe ring buffer log collector and diagnostic trace reader with DispatcherQueue marshaling |
 
-### 2.1 Dependency Injection Pattern
+### 2.1 Memory Management & Garbage Collection Interface (`IMemoryManagerService`)
+```csharp
+public interface IMemoryManagerService
+{
+    bool IsDevelopmentMode { get; set; }
+    bool IsAggressiveGcEnabled { get; set; }
+    TimeSpan GcInterval { get; set; }
+    GarbageCollectionStats GetLastStats();
+    void OptimizeMemory(bool aggressive = false, bool compactLoh = false);
+    void TrimWorkingSet();
+    Task<string> TriggerEngineGarbageCollectionAsync(bool aggressive = false, bool trimWorkingSet = true);
+    Task ShutdownAndCleanAllDependenciesAsync();
+}
+```
+
+### 2.2 Dependency Injection Pattern
 Services are registered in `App.xaml.cs` via:
 ```csharp
 services.AddSingleton<ConcreteService>();
 services.AddSingleton<IServiceInterface>(sp => sp.GetRequiredService<ConcreteService>());
 ```
 Consumers inject the interface `IServiceInterface` across ViewModels and Pages.
+
 

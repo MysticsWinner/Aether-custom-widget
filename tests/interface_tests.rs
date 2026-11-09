@@ -3,7 +3,7 @@
 //! Validates the serialization format and IPC message layout protocols,
 //! error handling boundaries for malformed payloads, and the API schemas.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use core_engine::ipc_server::{dispatch_command, IpcSharedState};
 use core_engine::DesktopWidgetWindow;

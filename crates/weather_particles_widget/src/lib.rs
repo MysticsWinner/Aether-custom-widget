@@ -94,6 +94,16 @@ impl WeatherParticlesWidget {
     pub fn active_particles_count(&self) -> usize {
         self.particles.len()
     }
+
+    /// Returns the active material specification for the weather card.
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    /// Returns the performance budget allocated to the weather particles widget.
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
 }
 
 impl WidgetLifecycle for WeatherParticlesWidget {
@@ -122,14 +132,17 @@ impl WidgetLifecycle for WeatherParticlesWidget {
         // 2. Render Canvas
         let mut canvas = BatchRenderCanvas::new();
 
-        // Background Glass
+        // Background Glass (governed by material & budget)
+        let _target_fps = self.budget.target_fps;
         canvas.draw_effect(
-            RenderEffect::GaussianBlur { radius: 25.0 },
+            RenderEffect::GaussianBlur {
+                radius: self.material.blur_radius,
+            },
             RectF::new(0.0, 0.0, 420.0, 240.0),
         );
         canvas.draw_rect(
             RectF::new(0.0, 0.0, 420.0, 240.0),
-            Color::rgba(0.07, 0.09, 0.15, 0.90),
+            Color::rgba(0.07, 0.09, 0.15, self.material.tint_opacity),
             18.0,
         );
 

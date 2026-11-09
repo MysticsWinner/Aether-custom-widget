@@ -49,6 +49,8 @@ public sealed class TelemetrySample
         MemoryUsedMb = status.MemoryUsedMb,
         MemoryTotalMb = status.MemoryTotalMb,
         MemoryFreeMb = status.MemoryFreeMb,
+        NetRecvBytesPerSec = status.NetRecvBytesPerSec,
+        NetSentBytesPerSec = status.NetSentBytesPerSec,
         GpuTelemetry = status.GpuTelemetry,
         CpuTopology = status.CpuTopology,
         AudioSpectrum = status.AudioSpectrum,

@@ -60,6 +60,26 @@ impl HardwareProWidget {
             config: RenderConfig::default(),
         }
     }
+
+    /// Returns the active material specification for the sensor matrix card.
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    /// Returns the performance budget allocated to the sensor matrix widget.
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
+
+    /// Returns the widget render configuration.
+    pub fn config(&self) -> &RenderConfig {
+        &self.config
+    }
+
+    /// Evaluates whether the widget is currently in a high-load state.
+    pub fn is_high_load(&self) -> bool {
+        *self.is_high_load.get() || *self.gpu_3d_signal.get() > 85.0 || *self.cpu_signal.get() > 85.0
+    }
 }
 
 impl WidgetLifecycle for HardwareProWidget {
@@ -103,14 +123,19 @@ impl WidgetLifecycle for HardwareProWidget {
 
         let mut canvas = BatchRenderCanvas::new();
 
-        // 1. Background Card with Blur
+        // 1. Background Card with Blur (governed by material & render config)
+        let _target_fps = self.budget.target_fps;
+        let _high_load_alert = self.is_high_load();
+        let effective_opacity = (self.material.tint_opacity * self.config.opacity).clamp(0.1, 1.0);
         canvas.draw_effect(
-            RenderEffect::GaussianBlur { radius: 12.0 },
+            RenderEffect::GaussianBlur {
+                radius: self.material.blur_radius * 0.4,
+            },
             RectF::new(0.0, 0.0, 420.0, 240.0),
         );
         canvas.draw_rect(
             RectF::new(0.0, 0.0, 420.0, 240.0),
-            Color::rgba(0.05, 0.07, 0.10, 0.94),
+            Color::rgba(0.05, 0.07, 0.10, effective_opacity),
             16.0,
         );
 

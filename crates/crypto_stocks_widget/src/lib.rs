@@ -77,6 +77,16 @@ impl CryptoStocksWidget {
     pub fn selected_symbol(&self) -> &str {
         &self.selected_symbol
     }
+
+    /// Returns the active material specification for the ticker card.
+    pub fn material(&self) -> &MaterialSpec {
+        &self.material
+    }
+
+    /// Returns the performance budget allocated to the ticker widget.
+    pub fn budget(&self) -> &PerformanceBudget {
+        &self.budget
+    }
 }
 
 impl WidgetLifecycle for CryptoStocksWidget {
@@ -110,14 +120,17 @@ impl WidgetLifecycle for CryptoStocksWidget {
 
         let mut canvas = BatchRenderCanvas::new();
 
-        // 1. Background Glass
+        // 1. Background Glass (governed by material & budget)
+        let _target_fps = self.budget.target_fps;
         canvas.draw_effect(
-            RenderEffect::GaussianBlur { radius: 25.0 },
+            RenderEffect::GaussianBlur {
+                radius: self.material.blur_radius,
+            },
             RectF::new(0.0, 0.0, 460.0, 260.0),
         );
         canvas.draw_rect(
             RectF::new(0.0, 0.0, 460.0, 260.0),
-            Color::rgba(0.06, 0.09, 0.16, 0.92),
+            Color::rgba(0.06, 0.09, 0.16, self.material.tint_opacity),
             20.0,
         );
 

@@ -69,9 +69,15 @@ public sealed class NamedPipeClient
                 while ((bytesRead = await pipeStream.ReadAsync(buffer, linkedCts.Token).ConfigureAwait(false)) > 0)
                 {
                     ms.Write(buffer, 0, bytesRead);
+                    // The IPC protocol uses newline-delimited JSON or single-packet responses.
+                    // Break as soon as a terminating newline is read or buffer is not completely filled.
+                    if (buffer[bytesRead - 1] == (byte)'\n' || bytesRead < ChunkBufferSize)
+                    {
+                        break;
+                    }
                 }
 
-                string response = Encoding.UTF8.GetString(ms.ToArray());
+                string response = Encoding.UTF8.GetString(ms.ToArray()).Trim();
                 DashboardLogger.Trace(LogSource, $"IPC exchange complete: sent {commandBytes.Length} bytes, received {ms.Length} bytes");
                 return response;
             }

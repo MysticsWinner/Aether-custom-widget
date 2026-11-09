@@ -6,6 +6,8 @@
 
 use crate::rendering::RectF;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::Path;
 
 /// Virtual desktop pinning mode for a widget desktop window.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -240,12 +242,14 @@ impl DesktopTopology {
     }
 }
 
-/// Manager for Virtual Desktop states and DPI coordinate translations.
+/// Manager for Virtual Desktop states, per-desktop layout profiles, and DPI coordinate translations.
 #[derive(Debug, Clone)]
 pub struct VirtualDesktopManager {
     pinning: VirtualDesktopPinning,
     monitor_dpi: DpiMonitorScale,
     topology: DesktopTopology,
+    active_desktop_id: String,
+    desktop_layouts: HashMap<String, HashMap<String, DipRect>>,
 }
 
 impl VirtualDesktopManager {
@@ -255,7 +259,57 @@ impl VirtualDesktopManager {
             pinning,
             monitor_dpi: DpiMonitorScale::from_dpi(dpi),
             topology: DesktopTopology::new(),
+            active_desktop_id: "desktop-1".to_string(),
+            desktop_layouts: HashMap::new(),
         }
+    }
+
+    /// Returns the currently active virtual desktop identifier.
+    pub fn active_desktop_id(&self) -> &str {
+        &self.active_desktop_id
+    }
+
+    /// Switches the active virtual desktop context.
+    pub fn switch_virtual_desktop(&mut self, desktop_id: impl Into<String>) {
+        self.active_desktop_id = desktop_id.into();
+    }
+
+    /// Stores a widget's DIP layout bounds for a specific virtual desktop profile.
+    pub fn set_widget_layout_for_desktop(
+        &mut self,
+        desktop_id: impl Into<String>,
+        widget_id: impl Into<String>,
+        bounds: DipRect,
+    ) {
+        self.desktop_layouts
+            .entry(desktop_id.into())
+            .or_default()
+            .insert(widget_id.into(), bounds);
+    }
+
+    /// Retrieves a widget's DIP layout bounds for the currently active virtual desktop.
+    pub fn get_widget_layout_for_active_desktop(&self, widget_id: &str) -> Option<DipRect> {
+        self.desktop_layouts
+            .get(&self.active_desktop_id)
+            .and_then(|map| map.get(widget_id).copied())
+    }
+
+    /// Persists all per-virtual-desktop layout profiles atomically to a JSON file.
+    pub fn save_profiles_to_json(&self, path: &Path) -> anyhow::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let json = serde_json::to_string_pretty(&self.desktop_layouts)?;
+        std::fs::write(path, json)?;
+        Ok(())
+    }
+
+    /// Loads per-virtual-desktop layout profiles from a JSON file on disk.
+    pub fn load_profiles_from_json(&mut self, path: &Path) -> anyhow::Result<()> {
+        let content = std::fs::read_to_string(path)?;
+        let loaded: HashMap<String, HashMap<String, DipRect>> = serde_json::from_str(&content)?;
+        self.desktop_layouts = loaded;
+        Ok(())
     }
 
     /// Returns current pinning mode.
@@ -397,5 +451,46 @@ mod tests {
         let dip_box = DipRect::new(0.0, 0.0, 100.0, 100.0);
         let phys_box = topology.dip_to_physical_on_monitor("mon-2", dip_box).unwrap();
         assert_eq!(phys_box.width, 150.0); // 100 * 1.5 = 150
+    }
+
+    #[test]
+    fn test_per_virtual_desktop_layout_profile_persistence() {
+        let mut manager = VirtualDesktopManager::new(VirtualDesktopPinning::PinnedToCurrent, 96);
+        assert_eq!(manager.active_desktop_id(), "desktop-1");
+
+        let rect_d1 = DipRect::new(50.0, 60.0, 300.0, 180.0);
+        let rect_d2 = DipRect::new(900.0, 400.0, 300.0, 180.0);
+
+        manager.set_widget_layout_for_desktop("desktop-1", "perf_widget", rect_d1);
+        manager.set_widget_layout_for_desktop("desktop-2", "perf_widget", rect_d2);
+
+        assert_eq!(
+            manager.get_widget_layout_for_active_desktop("perf_widget"),
+            Some(rect_d1)
+        );
+
+        manager.switch_virtual_desktop("desktop-2");
+        assert_eq!(
+            manager.get_widget_layout_for_active_desktop("perf_widget"),
+            Some(rect_d2)
+        );
+
+        // Persist and reload from JSON
+        let temp_file = std::env::temp_dir().join("aether_virtual_desktop_profiles_test.json");
+        manager.save_profiles_to_json(&temp_file).unwrap();
+
+        let mut reloaded = VirtualDesktopManager::new(VirtualDesktopPinning::PinnedToCurrent, 96);
+        reloaded.load_profiles_from_json(&temp_file).unwrap();
+        assert_eq!(
+            reloaded.get_widget_layout_for_active_desktop("perf_widget"),
+            Some(rect_d1)
+        );
+        reloaded.switch_virtual_desktop("desktop-2");
+        assert_eq!(
+            reloaded.get_widget_layout_for_active_desktop("perf_widget"),
+            Some(rect_d2)
+        );
+
+        let _ = std::fs::remove_file(temp_file);
     }
 }

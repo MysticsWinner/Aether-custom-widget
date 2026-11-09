@@ -63,6 +63,22 @@ impl FrameArena {
     pub fn capacity(&self) -> usize {
         self.capacity
     }
+
+    /// Trims arena memory footprint during garbage collection passes.
+    /// In aggressive mode (e.g. dev mode), shrinks the pre-allocated buffer down to target minimum.
+    pub fn collect_garbage(&mut self, aggressive: bool) -> usize {
+        self.reset();
+        let initial_cap = self.capacity;
+        if aggressive && self.capacity > 64 * 1024 {
+            let target_cap = 64 * 1024;
+            self.buffer.truncate(target_cap);
+            self.buffer.shrink_to_fit();
+            self.capacity = target_cap;
+            initial_cap.saturating_sub(target_cap)
+        } else {
+            0
+        }
+    }
 }
 
 impl Default for FrameArena {
@@ -106,4 +122,24 @@ mod tests {
         let ptr = arena.alloc(150, 8);
         assert!(ptr.is_none(), "Should fail when requested size exceeds capacity");
     }
+
+    #[test]
+    fn test_frame_arena_garbage_collection() {
+        let mut arena = FrameArena::with_capacity(512 * 1024);
+        assert_eq!(arena.capacity(), 512 * 1024);
+        let _ = arena.alloc(1024, 8);
+        assert_eq!(arena.used_bytes(), 1024);
+
+        // Gentle GC resets used bytes without reallocating
+        let reclaimed = arena.collect_garbage(false);
+        assert_eq!(reclaimed, 0);
+        assert_eq!(arena.used_bytes(), 0);
+        assert_eq!(arena.capacity(), 512 * 1024);
+
+        // Aggressive GC shrinks buffer to minimum 64KB
+        let reclaimed_agg = arena.collect_garbage(true);
+        assert!(reclaimed_agg > 0);
+        assert_eq!(arena.capacity(), 64 * 1024);
+    }
 }
+

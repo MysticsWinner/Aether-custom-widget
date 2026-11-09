@@ -165,7 +165,146 @@ pub enum ControlCommand {
     SetWidgetOpacity { widget_id: String, opacity: f32 },
     /// Reset a widget to its default display options
     ResetWidgetConfig { widget_id: String },
+    /// Trigger manual or aggressive garbage collection and physical working set trimming
+    TriggerGarbageCollection {
+        #[serde(default)]
+        aggressive: bool,
+        #[serde(default)]
+        trim_working_set: bool,
+    },
+    /// Set runtime garbage collection and development mode flags
+    SetGarbageCollectionPolicy {
+        dev_mode: bool,
+        aggressive: bool,
+        interval_secs: u64,
+    },
+    /// Query current garbage collection statistics and memory reclamation metrics
+    GetGarbageCollectionStats,
 }
+
+/// Logical domain categorization for `ControlCommand` routing and telemetry auditing (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CommandDomain {
+    Core,
+    Widget,
+    Theme,
+    Diagnostics,
+    Snapshot,
+    Security,
+    Observability,
+    Marketplace,
+    Ai,
+    Enterprise,
+    Profile,
+    GarbageCollection,
+}
+
+impl ControlCommand {
+    /// Classifies this `ControlCommand` into its logical `CommandDomain`.
+    pub fn domain(&self) -> CommandDomain {
+        match self {
+            Self::Ping
+            | Self::Pong
+            | Self::GetStatus
+            | Self::GetLaunchMode
+            | Self::ExitSafeMode
+            | Self::GetSchedulerStatus
+            | Self::SetAdaptiveTickMode { .. } => CommandDomain::Core,
+
+            Self::LoadWidget { .. }
+            | Self::UnloadWidget { .. }
+            | Self::ReloadAll
+            | Self::ToggleDesktopWidget
+            | Self::SetWidgetPosition { .. }
+            | Self::SetWidgetLock { .. }
+            | Self::ToggleWidgetLock { .. }
+            | Self::RollbackWidget { .. }
+            | Self::HotReloadWidget { .. }
+            | Self::SetWidgetRenderConfig { .. }
+            | Self::GetWidgetRenderConfig { .. }
+            | Self::DiscoverWidgets { .. }
+            | Self::ListWidgets
+            | Self::UpdateWidgetDisplayOptions { .. }
+            | Self::QuickSwapWidget { .. }
+            | Self::EnableWidget { .. }
+            | Self::DisableWidget { .. }
+            | Self::SetWidgetOpacity { .. }
+            | Self::ResetWidgetConfig { .. } => CommandDomain::Widget,
+
+            Self::SetThemeMode { .. }
+            | Self::ResolveDesignTokens { .. }
+            | Self::SetAccessibilityMode { .. } => CommandDomain::Theme,
+
+            Self::GetSubsystemHealth
+            | Self::GetDiagnostics
+            | Self::GetCrashHistory { .. }
+            | Self::GetQuarantineList
+            | Self::ReleaseQuarantine { .. }
+            | Self::GetWidgetResourceUsage { .. }
+            | Self::GetHealthReport
+            | Self::GetWatchdogStatus
+            | Self::InjectChaosFailure { .. }
+            | Self::GetResourceCacheStats
+            | Self::InspectWidget { .. }
+            | Self::ToggleLayoutGrid { .. }
+            | Self::GetExtendedWidgetInspector { .. } => CommandDomain::Diagnostics,
+
+            Self::CreateSnapshot { .. }
+            | Self::ListSnapshots
+            | Self::RestoreSnapshot { .. }
+            | Self::DeleteSnapshot { .. }
+            | Self::ExportSnapshot { .. }
+            | Self::ImportSnapshot { .. } => CommandDomain::Snapshot,
+
+            Self::RequestCapabilityToken { .. }
+            | Self::RevokeCapabilityToken { .. }
+            | Self::GetCapabilityGrants { .. } => CommandDomain::Security,
+
+            Self::StartRecording
+            | Self::StopRecording
+            | Self::GetRecording
+            | Self::ReplayRecording { .. }
+            | Self::GetObservabilityStatus
+            | Self::GetPrometheusMetrics
+            | Self::GenerateMinidump { .. }
+            | Self::ListMinidumps => CommandDomain::Observability,
+
+            Self::SearchMarketplace { .. } => CommandDomain::Marketplace,
+
+            Self::SynthesizeWidget { .. }
+            | Self::GenerateWallpaperTheme { .. }
+            | Self::GetAiPerformanceAdvice { .. }
+            | Self::SynthesizeDesktop { .. } => CommandDomain::Ai,
+
+            Self::GetEnterprisePolicy
+            | Self::UpdateEnterprisePolicy { .. }
+            | Self::GetAuditLogs
+            | Self::VerifyAuditChain => CommandDomain::Enterprise,
+
+            Self::SetDesktopProfile { .. }
+            | Self::GetActiveProfile
+            | Self::ListProfiles => CommandDomain::Profile,
+
+            Self::TriggerGarbageCollection { .. }
+            | Self::SetGarbageCollectionPolicy { .. }
+            | Self::GetGarbageCollectionStats => CommandDomain::GarbageCollection,
+        }
+    }
+}
+
+/// Structured report of runtime garbage collection and memory reclamation state.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GarbageCollectionReport {
+    pub dev_mode: bool,
+    pub aggressive: bool,
+    pub gc_interval_secs: u64,
+    pub collections_count: u64,
+    pub last_reclaimed_kb: u64,
+    pub resource_cache_items: usize,
+    pub resource_cache_capacity: usize,
+    pub memory_used_mb: f64,
+}
+
 
 /// Metadata payload for a discovered widget plugin manifest scanned from disk.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -273,22 +412,22 @@ impl Default for MetricPayload {
             gpu_usage_pct: 0.0,
             net_recv_bytes_per_sec: 0,
             net_sent_bytes_per_sec: 0,
-            open_apps_count: 5,
-            browser_tabs_count: 12,
-            audio_playing_apps_count: 1,
+            open_apps_count: 0,
+            browser_tabs_count: 0,
+            audio_playing_apps_count: 0,
             gaming_apps_count: 0,
-            dev_suite_apps_count: 2,
-            other_apps_count: 2,
-            master_volume_pct: 75.0,
+            dev_suite_apps_count: 0,
+            other_apps_count: 0,
+            master_volume_pct: 0.0,
             is_muted: false,
-            battery_charge_pct: 85.0,
-            battery_remaining_secs: 14400,
-            is_charging: true,
-            total_gpu_count: 2,
-            integrated_gpu_count: 1,
-            dedicated_gpu_count: 1,
-            total_display_count: 2,
-            external_display_count: 1,
+            battery_charge_pct: 0.0,
+            battery_remaining_secs: 0,
+            is_charging: false,
+            total_gpu_count: 0,
+            integrated_gpu_count: 0,
+            dedicated_gpu_count: 0,
+            total_display_count: 0,
+            external_display_count: 0,
             virtual_display_count: 0,
         }
     }
@@ -314,6 +453,44 @@ mod tests {
         let metric = MetricPayload::default();
         assert_eq!(metric.timestamp_ms, 0);
         assert_eq!(metric.cpu_usage_pct, 0.0);
+        assert_eq!(metric.open_apps_count, 0);
+        assert_eq!(metric.master_volume_pct, 0.0);
+        assert_eq!(metric.battery_charge_pct, 0.0);
+    }
+
+    #[test]
+    fn test_control_command_domain_classification() {
+        assert_eq!(ControlCommand::Ping.domain(), CommandDomain::Core);
+        assert_eq!(
+            ControlCommand::LoadWidget {
+                manifest_path: "w.toml".into()
+            }
+            .domain(),
+            CommandDomain::Widget
+        );
+        assert_eq!(
+            ControlCommand::SetThemeMode {
+                mode: "dark".into()
+            }
+            .domain(),
+            CommandDomain::Theme
+        );
+        assert_eq!(
+            ControlCommand::GetDiagnostics.domain(),
+            CommandDomain::Diagnostics
+        );
+        assert_eq!(
+            ControlCommand::ListSnapshots.domain(),
+            CommandDomain::Snapshot
+        );
+        assert_eq!(
+            ControlCommand::GetAuditLogs.domain(),
+            CommandDomain::Enterprise
+        );
+        assert_eq!(
+            ControlCommand::GetGarbageCollectionStats.domain(),
+            CommandDomain::GarbageCollection
+        );
     }
 
     #[test]
@@ -434,5 +611,45 @@ mod tests {
         let decoded_del: ControlCommand = serde_json::from_str(&json_del).unwrap();
         assert_eq!(decoded_del, delete_snap);
     }
+
+    #[test]
+    fn test_garbage_collection_control_commands_serialization() {
+        let trigger_cmd = ControlCommand::TriggerGarbageCollection {
+            aggressive: true,
+            trim_working_set: true,
+        };
+        let json_trig = serde_json::to_string(&trigger_cmd).unwrap();
+        let decoded_trig: ControlCommand = serde_json::from_str(&json_trig).unwrap();
+        assert_eq!(decoded_trig, trigger_cmd);
+
+        let policy_cmd = ControlCommand::SetGarbageCollectionPolicy {
+            dev_mode: true,
+            aggressive: false,
+            interval_secs: 15,
+        };
+        let json_policy = serde_json::to_string(&policy_cmd).unwrap();
+        let decoded_policy: ControlCommand = serde_json::from_str(&json_policy).unwrap();
+        assert_eq!(decoded_policy, policy_cmd);
+
+        let stats_cmd = ControlCommand::GetGarbageCollectionStats;
+        let json_stats = serde_json::to_string(&stats_cmd).unwrap();
+        let decoded_stats: ControlCommand = serde_json::from_str(&json_stats).unwrap();
+        assert_eq!(decoded_stats, stats_cmd);
+
+        let report = GarbageCollectionReport {
+            dev_mode: true,
+            aggressive: true,
+            gc_interval_secs: 15,
+            collections_count: 42,
+            last_reclaimed_kb: 10240,
+            resource_cache_items: 5,
+            resource_cache_capacity: 50,
+            memory_used_mb: 32.5,
+        };
+        let json_rep = serde_json::to_string(&report).unwrap();
+        let decoded_rep: GarbageCollectionReport = serde_json::from_str(&json_rep).unwrap();
+        assert_eq!(decoded_rep, report);
+    }
 }
+
 

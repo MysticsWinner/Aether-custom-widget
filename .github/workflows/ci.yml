@@ -5,10 +5,11 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
   validate_workspace:
-    name: Build & Audit Rust Core Workspace
+    name: Build & Audit Rust Core Workspace (${{ matrix.target }})
     runs-on: windows-latest
     strategy:
       matrix:
@@ -31,7 +32,7 @@ jobs:
       - name: Cargo Check Workspace
         run: cargo check --workspace --target ${{ matrix.target }}
 
-      - name: Run Unit Tests
+      - name: Run Rust Unit & Integration Tests
         if: matrix.target == 'x86_64-pc-windows-msvc'
         run: cargo test --workspace
 
@@ -47,3 +48,22 @@ jobs:
             target/${{ matrix.target }}/release/*.dll
             target/${{ matrix.target }}/release/*.lib
           if-no-files-found: ignore
+
+  validate_gui_dashboard:
+    name: Build & Test WinUI 3 C# Dashboard
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build WinUI 3 Dashboard Project
+        run: dotnet build src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj
+
+      - name: Run C# GUI ViewModel & IPC Unit Tests
+        run: dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj --verbosity normal

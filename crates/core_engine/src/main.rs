@@ -34,44 +34,58 @@ async fn main() -> Result<()> {
     info!("===========================================================");
     info!(" Next-Gen Windows Desktop Customization Platform - Core Daemon");
     info!(" Version: {}", env!("CARGO_PKG_VERSION"));
-    info!(" Mode: Phase 15 Production Release Candidate Active (Certified Ready)");
+    info!(" Mode: Phase 16 Production Release Candidate Active (Certified Ready)");
     info!(" ETW Tracing & Failure Injection Diagnostics Enabled");
     info!("===========================================================");
 
-    // ── 2. Chaos Engineering Failure Injection ───────────────────────────────
-    info!("Executing Chaos Engineering Failure Injection & Redundancy Recovery Audits...");
-    let injector = FailureInjector::new();
-    injector.arm_failure(FailurePoint::GpuDeviceLost);
-    if injector.should_fail(FailurePoint::GpuDeviceLost) {
-        let _rec = RedundancySupervisor::handle_recovery(FailurePoint::GpuDeviceLost);
-    }
-
-    // ── 3. Benchmarks ────────────────────────────────────────────────────────
-    info!("Executing GPU rendering, Telemetry, SDK, Theme, Sandbox, Marketplace, Cloud, AI & Release benchmarks...");
-    let benchmark_result = RainmeterBenchmark::run_benchmark();
-    info!(
-        "Render Benchmark Result: Culling Efficiency = {:.1}%, Speedup = {:.1}x",
-        benchmark_result.culling_efficiency_pct, benchmark_result.speedup_factor
-    );
-
-    TelemetryBenchmark::run_benchmark();
-    SdkBenchmark::run_benchmark();
-    ThemeBenchmark::run_benchmark();
-    PluginSandboxBenchmark::run_benchmark();
-    PackageManagerBenchmark::run_benchmark();
-    CloudSyncBenchmark::run_benchmark();
-    AiEngineBenchmark::run_benchmark();
-    let _release_pass = MasterReleaseSuite::run_release_audit();
-    let _nfr_report   = MasterPerformanceSuite::run_full_suite();
-
-    // ── 4. Engine configuration ──────────────────────────────────────────────
-    let config = EngineConfig::new()
+    // ── 2. Engine configuration & CLI Flags ──────────────────────────────────
+    let args: Vec<String> = std::env::args().collect();
+    let config = EngineConfig::from_env()
         .with_tick_interval_ms(10)
         .with_event_channel_capacity(1024)
-        .with_telemetry(true);
+        .with_telemetry(true)
+        .with_cli_args(&args);
+
+    let dev_mode = config.dev_mode;
+    let aggressive_gc = config.aggressive_gc;
+    let gc_interval_secs = config.gc_interval_secs;
+    let auto_gc = config.auto_gc_enabled;
+
+    info!(
+        "Engine Config Flags: dev_mode={}, aggressive_gc={}, gc_interval_secs={}s, auto_gc={}, run_benchmarks={}",
+        dev_mode, aggressive_gc, gc_interval_secs, auto_gc, config.run_benchmarks
+    );
+
+    // ── 3. Opt-in Chaos Engineering & Startup Benchmarks (--benchmark) ───────
+    if config.run_benchmarks {
+        info!("Executing Chaos Engineering Failure Injection & Redundancy Recovery Audits...");
+        let injector = FailureInjector::new();
+        injector.arm_failure(FailurePoint::GpuDeviceLost);
+        if injector.should_fail(FailurePoint::GpuDeviceLost) {
+            let _rec = RedundancySupervisor::handle_recovery(FailurePoint::GpuDeviceLost);
+        }
+
+        info!("Executing GPU rendering, Telemetry, SDK, Theme, Sandbox, Marketplace, Cloud, AI & Release benchmarks...");
+        let benchmark_result = RainmeterBenchmark::run_benchmark();
+        info!(
+            "Render Benchmark Result: Culling Efficiency = {:.1}%, Speedup = {:.1}x",
+            benchmark_result.culling_efficiency_pct, benchmark_result.speedup_factor
+        );
+
+        TelemetryBenchmark::run_benchmark();
+        SdkBenchmark::run_benchmark();
+        ThemeBenchmark::run_benchmark();
+        PluginSandboxBenchmark::run_benchmark();
+        PackageManagerBenchmark::run_benchmark();
+        CloudSyncBenchmark::run_benchmark();
+        AiEngineBenchmark::run_benchmark();
+        let _release_pass = MasterReleaseSuite::run_release_audit();
+        let _nfr_report = MasterPerformanceSuite::run_full_suite();
+    }
 
     // ── 5. Initialise Core Engine & subsystems ───────────────────────────────
     let mut engine = Engine::new(config);
+
 
     let (telemetry_sys, shared_cache) = TelemetrySubsystem::new();
     let (theme_sys, theme_store)      = ThemeEngineSubsystem::new();
@@ -125,7 +139,7 @@ async fn main() -> Result<()> {
     let widget_registry = Arc::new(std::sync::Mutex::new(initial_widgets));
     desktop_window.spawn_overlay(shared_cache.clone(), widget_registry.clone());
 
-    // ── 8. IPC Named Pipe Server task ────────────────────────────────────────
+    // ── 8. IPC Named Pipe Server task & GC Maintenance Loop ────────────────
     {
         let ipc_cache = shared_cache.clone();
         let ipc_desktop_window = desktop_window.clone();
@@ -134,12 +148,39 @@ async fn main() -> Result<()> {
             ipc_desktop_window,
             widget_registry,
         );
+
+        ipc_state.dev_mode.store(dev_mode, std::sync::atomic::Ordering::Relaxed);
+        ipc_state.aggressive_gc.store(aggressive_gc, std::sync::atomic::Ordering::Relaxed);
+        ipc_state.gc_interval_secs.store(gc_interval_secs, std::sync::atomic::Ordering::Relaxed);
+
+        if auto_gc {
+            let gc_state = ipc_state.clone();
+            tokio::spawn(async move {
+                loop {
+                    let interval = gc_state.gc_interval_secs.load(std::sync::atomic::Ordering::Relaxed);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(interval.max(1))).await;
+                    let agg = gc_state.aggressive_gc.load(std::sync::atomic::Ordering::Relaxed);
+                    let rep = gc_state.perform_garbage_collection(agg, true);
+                    tracing::info!(
+                        target: "gc_maintenance",
+                        collections = rep.collections_count,
+                        reclaimed_kb = rep.last_reclaimed_kb,
+                        cache_items = rep.resource_cache_items,
+                        dev_mode = rep.dev_mode,
+                        aggressive = rep.aggressive,
+                        "Periodic engine GC maintenance pass executed"
+                    );
+                }
+            });
+        }
+
         tokio::spawn(async move {
             if let Err(e) = core_engine::ipc_server::run_ipc_server(ipc_state).await {
                 tracing::error!("IPC server terminated: {e:?}");
             }
         });
     }
+
 
     info!(
         "Core Engine daemon running. Certified Production Release Candidate Active \

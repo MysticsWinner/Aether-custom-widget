@@ -51,71 +51,101 @@ graph LR
 
 ## 2. Command Variant Reference (`ControlCommand`)
 
-All IPC messages sent over the Control Channel follow the `ControlCommand` JSON schema:
+All IPC messages sent over the Control Channel follow Rust Serde's default **externally tagged union** JSON schema:
+- **Unit variants** are serialized as simple JSON strings (e.g. `"Ping"`, `"GetStatus"`).
+- **Struct variants** are serialized as a single-key JSON object where the key is the variant name and the value is the parameter map (e.g. `{"LoadWidget": {"manifest_path": "..."}}`).
 
-### 2.1 Ping / Pong
-- **Request**: `{"type": "Ping"}`
-- **Response**: `{"type": "Pong"}`
+### 2.1 Engine Health, Status & Heartbeat
+- **Ping**: `"Ping"` → Response: `{"status": "pong"}`
+- **Get Status & Telemetry**: `"GetStatus"` → Response: `{"status":"ok","cpu_pct":...,"gpu_pct":...,"memory_used_mb":...,"memory_total_mb":...,"memory_free_mb":...,"active_widgets":[...],"engine_version":"0.6.0"}`
+- **Get Diagnostics**: `"GetDiagnostics"` → Response: `{"pid":...,"uptime_seconds":...,"tick_count":...,"memory_used_mb":...,"total_connections":...,"active_connections":...,"total_commands_dispatched":...}`
+- **Get Subsystem Health**: `"GetSubsystemHealth"`
+- **Get Health Report**: `"GetHealthReport"`
+- **Get Watchdog Status**: `"GetWatchdogStatus"`
 
-### 2.2 Get Status & Telemetry (`GetStatus`)
-- **Request**: `{"type": "GetStatus"}`
-- **Response Payload**:
-```json
-{
-  "type": "StatusResponse",
-  "payload": {
-    "status": "Running",
-    "uptime_seconds": 1245,
-    "metrics": {
-      "cpu_pct": 14.2,
-      "gpu_pct": 22.5,
-      "ram_used_mb": 4096.0,
-      "ram_total_mb": 16384.0,
-      "ram_free_mb": 12288.0,
-      "net_recv_bytes_per_sec": 10240,
-      "net_sent_bytes_per_sec": 5120
-    },
-    "active_widgets": ["perf_monitor_widget", "weather_widget", "network_monitor_widget"],
-    "subsystem_health": {
-      "TelemetrySubsystem": "Healthy",
-      "RenderSubsystem": "Healthy",
-      "ThemeEngineSubsystem": "Healthy",
-      "PluginSandboxSubsystem": "Healthy"
-    },
-    "engine_version": "0.6.0"
-  }
-}
-```
+### 2.2 Desktop Widget Lifecycle & Overlay
+- **Toggle Desktop Widget Overlay**: `"ToggleDesktopWidget"`
+- **Reload All Widgets**: `"ReloadAll"`
+- **Load Widget**: `{"LoadWidget": {"manifest_path": "path/to/widget.toml"}}`
+- **Unload Widget**: `{"UnloadWidget": {"widget_id": "widget_id"}}`
+- **Discover Widgets**: `{"DiscoverWidgets": {"search_paths": ["optional/path"]}}` (or `{"search_paths": null}`)
+- **List Registered Widgets**: `"ListWidgets"` → Returns array of `WidgetDescriptor` (id, name, state, opacity, scale, locked, enabled, quick_swap, position_x, position_y, manifest_path)
+- **Update Display Options**: `{"UpdateWidgetDisplayOptions": {"widget_id": "...", "opacity": 0.85, "scale": 1.0, "locked": false, "enabled": true}}`
+- **Quick Swap Widgets**: `{"QuickSwapWidget": {"from_id": "...", "to_id": "...", "mode": "position"}}`
+- **Enable Widget**: `{"EnableWidget": {"widget_id": "..."}}`
+- **Disable Widget**: `{"DisableWidget": {"widget_id": "..."}}`
+- **Set Widget Opacity**: `{"SetWidgetOpacity": {"widget_id": "...", "opacity": 0.8}}`
+- **Reset Widget Config**: `{"ResetWidgetConfig": {"widget_id": "..."}}`
+- **Set Widget Position**: `{"SetWidgetPosition": {"widget_id": "...", "x": 100, "y": 200}}`
+- **Set Widget Lock**: `{"SetWidgetLock": {"widget_id": "...", "locked": true}}`
+- **Toggle Widget Lock**: `{"ToggleWidgetLock": {"widget_id": "..."}}`
+- **Hot-Reload Widget**: `{"HotReloadWidget": {"widget_id": "..."}}`
+- **Inspect Widget**: `{"InspectWidget": {"widget_id": "..."}}`
+- **Get Extended Widget Inspector**: `{"GetExtendedWidgetInspector": {"widget_id": "..."}}`
+- **Set Widget Render Config**: `{"SetWidgetRenderConfig": {"widget_id": "...", "config_json": "..."}}`
+- **Get Widget Render Config**: `{"GetWidgetRenderConfig": {"widget_id": "..."}}`
 
-### 2.3 Widget Lifecycle Control
-- **Load Widget**: `{"type": "LoadWidget", "payload": {"manifest_path": "crates/perf_monitor_widget/widget.toml"}}`
-- **Unload Widget**: `{"type": "UnloadWidget", "payload": {"widget_id": "perf_monitor_widget"}}`
-- **Reload All**: `{"type": "ReloadAll"}`
-- **Set Widget Render Config**: `{"type": "SetWidgetRenderConfig", "payload": {"widget_id": "perf_monitor_widget", "config_json": "{...}"}}`
-- **Get Widget Render Config**: `{"type": "GetWidgetRenderConfig", "payload": {"widget_id": "perf_monitor_widget"}}`
+### 2.3 Recovery, Safe Mode & Quarantine
+- **Get Crash History**: `{"GetCrashHistory": {"widget_id": "optional_id"}}`
+- **Rollback Widget**: `{"RollbackWidget": {"widget_id": "..."}}`
+- **Get Launch Mode**: `"GetLaunchMode"` (Normal vs Safe Mode)
+- **Exit Safe Mode**: `"ExitSafeMode"`
+- **Get Quarantine List**: `"GetQuarantineList"`
+- **Release Quarantine**: `{"ReleaseQuarantine": {"widget_id": "..."}}`
 
-### 2.4 Theme & Design Token Control
-- **Set Theme Mode**: `{"type": "SetThemeMode", "payload": {"mode": "Dark"}}`
-- **Apply Theme Tokens**: `{"type": "ApplyThemeTokens", "payload": {"theme_id": "theme.cyberpunk.neon"}}`
+### 2.4 Desktop Snapshots
+- **Create Snapshot**: `{"CreateSnapshot": {"name": "Work Setup"}}`
+- **List Snapshots**: `"ListSnapshots"`
+- **Restore Snapshot**: `{"RestoreSnapshot": {"snapshot_id": "..."}}`
+- **Delete Snapshot**: `{"DeleteSnapshot": {"snapshot_id": "..."}}`
+- **Export Snapshot**: `{"ExportSnapshot": {"snapshot_id": "...", "path": "backup.json"}}`
+- **Import Snapshot**: `{"ImportSnapshot": {"path": "backup.json"}}`
 
-### 2.5 Desktop Profiles & AI Synthesis
-- **Switch Profile**: `{"type": "SwitchProfile", "payload": {"profile_name": "Gaming"}}`
-- **Rollback Profile**: `{"type": "RollbackProfile"}`
-- **Synthesize AI Layout**: `{"type": "SynthesizeAiLayout", "payload": {"prompt": "4K triple monitor dev layout"}}`
-- **Synthesize AI Theme**: `{"type": "SynthesizeAiTheme", "payload": {"prompt": "cyberpunk neon glassmorphism"}}`
+### 2.5 Security, Capability Broker & Enterprise
+- **Request Capability Token**: `{"RequestCapabilityToken": {"widget_id": "...", "capability": "NetworkAccess"}}`
+- **Revoke Capability Token**: `{"RevokeCapabilityToken": {"token_id": "..."}}`
+- **Get Widget Resource Usage**: `{"GetWidgetResourceUsage": {"widget_id": "..."}}`
+- **Get Capability Grants**: `{"GetCapabilityGrants": {"widget_id": null}}`
+- **Get Enterprise Policy**: `"GetEnterprisePolicy"`
+- **Update Enterprise Policy**: `{"UpdateEnterprisePolicy": {"policy_json": "..."}}`
+- **Get Audit Logs**: `"GetAuditLogs"`
+- **Verify Audit Chain**: `"VerifyAuditChain"`
 
-### 2.6 Subsystem Health & Diagnostics
-- **Get Health**: `{"type": "GetSubsystemHealth"}`
-- **Get Diagnostics**: `{"type": "GetDiagnostics"}`
+### 2.6 Event Recording & Time-Travel Debugging
+- **Start Recording**: `"StartRecording"`
+- **Stop Recording**: `"StopRecording"`
+- **Get Recording**: `"GetRecording"`
+- **Replay Recording**: `{"ReplayRecording": {"from_seq": 0}}`
 
-### 2.7 Package Manager & Marketplace
-- **Search Marketplace**: `{"SearchMarketplace": {"query": "monitoring", "category": "all"}}` (supports optional `category` filter, with `None` fallback)
+### 2.7 Observability & Chaos Testing
+- **Inject Chaos Failure**: `{"InjectChaosFailure": {"scenario": "GpuDeviceLost"}}`
+- **Get Observability Status**: `"GetObservabilityStatus"`
+- **Get Prometheus Metrics**: `"GetPrometheusMetrics"`
+- **Generate Minidump**: `{"GenerateMinidump": {"reason": "ManualDiagnostics"}}`
+- **List Minidumps**: `"ListMinidumps"`
+- **Get Scheduler Status**: `"GetSchedulerStatus"`
+- **Set Adaptive Tick Mode**: `{"SetAdaptiveTickMode": {"enabled": true}}`
+- **Get Resource Cache Stats**: `"GetResourceCacheStats"`
+- **Toggle Layout Grid**: `{"ToggleLayoutGrid": {"enabled": true}}`
 
-### 2.8 Security Audit Logs & Tamper-Evident Verification
-- **Get Audit Logs**: `{"type": "GetAuditLogs"}`
-- **Verify Audit Chain**: `{"type": "VerifyAuditChain"}`
-- **Get Quarantine List**: `{"type": "GetQuarantineList"}`
-- **Release Quarantine**: `{"ReleaseQuarantine": {"widget_id": "clock_w"}}`
+### 2.8 AI Desktop Composer, Themes & Marketplace
+- **Synthesize Desktop**: `{"SynthesizeDesktop": {"prompt": "Triple 4K Dev Workstation"}}`
+- **Synthesize Widget**: `{"SynthesizeWidget": {"prompt": "Stock ticker for AAPL"}}`
+- **Generate Wallpaper Theme**: `{"GenerateWallpaperTheme": {"wallpaper_path": null}}`
+- **Get AI Performance Advice**: `{"GetAiPerformanceAdvice": {"widget_id": null}}`
+- **Search Marketplace**: `{"SearchMarketplace": {"query": "monitoring", "category": null}}`
+- **Set Theme Mode**: `{"SetThemeMode": {"mode": "dark"}}`
+- **Resolve Design Tokens**: `{"ResolveDesignTokens": {"theme_id": null}}`
+- **Set Accessibility Mode**: `{"SetAccessibilityMode": {"high_contrast": null, "reduce_motion": null, "reduce_transparency": null, "large_text": null}}`
+- **Set Desktop Profile**: `{"SetDesktopProfile": {"profile_id": "Coding"}}`
+
+### 2.9 Garbage Collection & Runtime Policy
+- **Trigger Garbage Collection**: `{"TriggerGarbageCollection": {"aggressive": true, "trim_working_set": true}}` → Returns `GarbageCollectionReport` (`collections_count`, `last_reclaimed_kb`, `dev_mode`, `aggressive`, `gc_interval_secs`, `resource_cache_items`, `resource_cache_capacity`, `memory_used_mb`)
+- **Set Garbage Collection Policy**: `{"SetGarbageCollectionPolicy": {"dev_mode": true, "aggressive": true, "interval_secs": 15}}`
+- **Get Garbage Collection Stats**: `"GetGarbageCollectionStats"` → Returns `GarbageCollectionReport`
+
+- **Get Active Profile**: `"GetActiveProfile"`
+- **List Profiles**: `"ListProfiles"`
 
 ---
 

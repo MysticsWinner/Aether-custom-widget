@@ -28,7 +28,7 @@ impl Default for AudioSpectrumTelemetry {
             peak_db_right: -60.0,
             rms_volume: 0.0,
             fft_bins_16: [0.0; 16],
-            master_volume_pct: 75.0,
+            master_volume_pct: 0.0,
             is_muted: false,
         }
     }
@@ -57,7 +57,7 @@ impl Default for MediaPlaybackTelemetry {
             playback_status: "Stopped".to_string(),
             position_secs: 0,
             duration_secs: 0,
-            volume_pct: 75.0,
+            volume_pct: 0.0,
         }
     }
 }

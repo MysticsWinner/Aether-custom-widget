@@ -44,6 +44,8 @@ pub struct StatusResponse {
     pub memory_used_mb: f32,
     pub memory_total_mb: f32,
     pub memory_free_mb: f32,
+    pub net_recv_bytes_per_sec: u64,
+    pub net_sent_bytes_per_sec: u64,
     pub active_widgets: Vec<String>,
     pub engine_version: &'static str,
 }
@@ -89,6 +91,16 @@ pub struct IpcSharedState {
     pub widget_config_store: Arc<Mutex<WidgetConfigStore>>,
     /// Cryptographic append-only SHA-256 audit logger.
     pub audit_logger: Arc<Mutex<AuditLogger>>,
+    /// Development mode flag.
+    pub dev_mode: Arc<std::sync::atomic::AtomicBool>,
+    /// Aggressive garbage collection flag.
+    pub aggressive_gc: Arc<std::sync::atomic::AtomicBool>,
+    /// Garbage collection interval in seconds.
+    pub gc_interval_secs: Arc<std::sync::atomic::AtomicU64>,
+    /// Lifetime count of garbage collection passes triggered.
+    pub gc_collections_count: Arc<std::sync::atomic::AtomicU64>,
+    /// Last estimated reclaimed bytes in KB.
+    pub gc_last_reclaimed_kb: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl IpcSharedState {
@@ -120,6 +132,14 @@ impl IpcSharedState {
         let audit_log = AuditLogger::new(base_dir.join("audit.log"));
         let wcs = WidgetConfigStore::new(base_dir.join("widget_settings"));
 
+        let dev_mode_env = std::env::var("AETHER_DEV_MODE")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        let agg_env = std::env::var("AETHER_AGGRESSIVE_GC")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        let gc_interval = if dev_mode_env { 15 } else { 300 };
+
         Self {
             cache,
             desktop_window,
@@ -140,6 +160,11 @@ impl IpcSharedState {
             policy_engine: Arc::new(Mutex::new(pol_eng)),
             audit_logger: Arc::new(Mutex::new(audit_log)),
             widget_config_store: Arc::new(Mutex::new(wcs)),
+            dev_mode: Arc::new(std::sync::atomic::AtomicBool::new(dev_mode_env)),
+            aggressive_gc: Arc::new(std::sync::atomic::AtomicBool::new(agg_env)),
+            gc_interval_secs: Arc::new(std::sync::atomic::AtomicU64::new(gc_interval)),
+            gc_collections_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            gc_last_reclaimed_kb: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 
@@ -158,7 +183,50 @@ impl IpcSharedState {
     ) -> Self {
         Self::init_components(cache, desktop_window, widget_registry)
     }
+
+    /// Executes garbage collection pass across engine caches and memory buffers.
+    pub fn perform_garbage_collection(&self, aggressive: bool, trim_working_set: bool) -> ipc_protocol::GarbageCollectionReport {
+        let initial_used_mb = self.cache.get_memory_used_mb();
+        let mut cache_items = 0;
+        let mut cache_cap = 0;
+        if let Ok(mut rc) = self.resource_cache.lock() {
+            let _evicted = rc.collect_garbage(aggressive);
+            cache_items = rc.len();
+            cache_cap = rc.capacity();
+        }
+
+        #[cfg(windows)]
+        if trim_working_set {
+            unsafe {
+                use windows::Win32::System::Threading::{GetCurrentProcess, SetProcessWorkingSetSize};
+                let proc = GetCurrentProcess();
+                let _ = SetProcessWorkingSetSize(proc, usize::MAX, usize::MAX);
+            }
+        }
+
+        self.gc_collections_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let final_used_mb = self.cache.get_memory_used_mb();
+        let reclaimed_kb = ((initial_used_mb - final_used_mb).max(0.0) * 1024.0) as u64;
+        self.gc_last_reclaimed_kb.store(reclaimed_kb, std::sync::atomic::Ordering::Relaxed);
+
+        let dev = self.dev_mode.load(std::sync::atomic::Ordering::Relaxed);
+        let agg = self.aggressive_gc.load(std::sync::atomic::Ordering::Relaxed) || aggressive;
+        let interval = self.gc_interval_secs.load(std::sync::atomic::Ordering::Relaxed);
+        let count = self.gc_collections_count.load(std::sync::atomic::Ordering::Relaxed);
+
+        ipc_protocol::GarbageCollectionReport {
+            dev_mode: dev,
+            aggressive: agg,
+            gc_interval_secs: interval,
+            collections_count: count,
+            last_reclaimed_kb: reclaimed_kb,
+            resource_cache_items: cache_items,
+            resource_cache_capacity: cache_cap,
+            memory_used_mb: final_used_mb as f64,
+        }
+    }
 }
+
 
 /// Runs the IPC server loop.  Never returns under normal operation;
 /// call via `tokio::spawn`.
@@ -244,11 +312,16 @@ pub async fn run_ipc_server(state: IpcSharedState) -> Result<()> {
                             response_bytes = response.len(),
                             "IPC: Command dispatched and response generated"
                         );
-                        if let Err(e) = pipe.write_all(response.as_bytes()).await {
+                        let response_line = if response.ends_with('\n') {
+                            response
+                        } else {
+                            format!("{response}\n")
+                        };
+                        if let Err(e) = pipe.write_all(response_line.as_bytes()).await {
                             warn!(target: "ipc", conn_id, "IPC write error: {e:?}");
                             break;
                         }
-                        total_bytes_out += response.len();
+                        total_bytes_out += response_line.len();
                     }
                     Err(e) => {
                         warn!(target: "ipc", conn_id, "IPC pipe read error: {e:?}");
@@ -313,6 +386,8 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
                 memory_used_mb: snap.memory_used_mb,
                 memory_total_mb: snap.memory_total_mb,
                 memory_free_mb: free,
+                net_recv_bytes_per_sec: snap.net_recv_bytes_per_sec,
+                net_sent_bytes_per_sec: snap.net_sent_bytes_per_sec,
                 active_widgets,
                 engine_version: env!("CARGO_PKG_VERSION"),
             };
@@ -457,9 +532,13 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             let active_conns = ACTIVE_IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Relaxed);
             let total_cmds = TOTAL_COMMANDS_DISPATCHED.load(std::sync::atomic::Ordering::Relaxed);
             let snap = state.cache.get_snapshot();
+            static DAEMON_START_TIME: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+            let uptime_secs = DAEMON_START_TIME.get_or_init(std::time::Instant::now).elapsed().as_secs();
             serde_json::json!({
                 "status": "ok",
                 "pid": pid,
+                "uptime_seconds": uptime_secs,
+                "uptime_secs": uptime_secs,
                 "tick_count": tick_count,
                 "total_connections": total_conns,
                 "active_connections": active_conns,
@@ -1137,8 +1216,57 @@ pub fn dispatch_command(raw: &str, state: &IpcSharedState) -> String {
             serde_json::json!({ "status": "ok", "widget_id": widget_id, "reset": true }).to_string()
         }
 
+        ControlCommand::TriggerGarbageCollection { aggressive, trim_working_set } => {
+            info!("IPC: TriggerGarbageCollection (aggressive={}, trim_working_set={})", aggressive, trim_working_set);
+            let report = state.perform_garbage_collection(aggressive, trim_working_set);
+            serde_json::to_string(&report).unwrap_or_else(|e| {
+                serde_json::json!({ "status": "error", "message": format!("{e}") }).to_string()
+            })
+        }
+
+        ControlCommand::SetGarbageCollectionPolicy { dev_mode, aggressive, interval_secs } => {
+            info!("IPC: SetGarbageCollectionPolicy (dev_mode={}, aggressive={}, interval_secs={})", dev_mode, aggressive, interval_secs);
+            state.dev_mode.store(dev_mode, std::sync::atomic::Ordering::Relaxed);
+            state.aggressive_gc.store(aggressive, std::sync::atomic::Ordering::Relaxed);
+            state.gc_interval_secs.store(interval_secs, std::sync::atomic::Ordering::Relaxed);
+            serde_json::json!({
+                "status": "ok",
+                "dev_mode": dev_mode,
+                "aggressive": aggressive,
+                "interval_secs": interval_secs,
+            }).to_string()
+        }
+
+        ControlCommand::GetGarbageCollectionStats => {
+            let dev = state.dev_mode.load(std::sync::atomic::Ordering::Relaxed);
+            let agg = state.aggressive_gc.load(std::sync::atomic::Ordering::Relaxed);
+            let interval = state.gc_interval_secs.load(std::sync::atomic::Ordering::Relaxed);
+            let count = state.gc_collections_count.load(std::sync::atomic::Ordering::Relaxed);
+            let reclaimed = state.gc_last_reclaimed_kb.load(std::sync::atomic::Ordering::Relaxed);
+            let (cache_items, cache_cap) = if let Ok(rc) = state.resource_cache.lock() {
+                (rc.len(), rc.capacity())
+            } else {
+                (0, 0)
+            };
+            let mem_mb = state.cache.get_memory_used_mb() as f64;
+
+            let report = ipc_protocol::GarbageCollectionReport {
+                dev_mode: dev,
+                aggressive: agg,
+                gc_interval_secs: interval,
+                collections_count: count,
+                last_reclaimed_kb: reclaimed,
+                resource_cache_items: cache_items,
+                resource_cache_capacity: cache_cap,
+                memory_used_mb: mem_mb,
+            };
+            serde_json::to_string(&report).unwrap_or_else(|e| {
+                serde_json::json!({ "status": "error", "message": format!("{e}") }).to_string()
+            })
+        }
     }
 }
+
 
 // ── Unit tests ────────────────────────────────────────────────────────────────
 
@@ -1386,4 +1514,42 @@ mod tests {
         assert_eq!(reg.len(), 1);
         assert_eq!(reg[0], "aether.builtin.perf_monitor");
     }
+
+    #[test]
+    fn test_dispatch_get_status_contains_network_throughput() {
+        let state = make_state();
+        let resp = dispatch_command("\"GetStatus\"", &state);
+        assert!(resp.contains("\"net_recv_bytes_per_sec\""), "resp should have net_recv: {resp}");
+        assert!(resp.contains("\"net_sent_bytes_per_sec\""), "resp should have net_sent: {resp}");
+    }
+
+    #[test]
+    fn test_dispatch_get_diagnostics_contains_uptime() {
+        let state = make_state();
+        let resp = dispatch_command("\"GetDiagnostics\"", &state);
+        assert!(resp.contains("\"uptime_seconds\""), "resp should have uptime_seconds: {resp}");
+        assert!(resp.contains("\"uptime_secs\""), "resp should have uptime_secs: {resp}");
+    }
+
+    #[test]
+    fn test_dispatch_garbage_collection_ipc_commands() {
+        let state = make_state();
+        // 1. TriggerGarbageCollection
+        let trig_cmd = r#"{"TriggerGarbageCollection":{"aggressive":true,"trim_working_set":false}}"#;
+        let trig_resp = dispatch_command(trig_cmd, &state);
+        assert!(trig_resp.contains("collections_count"), "resp: {trig_resp}");
+        assert!(trig_resp.contains("resource_cache_items"), "resp: {trig_resp}");
+
+        // 2. SetGarbageCollectionPolicy
+        let policy_cmd = r#"{"SetGarbageCollectionPolicy":{"dev_mode":true,"aggressive":true,"interval_secs":20}}"#;
+        let policy_resp = dispatch_command(policy_cmd, &state);
+        assert!(policy_resp.contains("\"status\":\"ok\"") || policy_resp.contains("\"status\": \"ok\""), "resp: {policy_resp}");
+        assert!(policy_resp.contains("\"interval_secs\":20") || policy_resp.contains("\"interval_secs\": 20"), "resp: {policy_resp}");
+
+        // 3. GetGarbageCollectionStats
+        let stats_resp = dispatch_command("\"GetGarbageCollectionStats\"", &state);
+        assert!(stats_resp.contains("\"dev_mode\":true") || stats_resp.contains("\"dev_mode\": true"), "resp: {stats_resp}");
+        assert!(stats_resp.contains("gc_interval_secs"), "resp: {stats_resp}");
+    }
 }
+

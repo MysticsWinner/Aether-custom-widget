@@ -12,7 +12,7 @@
 
 Aether is an enterprise-class, hardware-accelerated, zero-trust desktop customization platform engineered specifically for **Windows 11 (`x86_64` & `ARM64`)**. The platform spans **33 Rust workspace crates**, a **WinUI 3 C# management app (`CustomWidget.Dashboard`)**, **Ratatui TUI dashboard (`dashboard_tui`)**, **C++ Win32 WorkerW desktop hook DLLs**, multi-language SDKs (**Rust**, **C# .NET 8**, **TypeScript**, **Lua 5.4**, **WebAssembly**), and a **14-domain documentation system**.
 
-The workspace compiles cleanly with **0 errors and 0 warnings** across all crates and C# projects. The workspace test harness verifies **416 out of 416 automated tests passing** (362 Rust tests + 54 C# GUI tests) with 100% success rate.
+The workspace compiles with 0 compilation errors and 0 warnings across all crates and C# projects. The workspace test harness verifies **440 out of 440 automated tests passing** (381 Rust tests + 59 C# GUI tests) with 100% success rate.
 
 Aether enforces the core architecture principle: **"Collect Once, Publish Everywhere"**. Hardware metrics are sampled once per 10ms cycle by `system_providers` and cached in lock-free `SharedTelemetryCache`. Widgets emit `DrawCommand` batches rendered via DirectComposition and Direct2D onto transparent layered desktop windows without repeated Windows API calls.
 
@@ -44,7 +44,7 @@ Aether-custom-widget\
 │   ├── capability_broker/          # Sandboxing permission broker & WidgetFirewall (7 tests)
 │   ├── cloud_sync/                 # CRDT offline config synchronization (6 tests)
 │   ├── config_manager/             # Transactional atomic config & 5-gen backups (11 tests)
-│   ├── core_engine/                # Async host daemon, IPC server, particles, scheduler (90 tests)
+│   ├── core_engine/                # Async host daemon, IPC server, particles, scheduler (92 tests)
 │   ├── crypto_stocks_widget/       # Real-time financial & crypto ticker widget (2 tests)
 │   ├── dashboard_tui/              # Animated Ratatui terminal dashboard (Interactive binary)
 │   ├── dev_tools/                  # File-watcher hot-reloader, inspector & aether CLI (7 tests)

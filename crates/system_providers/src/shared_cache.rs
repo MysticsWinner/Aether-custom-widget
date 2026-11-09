@@ -57,26 +57,26 @@ impl Default for TelemetrySnapshot {
             timestamp_ms: 0,
             cpu_usage_pct: 0.0,
             memory_used_mb: 0.0,
-            memory_total_mb: 16384.0,
+            memory_total_mb: 0.0,
             gpu_usage_pct: 0.0,
             net_recv_bytes_per_sec: 0,
             net_sent_bytes_per_sec: 0,
-            open_apps_count: 5,
-            browser_tabs_count: 12,
-            audio_playing_apps_count: 1,
+            open_apps_count: 0,
+            browser_tabs_count: 0,
+            audio_playing_apps_count: 0,
             gaming_apps_count: 0,
-            dev_suite_apps_count: 2,
-            other_apps_count: 2,
-            master_volume_pct: 75.0,
+            dev_suite_apps_count: 0,
+            other_apps_count: 0,
+            master_volume_pct: 0.0,
             is_muted: false,
-            battery_charge_pct: 85.0,
-            battery_remaining_secs: 14400,
-            is_charging: true,
-            total_gpu_count: 2,
-            integrated_gpu_count: 1,
-            dedicated_gpu_count: 1,
-            total_display_count: 2,
-            external_display_count: 1,
+            battery_charge_pct: 0.0,
+            battery_remaining_secs: 0,
+            is_charging: false,
+            total_gpu_count: 0,
+            integrated_gpu_count: 0,
+            dedicated_gpu_count: 0,
+            total_display_count: 0,
+            external_display_count: 0,
             virtual_display_count: 0,
             gpu_telemetry: GpuTelemetry::default(),
             cpu_topology: CpuTopologyTelemetry::default(),
@@ -196,7 +196,7 @@ impl SharedTelemetryCache {
             cpu_pct_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
             gpu_pct_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
             memory_used_mb_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
-            memory_total_mb_bits: Arc::new(AtomicU32::new(16384.0f32.to_bits())),
+            memory_total_mb_bits: Arc::new(AtomicU32::new(0.0f32.to_bits())),
             net_recv_bytes_per_sec: Arc::new(AtomicU64::new(0)),
             net_sent_bytes_per_sec: Arc::new(AtomicU64::new(0)),
         }
@@ -420,5 +420,27 @@ mod tests {
         let total_reads: usize = handles.into_iter().map(|h| h.join().unwrap()).sum();
         assert!(total_reads > 1000, "Readers must complete thousands of wait-free reads");
         assert_eq!(cache.sequence(), 100);
+    }
+
+    #[test]
+    fn test_telemetry_snapshot_default_is_zeroed() {
+        let snap = TelemetrySnapshot::default();
+        assert_eq!(snap.timestamp_ms, 0);
+        assert_eq!(snap.cpu_usage_pct, 0.0);
+        assert_eq!(snap.memory_used_mb, 0.0);
+        assert_eq!(snap.memory_total_mb, 0.0);
+        assert_eq!(snap.open_apps_count, 0);
+        assert_eq!(snap.browser_tabs_count, 0);
+        assert_eq!(snap.audio_playing_apps_count, 0);
+        assert_eq!(snap.gaming_apps_count, 0);
+        assert_eq!(snap.dev_suite_apps_count, 0);
+        assert_eq!(snap.other_apps_count, 0);
+        assert_eq!(snap.master_volume_pct, 0.0);
+        assert!(!snap.is_muted);
+        assert_eq!(snap.battery_charge_pct, 0.0);
+        assert_eq!(snap.battery_remaining_secs, 0);
+        assert!(!snap.is_charging);
+        assert_eq!(snap.total_gpu_count, 0);
+        assert_eq!(snap.total_display_count, 0);
     }
 }

@@ -22,3 +22,6 @@ The `lua_runtime` crate hosts Lua 5.4 scripts inside an isolated memory context 
 | `aether.draw_text(text, font, size, x, y, color)` | Emits a text draw command | `void` |
 | `aether.draw_rect(x, y, w, h, color, radius)` | Emits a rounded rectangle draw command | `void` |
 | `aether.log(msg)` | Writes to engine tracing stream | `void` |
+| `trigger_gc([aggressive])` | Triggers immediate Lua VM garbage collection cycles | `number` (current bytes used) |
+| `get_lua_memory_kb()` | Returns current Lua memory usage in KB | `number` |
+

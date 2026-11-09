@@ -64,6 +64,30 @@ cargo run -p dashboard_tui
 dotnet run --project src_gui/CustomWidget.Dashboard/CustomWidget.Dashboard.csproj
 ```
 
+### 3.1 Development Mode & Garbage Collection Flags
+
+Aether supports runtime flags to accelerate developer iteration, reclaim memory rapidly during code reloads, and tune garbage collection:
+
+```powershell
+# Run core_engine in development mode (enables 15s rapid GC cadence & aggressive hot-reload GC):
+cargo run -p core_engine -- --dev
+
+# Run with aggressive garbage collection (cache purges and Windows working set trimming):
+cargo run -p core_engine -- --dev --aggressive-gc
+
+# Custom GC maintenance interval (e.g. every 30 seconds):
+cargo run -p core_engine -- --gc-interval 30
+
+# Disable automatic background GC sweeps:
+cargo run -p core_engine -- --disable-auto-gc
+
+# Launch with environment variables:
+$env:AETHER_DEV_MODE = "1"
+$env:AETHER_AGGRESSIVE_GC = "1"
+cargo run -p core_engine
+```
+
+
 ---
 
 ## 4. Local Installer Wizard Generation

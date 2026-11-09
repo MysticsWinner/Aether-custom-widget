@@ -32,4 +32,4 @@
 - **Component**: `core_engine` — `crates/core_engine/src/main.rs`
 - **Evidence**: The `main()` function runs `RainmeterBenchmark`, `TelemetryBenchmark`, `SdkBenchmark`, `ThemeBenchmark`, `PluginSandboxBenchmark`, `PackageManagerBenchmark`, `CloudSyncBenchmark`, `AiEngineBenchmark`, and `MasterReleaseSuite` sequentially before starting the engine. This adds startup latency and is atypical for a production daemon.
 - **Impact**: Increases cold start time beyond the documented "<45ms" claim. Benchmarks are useful for CI but arguably should not run on every daemon start in production.
-- **Status**: Open — consider moving benchmarks behind a `--benchmark` CLI flag.
+- **Status**: Resolved — gated startup benchmarks behind `--benchmark` CLI flag (`EngineConfig::with_cli_args`) and `AETHER_RUN_BENCHMARKS=1` environment variable.

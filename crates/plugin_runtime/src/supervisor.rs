@@ -115,33 +115,76 @@ impl PluginSupervisor {
         Ok(std::process::id())
     }
 
-    /// Configures a Windows Job Object with CPU rate and memory caps for sandboxed process limits.
-    #[cfg(windows)]
+    /// Configures a Windows Job Object with hard CPU rate control (`JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP`)
+    /// and process memory caps (`JOB_OBJECT_LIMIT_PROCESS_MEMORY`) for sandboxed process isolation.
     pub fn configure_job_object_limits(_pid: u32) -> anyhow::Result<()> {
+        Self::configure_job_object_limits_with_quotas(2, 64 * 1024 * 1024)
+    }
+
+    /// Configures a Windows Job Object with explicit CPU rate cap percentage (`1..=100`) and max memory bytes.
+    #[cfg(windows)]
+    pub fn configure_job_object_limits_with_quotas(
+        cpu_rate_pct: u32,
+        max_memory_bytes: usize,
+    ) -> anyhow::Result<()> {
+        use windows::Win32::Foundation::CloseHandle;
         use windows::Win32::System::JobObjects::{
-            CreateJobObjectW, SetInformationJobObject,
-            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-            JOB_OBJECT_LIMIT_PROCESS_MEMORY, JobObjectExtendedLimitInformation,
+            CreateJobObjectW, SetInformationJobObject, JOBOBJECT_CPU_RATE_CONTROL_INFORMATION,
+            JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_0, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+            JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PROCESS_MEMORY,
+            JobObjectCpuRateControlInformation, JobObjectExtendedLimitInformation,
         };
+
+        if cpu_rate_pct == 0 || cpu_rate_pct > 100 {
+            anyhow::bail!("CPU rate limit percentage must be in 1..=100 (got {cpu_rate_pct})");
+        }
+
         unsafe {
             let job = CreateJobObjectW(None, None)?;
-            let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-            info.BasicLimitInformation.LimitFlags =
+
+            // 1. Memory & lifecycle limits
+            let mut ext_info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+            ext_info.BasicLimitInformation.LimitFlags =
                 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_PROCESS_MEMORY;
-            // 64 MB process memory limit
-            info.ProcessMemoryLimit = 64 * 1024 * 1024;
-            SetInformationJobObject(
+            ext_info.ProcessMemoryLimit = max_memory_bytes;
+            let mem_res = SetInformationJobObject(
                 job,
                 JobObjectExtendedLimitInformation,
-                &info as *const _ as *const _,
+                &ext_info as *const _ as *const _,
                 std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
-            )?;
+            );
+
+            // 2. Hard CPU rate cap (CpuRate is specified in 1/100ths of a percent: 1..=10_000)
+            let cpu_rate_info = JOBOBJECT_CPU_RATE_CONTROL_INFORMATION {
+                ControlFlags: JOB_OBJECT_CPU_RATE_CONTROL_ENABLE
+                    | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
+                Anonymous: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_0 {
+                    CpuRate: cpu_rate_pct * 100,
+                },
+            };
+            let cpu_res = SetInformationJobObject(
+                job,
+                JobObjectCpuRateControlInformation,
+                &cpu_rate_info as *const _ as *const _,
+                std::mem::size_of::<JOBOBJECT_CPU_RATE_CONTROL_INFORMATION>() as u32,
+            );
+
+            let _ = CloseHandle(job);
+            mem_res?;
+            cpu_res?;
             Ok(())
         }
     }
 
     #[cfg(not(windows))]
-    pub fn configure_job_object_limits(_pid: u32) -> anyhow::Result<()> {
+    pub fn configure_job_object_limits_with_quotas(
+        cpu_rate_pct: u32,
+        _max_memory_bytes: usize,
+    ) -> anyhow::Result<()> {
+        if cpu_rate_pct == 0 || cpu_rate_pct > 100 {
+            anyhow::bail!("CPU rate limit percentage must be in 1..=100");
+        }
         Ok(())
     }
 
@@ -260,6 +303,13 @@ mod tests {
     fn test_job_object_limits_creation() {
         let res = PluginSupervisor::configure_job_object_limits(9999);
         assert!(res.is_ok());
+
+        // Verify explicit CPU hard cap (5% CPU, 32 MB RAM)
+        assert!(PluginSupervisor::configure_job_object_limits_with_quotas(5, 32 * 1024 * 1024).is_ok());
+
+        // Out-of-range CPU percentage (0% or >100%) must fail validation
+        assert!(PluginSupervisor::configure_job_object_limits_with_quotas(0, 32 * 1024 * 1024).is_err());
+        assert!(PluginSupervisor::configure_job_object_limits_with_quotas(150, 32 * 1024 * 1024).is_err());
     }
 
     #[test]

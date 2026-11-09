@@ -18,6 +18,7 @@ public partial class SettingsViewModel : ObservableObject
     private const string LogSource = "SettingsViewModel";
     private readonly IAetherIpcService _ipc;
     private readonly ITelemetryPollerService _poller;
+    private readonly IMemoryManagerService? _memoryManager;
     private readonly string _settingsFilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
     [ObservableProperty] private int _selectedThemeIndex; // 0=Dark, 1=Light, 2=System
@@ -25,15 +26,27 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _autoStartEngine = false;
     [ObservableProperty] private bool _cloudSyncEnabled = false;
     [ObservableProperty] private bool _aiFeaturesEnabled = false;
+    [ObservableProperty] private bool _devModeEnabled = false;
+    [ObservableProperty] private bool _aggressiveGcEnabled = false;
     [ObservableProperty] private string _engineVersion = "—";
     [ObservableProperty] private string _statusMessage = "";
 
     public string[] ThemeOptions { get; } = ["Dark", "Light", "System"];
 
-    public SettingsViewModel(IAetherIpcService ipc, ITelemetryPollerService poller)
+    public SettingsViewModel(
+        IAetherIpcService ipc,
+        ITelemetryPollerService poller,
+        IMemoryManagerService? memoryManager = null)
     {
         _ipc = ipc;
         _poller = poller;
+        _memoryManager = memoryManager;
+
+        if (_memoryManager != null)
+        {
+            _devModeEnabled = _memoryManager.IsDevelopmentMode;
+            _aggressiveGcEnabled = _memoryManager.IsAggressiveGcEnabled;
+        }
 
         LoadSettings();
 
@@ -41,7 +54,7 @@ public partial class SettingsViewModel : ObservableObject
             ? "—"
             : $"v{ipc.LastEngineVersion}";
 
-        DashboardLogger.Debug(LogSource, $"SettingsViewModel initialized (theme={SelectedThemeIndex}, pollMs={PollingIntervalMs})");
+        DashboardLogger.Debug(LogSource, $"SettingsViewModel initialized (theme={SelectedThemeIndex}, pollMs={PollingIntervalMs}, devMode={DevModeEnabled})");
     }
 
     private void LoadSettings()
@@ -64,6 +77,16 @@ public partial class SettingsViewModel : ObservableObject
                         CloudSyncEnabled = cloudVal;
                     if (dict.TryGetValue(nameof(AiFeaturesEnabled), out var aiStr) && bool.TryParse(aiStr, out var aiVal))
                         AiFeaturesEnabled = aiVal;
+                    if (dict.TryGetValue(nameof(DevModeEnabled), out var devStr) && bool.TryParse(devStr, out var devVal))
+                    {
+                        DevModeEnabled = devVal;
+                        if (_memoryManager != null) _memoryManager.IsDevelopmentMode = devVal;
+                    }
+                    if (dict.TryGetValue(nameof(AggressiveGcEnabled), out var aggStr) && bool.TryParse(aggStr, out var aggVal))
+                    {
+                        AggressiveGcEnabled = aggVal;
+                        if (_memoryManager != null) _memoryManager.IsAggressiveGcEnabled = aggVal;
+                    }
                 }
             }
         }
@@ -72,6 +95,7 @@ public partial class SettingsViewModel : ObservableObject
             DashboardLogger.Warn(LogSource, $"Failed to load settings from '{_settingsFilePath}': {ex.Message}");
         }
     }
+
 
     private void SaveSettings()
     {
@@ -103,6 +127,8 @@ public partial class SettingsViewModel : ObservableObject
             dict[nameof(AutoStartEngine)] = AutoStartEngine.ToString();
             dict[nameof(CloudSyncEnabled)] = CloudSyncEnabled.ToString();
             dict[nameof(AiFeaturesEnabled)] = AiFeaturesEnabled.ToString();
+            dict[nameof(DevModeEnabled)] = DevModeEnabled.ToString();
+            dict[nameof(AggressiveGcEnabled)] = AggressiveGcEnabled.ToString();
 
             string json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_settingsFilePath, json);
@@ -114,9 +140,25 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    partial void OnDevModeEnabledChanged(bool value)
+    {
+        if (_memoryManager != null) _memoryManager.IsDevelopmentMode = value;
+        SaveSettings();
+        // Inform engine over IPC
+        _ = _ipc.SendRawCommandAsync($"{{\"SetGarbageCollectionPolicy\":{{\"dev_mode\":{value.ToString().ToLowerInvariant()},\"aggressive\":{AggressiveGcEnabled.ToString().ToLowerInvariant()},\"interval_secs\":{(value ? 15 : 300)}}}}}");
+    }
+
+    partial void OnAggressiveGcEnabledChanged(bool value)
+    {
+        if (_memoryManager != null) _memoryManager.IsAggressiveGcEnabled = value;
+        SaveSettings();
+        _ = _ipc.SendRawCommandAsync($"{{\"SetGarbageCollectionPolicy\":{{\"dev_mode\":{DevModeEnabled.ToString().ToLowerInvariant()},\"aggressive\":{value.ToString().ToLowerInvariant()},\"interval_secs\":{(DevModeEnabled ? 15 : 300)}}}}}");
+    }
+
     partial void OnSelectedThemeIndexChanged(int value)
     {
         SaveSettings();
+
         string mode = value switch
         {
             0 => "dark",

@@ -35,6 +35,12 @@ public sealed class EngineStatus
     [JsonPropertyName("engine_version")]
     public string EngineVersion { get; set; } = "";
 
+    [JsonPropertyName("net_recv_bytes_per_sec")]
+    public ulong NetRecvBytesPerSec { get; set; }
+
+    [JsonPropertyName("net_sent_bytes_per_sec")]
+    public ulong NetSentBytesPerSec { get; set; }
+
     // ── Extended fields (from GetSubsystemHealth / GetDiagnostics) ──
 
     [JsonPropertyName("subsystems")]

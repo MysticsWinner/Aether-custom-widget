@@ -130,8 +130,69 @@ Font glyphs, DirectWrite text layouts, and decoded bitmap surfaces are cached in
 
 ---
 
+## 5. Multi-Tier Garbage Collection & Development Mode Memory Management
+
+Aether employs a coordinated multi-tier garbage collection and memory reclamation system spanning the Rust core daemon, the embedded Lua runtime, and the C# WinUI 3 dashboard.
+
+### 5.1 Project-Wide GC Flags & Configuration
+Garbage collection behavior is dynamically configurable via command-line flags, environment variables, settings persistence, and live IPC commands:
+
+| Flag / Property | CLI Switch | Environment Variable | Default (Prod) | Dev Mode | Description |
+|---|---|---|---|---|---|
+| `dev_mode` | `--dev`, `--dev-mode` | `AETHER_DEV_MODE=1` | `false` | `true` | Enables rapid iteration mode: 15s GC interval, aggressive Lua GC on hot-reload, and LOH compaction. |
+| `aggressive_gc` | `--aggressive-gc` | `AETHER_AGGRESSIVE_GC=1` | `false` | `true` | Forces full cache evictions, working set trimming via Win32 `SetProcessWorkingSetSize`, and blocking Gen 2 GC passes. |
+| `gc_interval_secs` | `--gc-interval <secs>` | `AETHER_GC_INTERVAL=<secs>` | `300` (5 min) | `15` (15s) | Cadence of the engine and GUI periodic background garbage collection timers. |
+| `auto_gc_enabled` | `--disable-auto-gc` | N/A | `true` | `true` | Enables or disables the asynchronous background maintenance loop. |
+
+### 5.2 Subsystem Garbage Collection Responsibilities
+
+```mermaid
+graph TD
+    Client[WinUI 3 Dashboard / CLI] -->|TriggerGarbageCollection IPC| CoreDaemon[Core Engine Daemon]
+    CoreDaemon --> ResCache[LruResourceCache::collect_garbage]
+    CoreDaemon --> Arena[FrameArena::collect_garbage]
+    CoreDaemon --> Win32WS[Win32 SetProcessWorkingSetSize]
+    
+    subgraph LuaVM ["Lua Script Runtime"]
+        HotReload[Dev Hot-Reload] -->|Automatic| LuaGC[EmbeddedLuaPluginHost::collect_garbage]
+        Script[Lua Widget Script] -->|trigger_gc / get_lua_memory_kb| LuaGC
+    end
+
+    subgraph CSharpGUI ["C# WinUI 3 Frontend"]
+        MM[MemoryManagerService] -->|Gen 0/1/2 Forced Collect| NetGC[.NET CLR Garbage Collector]
+        MM -->|LargeObjectHeapCompactionMode| LOHCompact[LOH Compaction]
+        MM -->|SetProcessWorkingSetSize| GUIWorkingSet[GUI Working Set Release]
+    end
+```
+
+1. **Rust Core Engine (`core_engine`)**:
+   - `EngineConfig`: Configures `dev_mode`, `aggressive_gc`, `gc_interval_secs`, and `auto_gc_enabled`.
+   - `IpcSharedState`: Provides `perform_garbage_collection(aggressive, trim_working_set)` returning `GarbageCollectionReport`.
+   - Background periodic worker automatically executes memory sweeps at `gc_interval_secs` cadence.
+2. **Widget SDK (`widget_sdk`)**:
+   - `LruResourceCache`: Implements `collect_garbage(aggressive)` and `shrink_to_fit(capacity)`, purging up to 100% of stale cached render assets in aggressive/dev mode and 50% in gentle production mode.
+   - `FrameArena`: Implements `collect_garbage(aggressive)`, shrinking over-allocated frame arenas down to 64 KB baseline during idle/dev phases.
+3. **Lua Runtime (`lua_runtime`)**:
+   - `EmbeddedLuaPluginHost`: Implements `collect_garbage(aggressive)` and memory tracking `used_memory_bytes()`.
+   - Exposes `trigger_gc(aggressive)` and `get_lua_memory_kb()` globally to Lua widget scripts.
+   - Automatically executes aggressive Lua GC on `hot_reload_script()` so old ASTs, closures, and table buffers do not linger during rapid editing.
+4. **IPC Protocol (`ipc_protocol`)**:
+   - `ControlCommand::TriggerGarbageCollection { aggressive, trim_working_set }`
+   - `ControlCommand::SetGarbageCollectionPolicy { dev_mode, aggressive, interval_secs }`
+   - `ControlCommand::GetGarbageCollectionStats` returning `GarbageCollectionReport`.
+5. **C# WinUI 3 Dashboard (`CustomWidget.Dashboard`)**:
+   - `MemoryManagerService`: Manages `IsDevelopmentMode`, `IsAggressiveGcEnabled`, and `GcInterval`.
+   - In Development Mode: Runs on 15s timer, enforces `GCLargeObjectHeapCompactionMode.CompactOnce`, performs full blocking Gen 2 GC passes, and coordinates engine GC over IPC.
+   - `DiagnosticsViewModel`: Offers interactive UI controls (`CollectGarbageCommand`, `ToggleDevModeCommand`, `ToggleAggressiveGcCommand`) and live GC telemetry metrics.
+
+---
+
 ## References
 - [crates/system_providers/src/shared_cache.rs](file:///d:/Code/Aether-custom-widget/crates/system_providers/src/shared_cache.rs)
 - [crates/ipc_protocol/src/ring_buffer.rs](file:///d:/Code/Aether-custom-widget/crates/ipc_protocol/src/ring_buffer.rs)
 - [crates/core_engine/src/rendering/dirty_rect.rs](file:///d:/Code/Aether-custom-widget/crates/core_engine/src/rendering/dirty_rect.rs)
 - [crates/widget_sdk/src/resource_cache.rs](file:///d:/Code/Aether-custom-widget/crates/widget_sdk/src/resource_cache.rs)
+- [crates/widget_sdk/src/arena.rs](file:///d:/Code/Aether-custom-widget/crates/widget_sdk/src/arena.rs)
+- [crates/lua_runtime/src/lib.rs](file:///d:/Code/Aether-custom-widget/crates/lua_runtime/src/lib.rs)
+- [src_gui/CustomWidget.Dashboard/Services/MemoryManagerService.cs](file:///d:/Code/Aether-custom-widget/src_gui/CustomWidget.Dashboard/Services/MemoryManagerService.cs)
+

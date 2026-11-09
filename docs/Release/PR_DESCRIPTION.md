@@ -167,8 +167,49 @@ Every architectural claim has been hardened, validated against the Windows runti
 - Verified 100% binary compliance with zero source files (`.rs`, `.cs`, `Cargo.toml`) in the deployed package.
 
 ### 5. Verified Test Suite Baselines
-- **Rust Backend**: **363 passed, 0 failed, 0 skipped** across 33 workspace crates (`cargo test --workspace`).
-- **Rust Compilation**: **0 errors** across all crates (`cargo check --workspace`).
-- **C# GUI Dashboard**: **54 passed, 0 failed, 0 skipped** (`dotnet test src_gui/CustomWidget.Dashboard.Tests`).
-- **Total Passing Automated Tests**: **417 tests passing with 100% pass rate**.
+- **Rust Backend**: **381 passed, 0 failed, 0 skipped** across 33 workspace crates (`cargo test --workspace`).
+- **Rust Compilation**: **0 errors, 0 warnings** across all crates (`cargo check --workspace`).
+- **C# GUI Dashboard**: **59 passed, 0 failed, 0 skipped** (`dotnet test src_gui/CustomWidget.Dashboard.Tests`).
+- **Total Passing Automated Tests**: **440 tests passing with 100% pass rate** (up from 417 in the previous commit).
+
+---
+
+## 🚀 Phase 16 Feature Completion, Real Hardware Providers & CI/CD Hardening (Latest Commit Delta)
+
+### 1. New Features
+- **Real WASAPI Master Audio Endpoint Volume & Mute (`BUG-001` / `FI-002`)**:
+  - Enabled `Win32_Media_Audio` and `Win32_Media_Audio_Endpoints` in `Cargo.toml`.
+  - Implemented `AudioProvider::query_system_audio()` in `crates/system_providers/src/providers/mod.rs` using Win32 COM `IMMDeviceEnumerator` + `IAudioEndpointVolume::GetMasterVolumeLevelScalar` and `GetMute`.
+- **Real Win32 Process Enumeration & Executable Categorization (`BUG-002` / `TD-003`)**:
+  - Replaced arithmetic heuristics in `ProcessMetricsProvider` with Win32 `EnumProcesses`, `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)`, and `QueryFullProcessImageNameW` (`PROCESS_NAME_WIN32`), classifying live executables into `Browser`, `AudioMedia`, `Gaming`, `DevSuite`, `SystemBackground`, and `OtherApp`.
+- **`aether widget create <name>` CLI Scaffolding (`FI-004`)**:
+  - Added `CliCommand::WidgetCreate`, `AetherCli::parse_args`, and `WidgetBuilder::scaffold_to_disk` in `crates/dev_tools` to generate complete starter widget crates (`Cargo.toml`, `widget.toml`, and `src/lib.rs`) on disk.
+- **Per-Virtual-Desktop Layout Profile Persistence & `WorkerW` Display Change Recovery (`TD-005`)**:
+  - Added `DesktopSurfaceManager::on_display_change` and `clamp_widget_to_bounds` in `crates/core_engine/src/rendering/workerw.rs`.
+  - Added `VirtualDesktopManager::set_widget_layout_for_desktop`, `save_profiles_to_json`, and `load_profiles_from_json` in `crates/core_engine/src/rendering/virtual_desktops.rs`.
+- **Win32 Job Object Hard CPU Rate Limiting & WASM Bytecode Verification (`FI-005`)**:
+  - Added `PluginSupervisor::configure_job_object_limits_with_quotas` enforcing `JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP` and `JOB_OBJECT_LIMIT_PROCESS_MEMORY` in `crates/plugin_runtime/src/supervisor.rs`.
+  - Added `WasmPluginEngine::validate_wasm_bytecode` and `load_bytecode_module` verifying the 8-byte `\0asm\x01\0\0\0` WebAssembly v1 header and linear memory page caps in `crates/plugin_runtime/src/wasm.rs`.
+- **IPC Command Domain Classification (`FI-003` / `AC-002`)**:
+  - Added `CommandDomain` and `ControlCommand::domain(&self)` in `crates/ipc_protocol/src/messages.rs` to categorize all 60+ `ControlCommand` variants across 12 domain sub-categories (`Core`, `Widget`, `Theme`, `Diagnostics`, `Snapshot`, `Security`, `Observability`, `Marketplace`, `Ai`, `Enterprise`, `Profile`, `GarbageCollection`).
+- **Proactive Memory Management & Garbage Collection Controls**:
+  - Added `TriggerGarbageCollection`, `SetGarbageCollectionPolicy`, and `GetGarbageCollectionStats` IPC commands, LRU resource cache & `FrameArena` reclamation, and `IMemoryManagerService` in the C# WinUI 3 Dashboard.
+
+### 2. Bug Fixes & Technical Debt Resolution
+- **Honest Zeroed Telemetry Defaults (`BUG-003`)**: Zeroed all pre-tick default fields in `TelemetrySnapshot::default()`, `MetricPayload::default()`, `AudioSpectrumTelemetry::default()`, and `MediaPlaybackTelemetry::default()`.
+- **NamedPipeClient Framing & Network Speedometer Fixes (`BUG-005`, `BUG-006`)**: Fixed newline-delimited packet framing in `NamedPipeClient.cs` and wired `net_recv_bytes_per_sec` / `net_sent_bytes_per_sec` into `StatusResponse`, `EngineStatus.cs`, and `TelemetrySample.cs`.
+- **Zero Compiler Warnings (`TD-002`, `TD-007`)**: Wired `material`, `budget`, `config`, and `is_high_load` across all 5 showcase widgets (`dock_launcher_widget`, `audio_visualizer_widget`, `hardware_pro_widget`, `crypto_stocks_widget`, `weather_particles_widget`) and utilized all `StatusResponse` fields in `dashboard_tui`.
+
+### 3. Quality of Life (QoL) & Performance Enhancements
+- **Opt-In `--benchmark` Daemon Startup Flag (`AC-003` / `FI-001`)**: Gated the 9 synchronous startup benchmark suites behind `--benchmark` (`EngineConfig::with_cli_args`) and `AETHER_RUN_BENCHMARKS=1`, eliminating startup benchmark latency on normal daemon launches.
+- **GitHub Actions CI/CD Pipeline Expansion (`.github/workflows/ci.yml` & `release.yml`)**:
+  - Added `validate_gui_dashboard` job to `.github/workflows/ci.yml` to build `CustomWidget.Dashboard.csproj` and execute all 59 C# MSTest unit & IPC tests on `windows-latest` alongside the `x86_64` and `aarch64` Rust matrix.
+  - Fixed `release.yml` asset packaging (`AETHER_MASTER_REPORT.md` & `README.md`).
+
+### 4. Test Count Comparison
+| Suite | Previous Commit (`4394134`) | Current Release | Delta |
+|---|---|---|---|
+| **Rust Workspace Tests (`cargo test --workspace`)** | 363 | **381** | **+18** |
+| **C# WinUI 3 Dashboard Tests (`dotnet test`)** | 54 | **59** | **+5** |
+| **Total Automated Tests** | 417 | **440** | **+23 (100% Pass)** |
 

@@ -69,4 +69,29 @@ public class AetherIpcServiceTests
         string res = await client.SendCommandAsync("{\"Ping\":{}}", cts.Token);
         Assert.IsTrue(res.Contains("cancelled"), "Should return cancelled message.");
     }
+
+    [TestMethod]
+    public void Test_EngineStatus_Deserialization_IncludesNetworkMetrics()
+    {
+        string json = "{\"status\":\"ok\",\"cpu_pct\":15.2,\"net_recv_bytes_per_sec\":1048576,\"net_sent_bytes_per_sec\":524288}";
+        var status = System.Text.Json.JsonSerializer.Deserialize<CustomWidget.Dashboard.Models.EngineStatus>(json);
+        Assert.IsNotNull(status);
+        Assert.AreEqual(1048576UL, status.NetRecvBytesPerSec);
+        Assert.AreEqual(524288UL, status.NetSentBytesPerSec);
+    }
+
+    [TestMethod]
+    public void Test_TelemetrySample_FromStatus_PreservesNetworkThroughput()
+    {
+        var status = new CustomWidget.Dashboard.Models.EngineStatus
+        {
+            Status = "ok",
+            CpuPct = 25.0f,
+            NetRecvBytesPerSec = 4096,
+            NetSentBytesPerSec = 8192
+        };
+        var sample = CustomWidget.Dashboard.Models.TelemetrySample.FromStatus(status);
+        Assert.AreEqual(4096UL, sample.NetRecvBytesPerSec);
+        Assert.AreEqual(8192UL, sample.NetSentBytesPerSec);
+    }
 }
