@@ -6,7 +6,9 @@
 
 pub mod benchmark;
 pub mod composer;
+pub mod copilot_plugin;
 pub mod generators;
+pub mod onnx_runtime;
 pub mod performance_advisor;
 pub mod security_gate;
 pub mod voice;
@@ -16,7 +18,9 @@ pub mod workflow;
 
 pub use benchmark::AiEngineBenchmark;
 pub use composer::{AiDesktopComposer, ComposerOutput};
+pub use copilot_plugin::{CopilotActionSpec, CopilotPluginManifest};
 pub use generators::{LayoutGenerator, ThemeGenerator, WidgetGenerator};
+pub use onnx_runtime::{OnnxExecutionProvider, OnnxModelSpec, OnnxSessionEngine, WhisperSttEngine};
 pub use performance_advisor::{AiPerformanceAdvisor, PerformanceRecommendation};
 pub use security_gate::{
     AiCapability, AiSecurityError, AiSecurityGate, UntrustedAiProposal, ValidatedAiAction,

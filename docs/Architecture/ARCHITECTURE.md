@@ -61,7 +61,7 @@ graph TB
 ### 2.1 "Collect Once, Publish Everywhere"
 Hardware metrics are sampled exclusively by `TelemetryService` inside `system_providers` on each 10 ms engine tick cycle. Results are written directly to `SharedTelemetryCache`:
 - **Wait-Free Fast Path**: Individual scalar metrics (`cpu_pct_bits`, `gpu_pct_bits`, `memory_used_mb_bits`, `net_recv_bytes_per_sec`, etc.) are stored in 32-bit and 64-bit atomic registers. Readers executing `get_cpu_pct()` or `get_memory_used_mb()` execute in bounded instructions with zero lock contention.
-- **Tear-Free Double-Buffered Snapshots**: Composite snapshots (`TelemetrySnapshot`) use an atomic monotonic sequence number (seqlock protocol) with double-buffering, eliminating reader locks and deadlocks.
+- **Hybrid Atomic + `RwLock` Composite Snapshots (`AC-001`)**: While the scalar fast path is wait-free via atomic registers and IPC shared-memory uses seqlock buffers (`MultiReaderSnapshotBuffer`), in-process composite snapshots (`SharedTelemetryCache::get_snapshot()`) use a `std::sync::RwLock` read/write lock for rich multi-field telemetry structures (`GpuTelemetry`, `AudioSpectrumTelemetry`, `CpuTopologyTelemetry`).
 - **Sub-Quantum Tick Holding**: When `GetSystemTimes` reports zero total time delta due to sampling faster than the 15.6ms Windows system timer quantum, the CPU collector holds the last valid measurement.
 - **Exponential Moving Average (EMA) Smoothing**: Metric samples undergo EMA smoothing ($\alpha = 0.25$) across consecutive ticks to prevent high-frequency jitter.
 - **Time-Scaled Network Throughput**: Network throughput ($\text{Bytes/sec}$) is scaled by exact elapsed duration ($\Delta t$) between hardware samples.
@@ -133,9 +133,9 @@ stateDiagram-v2
 
 ---
 
-### 3.2 Widget Plugin Lifecycle State Machine (11 States)
+### 3.2 Widget Plugin Lifecycle State Machine (11 Core States + 2 Canonical Aliases = 13 `WidgetState` Variants)
 
-Desktop widgets operate inside sandboxed AppContainer boundaries across 11 distinct operational states:
+Desktop widgets operate inside sandboxed AppContainer boundaries across 11 distinct operational states (plus `Mounted` and `Unmounted` canonical backward-compatible aliases in `WidgetState`, totaling 13 enum variants):
 
 ```mermaid
 stateDiagram-v2

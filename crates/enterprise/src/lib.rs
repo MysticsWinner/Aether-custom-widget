@@ -3,7 +3,7 @@ pub mod auth_gate;
 pub mod policy;
 
 pub use audit_logger::{AuditBlock, AuditLogger};
-pub use auth_gate::{AuthGate, AuthResult};
+pub use auth_gate::{AuthGate, AuthResult, WamSsoToken};
 pub use policy::{EnterprisePolicy, PolicyEngine};
 
 #[cfg(test)]
@@ -64,5 +64,54 @@ mod tests {
     fn test_auth_gate_biometric_validation() {
         let res = AuthGate::prompt_windows_hello("Grant capability network.http").unwrap();
         assert_eq!(res, AuthResult::Success);
+    }
+
+    #[test]
+    fn test_ad_gpo_registry_sync_and_wam_kerberos_sso() {
+        let dir = tempdir().unwrap();
+        let policy_path = dir.path().join("ad_policy.json");
+        let mut engine = PolicyEngine::new(&policy_path);
+        assert_eq!(PolicyEngine::REGISTRY_GPO_PATH, r"HKLM\SOFTWARE\Policies\Aether");
+
+        let mut gpo = std::collections::HashMap::new();
+        gpo.insert("AllowMarketplace".to_string(), "0".to_string());
+        gpo.insert("ForceSafeMode".to_string(), "1".to_string());
+        gpo.insert(
+            "BlockedWidgets".to_string(),
+            "crypto_stocks_widget;untrusted_widget".to_string(),
+        );
+        gpo.insert(
+            "AllowedCapabilities".to_string(),
+            "telemetry.read;fs.read".to_string(),
+        );
+
+        engine.sync_from_ad_gpo_registry_values(&gpo).unwrap();
+        assert!(!engine.policy().allow_marketplace);
+        assert!(engine.policy().force_safe_mode);
+        assert!(!engine.is_widget_allowed("crypto_stocks_widget"));
+        assert!(engine.is_capability_allowed("telemetry.read"));
+        assert!(!engine.is_capability_allowed("network.http"));
+
+        let valid_token = WamSsoToken {
+            account_upn: "alice@corp.aether.internal".to_string(),
+            tenant_id: "tenant-01".to_string(),
+            kerberos_ticket_sha256: "e3b0c44298fc1c149afbf4c8996fb924".to_string(),
+            expires_at_ms: 2_000_000,
+        };
+        assert_eq!(
+            AuthGate::validate_wam_sso_token(&valid_token, 1_500_000, "corp.aether.internal")
+                .unwrap(),
+            AuthResult::Success
+        );
+        assert_eq!(
+            AuthGate::validate_wam_sso_token(&valid_token, 2_500_000, "corp.aether.internal")
+                .unwrap(),
+            AuthResult::SsoTokenExpired
+        );
+        assert_eq!(
+            AuthGate::validate_wam_sso_token(&valid_token, 1_500_000, "other.domain.com")
+                .unwrap(),
+            AuthResult::DomainMismatch
+        );
     }
 }

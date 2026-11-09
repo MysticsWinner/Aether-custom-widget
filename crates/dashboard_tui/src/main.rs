@@ -31,7 +31,7 @@ const POLL_MS: u64 = 500;
 
 // ── IPC response schema ───────────────────────────────────────────────────────
 
-#[derive(Debug, Default, Deserialize, Clone)]
+#[derive(Debug, Default, Deserialize, Clone, PartialEq)]
 struct StatusResponse {
     #[serde(default)]
     status: String,
@@ -46,9 +46,23 @@ struct StatusResponse {
     #[serde(default)]
     memory_free_mb: f32,
     #[serde(default)]
+    net_recv_bytes_per_sec: u64,
+    #[serde(default)]
+    net_sent_bytes_per_sec: u64,
+    #[serde(default)]
     active_widgets: Vec<String>,
     #[serde(default)]
     engine_version: String,
+}
+
+fn format_bandwidth(bytes_per_sec: u64) -> String {
+    if bytes_per_sec >= 1_048_576 {
+        format!("{:.2} MB/s", bytes_per_sec as f64 / 1_048_576.0)
+    } else if bytes_per_sec >= 1_024 {
+        format!("{:.1} KB/s", bytes_per_sec as f64 / 1_024.0)
+    } else {
+        format!("{bytes_per_sec} B/s")
+    }
 }
 
 // ── Application state ─────────────────────────────────────────────────────────
@@ -316,6 +330,25 @@ fn draw_metrics(f: &mut Frame, area: Rect, app: &App) {
         .ratio(ram_pct as f64)
         .label(format!("{:.0}%", ram_pct * 100.0));
     f.render_widget(ram_gauge, rows[4]);
+
+    let rx_str = format_bandwidth(app.metrics.net_recv_bytes_per_sec);
+    let tx_str = format_bandwidth(app.metrics.net_sent_bytes_per_sec);
+    let diag_line = if app.show_diagnostics {
+        let poll_age_ms = app
+            .last_successful_poll
+            .map(|t| t.elapsed().as_millis())
+            .unwrap_or(0);
+        format!(
+            "NET ↓ {} • ↑ {}  |  Diag: PollAge={}ms • Failures={} • Pipe={}",
+            rx_str, tx_str, poll_age_ms, app.consecutive_failures, PIPE_NAME
+        )
+    } else {
+        format!("NET ↓ {} • ↑ {}  (Press 'd' for IPC diagnostics)", rx_str, tx_str)
+    };
+    let net_p = Paragraph::new(diag_line)
+        .style(Style::default().fg(Color::Blue))
+        .alignment(Alignment::Left);
+    f.render_widget(net_p, rows[5]);
 }
 
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
@@ -375,5 +408,45 @@ fn border_color(state: IpcState) -> Color {
         IpcState::Connected  => Color::Rgb(0, 180, 255),
         IpcState::Connecting => Color::Yellow,
         IpcState::Error      => Color::Red,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_response_deserialization_and_bandwidth_formatting() {
+        let json = r#"{
+            "status": "ok",
+            "cpu_pct": 18.5,
+            "gpu_pct": 24.0,
+            "memory_used_mb": 8192.0,
+            "memory_total_mb": 32768.0,
+            "memory_free_mb": 24576.0,
+            "net_recv_bytes_per_sec": 2097152,
+            "net_sent_bytes_per_sec": 4096,
+            "active_widgets": ["perf_monitor_widget"],
+            "engine_version": "0.7.0"
+        }"#;
+        let parsed: StatusResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed.status, "ok");
+        assert_eq!(parsed.net_recv_bytes_per_sec, 2_097_152);
+        assert_eq!(parsed.net_sent_bytes_per_sec, 4_096);
+        assert_eq!(format_bandwidth(parsed.net_recv_bytes_per_sec), "2.00 MB/s");
+        assert_eq!(format_bandwidth(parsed.net_sent_bytes_per_sec), "4.0 KB/s");
+        assert_eq!(format_bandwidth(512), "512 B/s");
+    }
+
+    #[test]
+    fn test_app_diagnostics_toggle_and_state() {
+        let mut app = App::default();
+        assert!(!app.show_diagnostics);
+        assert_eq!(border_color(app.ipc_state), Color::Yellow);
+
+        app.show_diagnostics = !app.show_diagnostics;
+        assert!(app.show_diagnostics);
+        app.ipc_state = IpcState::Connected;
+        assert_eq!(border_color(app.ipc_state), Color::Rgb(0, 180, 255));
     }
 }

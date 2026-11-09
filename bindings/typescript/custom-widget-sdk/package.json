@@ -1,0 +1,10 @@
+{
+  "name": "@aether/custom-widget-sdk",
+  "version": "0.7.0",
+  "description": "TypeScript & WebView2 Widget SDK for the Aether Desktop Customization Platform",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "sideEffects": false
+}
+

@@ -57,9 +57,9 @@
 ---
 
 ## Comprehensive Test Suite Status
-- **Rust Backend Workspace Tests**: **365 / 365 tests passing** (`cargo test --workspace`).
-- **WinUI 3 GUI C# MSTest Suite**: **56 / 56 tests passing** (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`).
-- **Total Combined Test Count**: **421 / 421 tests passing** (100% pass rate).
+- **Rust Backend Workspace Tests**: **403 / 403 tests passing** (`cargo test --workspace`).
+- **WinUI 3 GUI & C# SDK MSTest Suite**: **63 / 63 tests passing** (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`).
+- **Total Combined Test Count**: **466 / 466 tests passing** (100% pass rate).
 
 ---
 
@@ -92,6 +92,6 @@
 
 | Target | Status | Implementation Notes |
 |---|---|---|
-| **Native C++ Hook** | 🔶 **Functional Skeleton**| `workerw_hook.cpp` Progman `0x052C` WorkerW lookup complete; missing FFI linkage to Rust. |
-| **C# SDK Bindings** | ⬜ **Skeletal Stub** | `IWidget.cs`, `IRenderCanvas.cs` interface definitions; missing `.csproj` / NuGet package. |
-| **TypeScript SDK** | ❌ **Missing** | Directory empty. |
+| **Native C++ Hook** | ✅ **Completed** | `workerw_hook.cpp` Progman `0x052C` WorkerW lookup + Rust native `DesktopSurfaceManager` & `DesktopSurface` trait (`FI-006`). |
+| **C# SDK Bindings** | ✅ **Completed** | `CustomWidget.SDK.csproj` (.NET 8), `IWidget.cs`, `IRenderCanvas.cs`, `BatchRenderCanvas`, `InMemorySettingsStore`, and automated MSTest suite. |
+| **TypeScript SDK** | ✅ **Completed** | `@aether/custom-widget-sdk` (`package.json`, `index.d.ts`, `index.js`) with `BatchRenderCanvas` and `InMemorySettingsStore`. |

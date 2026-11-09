@@ -11,7 +11,7 @@
 - **Evidence**: Documentation (ARCHITECTURE.md, ADR-013) describes "double-buffered seqlock snapshots" and claims `SharedTelemetryCache` is fully lock-free. In reality, individual scalar reads (`get_cpu_pct`, `get_gpu_pct`, etc.) are genuinely wait-free via `AtomicU32`/`AtomicU64` registers. However, `get_snapshot()` acquires a `std::sync::RwLock` read lock, and `update_snapshot()` acquires a write lock. Extended reads (e.g., `get_gpu_telemetry()`, `get_audio_spectrum()`) also acquire the `RwLock`.
 - **Actual Behavior**: The scalar fast path is truly wait-free. The full snapshot path uses a standard `RwLock`. This is a perfectly reasonable hybrid design, but the documentation overstates the lock-free claim.
 - **Impact**: No immediate correctness issue, but misleading architectural documentation could lead to incorrect assumptions by contributors about concurrency properties.
-- **Status**: Open — documentation should clarify the hybrid model.
+- **Status**: Resolved — updated `ARCHITECTURE.md` Section 2.1 to explicitly document the hybrid wait-free atomic scalar fast path + `RwLock` composite snapshot architecture.
 
 ---
 
@@ -22,7 +22,7 @@
 - **Evidence**: The `ControlCommand` enum contains 60+ variants spanning telemetry, widget management, diagnostics, marketplace, AI, enterprise, snapshots, observability, and more. This creates a very large pattern match in the IPC server dispatch handler (`ipc_server.rs` is 1336 lines).
 - **Impact**: Adding new IPC commands requires modifying a large file. No immediate correctness risk, but may become unwieldy as the platform grows.
 - **Proposed Improvement**: Consider grouping into sub-enums by domain (e.g., `WidgetCommand`, `DiagnosticsCommand`, `MarketplaceCommand`) while keeping the top-level enum as a routing wrapper.
-- **Status**: Open — low priority, deferred.
+- **Status**: Resolved — implemented `DomainCommand` and 12 domain sub-enums (`CoreCommand`, `WidgetCommand`, `ThemeCommand`, `DiagnosticsCommand`, `SnapshotCommand`, `SecurityCommand`, `ObservabilityCommand`, `MarketplaceCommand`, `AiCommand`, `EnterpriseCommand`, `ProfileCommand`, `GarbageCollectionCommand`) with lossless `From` conversions to/from `ControlCommand`.
 
 ---
 

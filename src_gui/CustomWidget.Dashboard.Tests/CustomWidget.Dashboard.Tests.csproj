@@ -20,5 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CustomWidget.Dashboard\CustomWidget.Dashboard.csproj" />
+    <ProjectReference Include="..\..\bindings\csharp\CustomWidget.SDK\CustomWidget.SDK.csproj" />
   </ItemGroup>
 </Project>

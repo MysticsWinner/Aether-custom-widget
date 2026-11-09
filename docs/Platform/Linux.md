@@ -18,10 +18,10 @@
 ---
 
 ## Future Work
-- Implement `linux_providers` crate using `procfs` and `sysfs` hardware samplers.
+- Expand `LinuxProcfsProvider` (`crates/system_providers/src/providers/cross_platform.rs`) and `LinuxWaylandLayerSurface` (`crates/core_engine/src/rendering/surface_trait.rs`) with live `wayland-client` socket bindings.
 
 ## Known Issues
-- Not currently implemented in v0.7.0.
+- Core trait (`DesktopSurface`) and `/proc/stat` + `/proc/meminfo` parsers (`LinuxProcfsProvider`) are implemented and unit-tested in v0.7.0.
 
 ## References
 - [Detailed_Project_Report.md](../Project/Detailed_Project_Report.md)

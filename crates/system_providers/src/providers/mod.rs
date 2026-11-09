@@ -3,14 +3,16 @@ use std::fmt::Debug;
 use std::time::Instant;
 
 pub mod cpu_topology;
+pub mod cross_platform;
 pub mod crypto_financial;
 pub mod gpu_d3dkmt;
 pub mod network_diagnostics;
 pub mod wasapi_audio;
 
 pub use cpu_topology::{CpuTopologyProvider, CpuTopologyTelemetry};
+pub use cross_platform::{LinuxProcfsProvider, MacOsHostStatsProvider};
 pub use crypto_financial::{CryptoAssetTelemetry, CryptoFinancialProvider};
-pub use gpu_d3dkmt::{DedicatedGpuProvider, GpuTelemetry};
+pub use gpu_d3dkmt::{DedicatedGpuProvider, GpuTelemetry, GpuVendor};
 pub use network_diagnostics::{NetworkDiagnosticsProvider, NetworkDiagnosticsTelemetry};
 pub use wasapi_audio::{AudioSpectrumTelemetry, MediaPlaybackTelemetry, WasapiAudioProvider};
 

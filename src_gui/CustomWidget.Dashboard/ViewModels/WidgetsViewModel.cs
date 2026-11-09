@@ -23,6 +23,8 @@ public partial class WidgetsViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private string _searchQuery = "";
+    [ObservableProperty] private int _snapGridSize = 16;
+    [ObservableProperty] private bool _snapToGridEnabled = true;
 
     // B7 Fix: Search debounce CTS — cancels pending discovery on new keystrokes
     private CancellationTokenSource? _searchDebounceCts;
@@ -32,6 +34,8 @@ public partial class WidgetsViewModel : ObservableObject
 
     public ObservableCollection<WidgetInfo> Widgets { get; } = new();
     public ObservableCollection<WidgetInfo> DiscoveredWidgets { get; } = new();
+    public ObservableCollection<CanvasWidgetBox> CanvasBoxes { get; } = new();
+    public ObservableCollection<string> ActiveSnapGuides { get; } = new();
 
     public WidgetsViewModel(IAetherIpcService ipc, ITelemetryPollerService poller, IWidgetSettingsService settingsService)
     {
@@ -147,19 +151,33 @@ public partial class WidgetsViewModel : ObservableObject
 
         // Full rebuild of running widgets list
         Widgets.Clear();
+        CanvasBoxes.Clear();
+        int idx = 0;
         foreach (var widgetId in status.ActiveWidgets)
         {
             var opts = _settingsService.Load(widgetId);
+            string displayName = FormatWidgetName(widgetId);
             Widgets.Add(new WidgetInfo
             {
                 Id = widgetId,
-                Name = FormatWidgetName(widgetId),
+                Name = displayName,
                 IsLoaded = true,
                 Opacity = opts.Opacity,
                 Scale = opts.Scale,
                 IsLocked = opts.Locked,
                 Enabled = opts.Enabled,
             });
+            CanvasBoxes.Add(new CanvasWidgetBox
+            {
+                WidgetId = widgetId,
+                DisplayName = displayName,
+                X = 96 + (idx % 3) * 360,
+                Y = 96 + (idx / 3) * 240,
+                Width = 320,
+                Height = 200,
+                IsLocked = opts.Locked,
+            });
+            idx++;
         }
 
         // Cross-reference running status with discovered widgets list
@@ -417,6 +435,59 @@ public partial class WidgetsViewModel : ObservableObject
             StatusMessage = $"✗ Error toggling overlay: {ex.Message}";
             DashboardLogger.Error(LogSource, "ToggleDesktopWidget error", ex);
         }
+    }
+
+    /// <summary>
+    /// Moves a widget on the 2D Visual Canvas Editor, applying magnetic grid snapping and alignment guide detection.
+    /// </summary>
+    [RelayCommand]
+    public async Task MoveCanvasWidgetAsync((string widgetId, int x, int y) args)
+    {
+        var box = CanvasBoxes.FirstOrDefault(b => b.WidgetId == args.widgetId);
+        if (box is not null && box.IsLocked)
+        {
+            StatusMessage = $"✗ Widget '{args.widgetId}' is locked on canvas.";
+            return;
+        }
+
+        var (finalX, finalY) = SnapToGridEnabled
+            ? CanvasWidgetBox.SnapToGrid(args.x, args.y, SnapGridSize)
+            : (Math.Max(0, args.x), Math.Max(0, args.y));
+
+        if (box is not null)
+        {
+            box.X = finalX;
+            box.Y = finalY;
+            ActiveSnapGuides.Clear();
+            foreach (var guide in box.ComputeSnapGuides(CanvasBoxes))
+            {
+                ActiveSnapGuides.Add(guide);
+            }
+        }
+
+        await _ipc.SetWidgetPositionAsync(args.widgetId, finalX, finalY);
+        StatusMessage = $"✓ Canvas moved '{args.widgetId}' to ({finalX}, {finalY}).";
+    }
+
+    /// <summary>
+    /// Resizes a widget on the 2D Visual Canvas Editor using an 8-point resize handle.
+    /// </summary>
+    [RelayCommand]
+    public Task ResizeCanvasWidgetAsync((string widgetId, ResizeHandle handle, int deltaX, int deltaY) args)
+    {
+        var box = CanvasBoxes.FirstOrDefault(b => b.WidgetId == args.widgetId);
+        if (box is null) return Task.CompletedTask;
+
+        box.ApplyResize(args.handle, args.deltaX, args.deltaY);
+        if (SnapToGridEnabled)
+        {
+            var (sw, sh) = CanvasWidgetBox.SnapToGrid(box.Width, box.Height, SnapGridSize);
+            box.Width = Math.Max(120, sw);
+            box.Height = Math.Max(80, sh);
+        }
+
+        StatusMessage = $"✓ Canvas resized '{args.widgetId}' to {box.Width}×{box.Height} px.";
+        return Task.CompletedTask;
     }
 
     private static string FormatWidgetName(string id)

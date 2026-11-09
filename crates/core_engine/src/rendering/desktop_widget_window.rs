@@ -83,6 +83,25 @@ impl DesktopWidgetWindow {
         self.position_store.toggle_locked(widget_id)
     }
 
+    /// Rasterizes a `widget_sdk::DrawCommand` batch through the hardware `Dx11SwapChainPresenter`
+    /// pipeline into a 32-bit Premultiplied ARGB surface buffer ready for `UpdateLayeredWindow` / DirectComposition.
+    pub fn render_draw_command_batch(
+        commands: &[widget_sdk::DrawCommand],
+        width: usize,
+        height: usize,
+    ) -> Vec<u32> {
+        use crate::rendering::dcomp_tree::{
+            Dx11SwapChainPresenter, SwapchainColorFormat, VrrConfig,
+        };
+        let mut presenter = Dx11SwapChainPresenter::new(
+            SwapchainColorFormat::B8G8R8A8Unorm,
+            VrrConfig::default(),
+        );
+        let mut surface = vec![0u32; width * height];
+        let _ = presenter.execute_draw_commands(commands, &mut surface, width, height);
+        surface
+    }
+
     /// Spawns the transparent desktop overlay window bound to shared telemetry cache and live widget registry.
     pub fn spawn_overlay(&self, cache: SharedTelemetryCache, registry: Arc<std::sync::Mutex<Vec<String>>>) {
         let visible_flag = self.visible.clone();

@@ -33,7 +33,7 @@
 | **Phase 23** | Dev Tools: Hot Reload, Inspector & CLI | ✅ **Completed (v0.7.0-rc.1)** | `dev_tools` crate — `DevHotReloader` directory watcher, `WidgetInspector` DOM profiler, `aether_cli` command runner, `LayoutGridOverlay` (**4/4 tests**). |
 | **Phase 24** | AI Expansion & Marketplace++ | ✅ **Completed (v0.7.0-rc.2)** | `WidgetSynthesizer` (NL prompt → manifest+Lua), `WallpaperThemeGenerator` (wallpaper palette extractor), `AiPerformanceAdvisor`, `MarketplaceCatalog` (**5/5 tests**). |
 | **Phase 25** | Enterprise Governance & Policy Management | ✅ **Completed (v0.7.0-rc.3)** | `enterprise` crate — `PolicyEngine` (Group Policy JSON solver), `AuditLogger` (SHA-256 block hash chain), `AuthGate` (Windows Hello PIN prompt) (**4/4 tests**). |
-| **Phase 26** | Long-Term Wow Features | 📋 **Planned (v0.7.0)** | Multi-monitor profiles, per-virtual-desktop layouts, HDR/VRR rendering, touchscreen/pen input, Rust + WASM widget runtimes, workspace profiles, benchmark vs Rainmeter, accessibility. Est. +20 tests. |
+| **Phase 26** | Long-Term Wow Features | ✅ **Completed (v0.7.0)** | Multi-monitor & per-virtual-desktop layouts, HDR10/VRR (`Dx11SwapChainPresenter`, `HdrMetadata`, `VrrConfig`), touch/pen input (`TouchEvent`, `PenEvent`), native Rust `cdylib` ABI (`NativePluginHost`), WASM fuel sandbox, CRDT live collaborative sessions (`CollaborativeSession`), UIA accessibility (`AccessibilityTree`), cross-platform `DesktopSurface` trait (**455/455 tests**). |
 
 ---
 

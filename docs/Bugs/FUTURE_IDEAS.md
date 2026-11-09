@@ -16,10 +16,11 @@
 - **Rationale**: Replace the hardcoded 75% volume stub with real COM-based WASAPI volume and mute queries.
 - **Status**: Implemented in `AudioProvider::query_system_audio()`.
 
-## FI-003: Modularise `ControlCommand` IPC enum into domain sub-enums
+## FI-003: Modularise `ControlCommand` IPC enum into domain sub-enums (Implemented)
 
 - **Component**: `ipc_protocol`
 - **Rationale**: The 60+ variant flat enum would benefit from grouping into `WidgetCommand`, `DiagnosticsCommand`, `MarketplaceCommand`, etc.
+- **Status**: Implemented via `DomainCommand` and 12 domain sub-enums in `crates/ipc_protocol/src/messages.rs`.
 
 ## FI-004: Add `aether widget create <name>` scaffolding CLI command (Implemented)
 
@@ -31,9 +32,10 @@
 
 - **Component**: `plugin_runtime`
 - **Rationale**: WebAssembly sandboxing would provide cross-platform plugin isolation without Windows-specific AppContainer dependencies.
-- **Status**: Binary WebAssembly v1 header verification (`\0asm\x01\0\0\0`), fuel limits, and linear memory page caps implemented in `WasmPluginEngine::load_bytecode_module`.
+- **Status**: Binary WebAssembly v1 header verification (`\0asm\x01\0\0\0`), fuel limits (`invoke_with_fuel`), and linear memory page caps implemented in `WasmPluginEngine`.
 
-## FI-006: Cross-platform `DesktopSurface` trait for Linux Wayland / macOS Quartz
+## FI-006: Cross-platform `DesktopSurface` trait for Linux Wayland / macOS Quartz (Implemented)
 
-- **Component**: New crate
+- **Component**: `core_engine` (`crates/core_engine/src/rendering/surface_trait.rs`)
 - **Rationale**: Abstract the Windows-specific `WorkerW` desktop hooking behind a trait to enable future Linux and macOS backends.
+- **Status**: Implemented `DesktopSurface` trait with `Win32WorkerWSurface`, `LinuxWaylandLayerSurface`, and `MacOsQuartzDesktopSurface` alongside `LinuxProcfsProvider` and `MacOsHostStatsProvider` in `system_providers`.

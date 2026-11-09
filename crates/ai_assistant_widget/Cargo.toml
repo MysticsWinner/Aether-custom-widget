@@ -1,7 +1,7 @@
 [package]
 name = "ai_assistant_widget"
-version = "0.6.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Built-in AI Workstation Assistant & Desktop Profile Widget Plugin for Aether Platform"
 
 [dependencies]

@@ -170,6 +170,48 @@
                         </StackPanel>
                     </StackPanel>
                 </PivotItem>
+
+                <!-- Tab 3: 2D Visual Canvas Layout Editor (Phase 23.3) -->
+                <PivotItem Header="2D Visual Canvas Editor">
+                    <StackPanel Spacing="16" Margin="0,16,0,0">
+                        <Border Style="{StaticResource AetherMetricCard}" Padding="16,12,16,12">
+                            <StackPanel Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
+                                <ToggleSwitch x:Name="SnapGridToggle" Header="Magnetic Grid Snap (16px)" IsOn="True" Toggled="SnapGridToggle_Toggled" />
+                                <TextBlock Text="Drag or nudge widgets on the 1920×1080 virtual desktop canvas with 8-point resize handles." VerticalAlignment="Center" Foreground="{StaticResource AetherTextSecondaryBrush}" FontSize="13" />
+                            </StackPanel>
+                        </Border>
+
+                        <ListView x:Name="CanvasBoxList" SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource AetherMetricCard}" Margin="0,0,0,8" Padding="16,12,16,12">
+                                        <Grid ColumnSpacing="16">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource AetherTextPrimaryBrush}" />
+                                                <TextBlock Text="{Binding CoordinatesSummary}" FontSize="12" FontFamily="Consolas" Foreground="{StaticResource AetherAccentBrush}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Button Content="⬅ -16px" Tag="{Binding WidgetId}" Click="CanvasNudgeLeft_Click" Padding="8,4,8,4" />
+                                                <Button Content="➡ +16px" Tag="{Binding WidgetId}" Click="CanvasNudgeRight_Click" Padding="8,4,8,4" />
+                                                <Button Content="⬆ -16px" Tag="{Binding WidgetId}" Click="CanvasNudgeUp_Click" Padding="8,4,8,4" />
+                                                <Button Content="⬇ +16px" Tag="{Binding WidgetId}" Click="CanvasNudgeDown_Click" Padding="8,4,8,4" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Button Content="↘ Expand +32px" Tag="{Binding WidgetId}" Click="CanvasExpand_Click" Padding="8,4,8,4" />
+                                                <Button Content="↖ Shrink -32px" Tag="{Binding WidgetId}" Click="CanvasShrink_Click" Padding="8,4,8,4" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </PivotItem>
             </Pivot>
 
         </StackPanel>

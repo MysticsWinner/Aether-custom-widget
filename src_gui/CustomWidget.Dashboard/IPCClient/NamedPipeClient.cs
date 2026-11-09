@@ -38,89 +38,94 @@ public sealed class NamedPipeClient
         if (string.IsNullOrWhiteSpace(commandJson))
             return BuildErrorJson("Command string is empty.");
 
-        int attempt = 0;
-        while (true)
+        // TD-004 Fix: Offload kernel NamedPipeClientStream probing to the thread-pool so
+        // callers invoking from the WinUI 3 UI synchronization context never experience startup stalls.
+        return await Task.Run(async () =>
         {
-            try
+            int attempt = 0;
+            while (true)
             {
-                using var pipeStream = new NamedPipeClientStream(
-                    serverName: ".",
-                    pipeName: PipeName,
-                    direction: PipeDirection.InOut,
-                    options: PipeOptions.Asynchronous);
-
-                using var timeoutCts = new CancellationTokenSource(timeoutMs);
-                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-
-                DashboardLogger.Trace(LogSource, $"Connecting to pipe '{PipeName}' (attempt {attempt + 1}/{maxRetries + 1}, timeout={timeoutMs}ms)");
-                await pipeStream.ConnectAsync(timeoutMs, linkedCts.Token).ConfigureAwait(false);
-                DashboardLogger.Trace(LogSource, "Pipe connected");
-
-                // Write command
-                byte[] commandBytes = Encoding.UTF8.GetBytes(commandJson);
-                await pipeStream.WriteAsync(commandBytes, linkedCts.Token).ConfigureAwait(false);
-                await pipeStream.FlushAsync(linkedCts.Token).ConfigureAwait(false);
-
-                // Read response — loop until pipe closes or no more data (supporting arbitrarily large chunked JSON payloads)
-                using var ms = new MemoryStream();
-                byte[] buffer = new byte[ChunkBufferSize];
-
-                int bytesRead;
-                while ((bytesRead = await pipeStream.ReadAsync(buffer, linkedCts.Token).ConfigureAwait(false)) > 0)
-                {
-                    ms.Write(buffer, 0, bytesRead);
-                    // The IPC protocol uses newline-delimited JSON or single-packet responses.
-                    // Break as soon as a terminating newline is read or buffer is not completely filled.
-                    if (buffer[bytesRead - 1] == (byte)'\n' || bytesRead < ChunkBufferSize)
-                    {
-                        break;
-                    }
-                }
-
-                string response = Encoding.UTF8.GetString(ms.ToArray()).Trim();
-                DashboardLogger.Trace(LogSource, $"IPC exchange complete: sent {commandBytes.Length} bytes, received {ms.Length} bytes");
-                return response;
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                DashboardLogger.Info(LogSource, "IPC request cancelled by user cancellation token.");
-                return BuildErrorJson("IPC request was cancelled by user.");
-            }
-            catch (OperationCanceledException)
-            {
-                DashboardLogger.Debug(LogSource, "Pipe connection timed out");
-                return BuildErrorJson("Connection timed out — is the core engine running?");
-            }
-            catch (TimeoutException)
-            {
-                DashboardLogger.Debug(LogSource, "Pipe connection timed out (TimeoutException)");
-                return BuildErrorJson("Connection timed out — is the core engine running?");
-            }
-            catch (Exception retryEx) when (attempt < maxRetries && !ct.IsCancellationRequested && retryEx is not TimeoutException and not OperationCanceledException)
-            {
-                attempt++;
-                int delayMs = 100 * attempt;
-                DashboardLogger.Debug(LogSource, $"Pipe connection attempt {attempt} failed: {retryEx.Message}. Retrying in {delayMs}ms...");
                 try
                 {
-                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                    using var pipeStream = new NamedPipeClientStream(
+                        serverName: ".",
+                        pipeName: PipeName,
+                        direction: PipeDirection.InOut,
+                        options: PipeOptions.Asynchronous);
+
+                    using var timeoutCts = new CancellationTokenSource(timeoutMs);
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+                    DashboardLogger.Trace(LogSource, $"Connecting to pipe '{PipeName}' (attempt {attempt + 1}/{maxRetries + 1}, timeout={timeoutMs}ms)");
+                    await pipeStream.ConnectAsync(timeoutMs, linkedCts.Token).ConfigureAwait(false);
+                    DashboardLogger.Trace(LogSource, "Pipe connected");
+
+                    // Write command
+                    byte[] commandBytes = Encoding.UTF8.GetBytes(commandJson);
+                    await pipeStream.WriteAsync(commandBytes, linkedCts.Token).ConfigureAwait(false);
+                    await pipeStream.FlushAsync(linkedCts.Token).ConfigureAwait(false);
+
+                    // Read response — loop until pipe closes or no more data (supporting arbitrarily large chunked JSON payloads)
+                    using var ms = new MemoryStream();
+                    byte[] buffer = new byte[ChunkBufferSize];
+
+                    int bytesRead;
+                    while ((bytesRead = await pipeStream.ReadAsync(buffer, linkedCts.Token).ConfigureAwait(false)) > 0)
+                    {
+                        ms.Write(buffer, 0, bytesRead);
+                        // The IPC protocol uses newline-delimited JSON or single-packet responses.
+                        // Break as soon as a terminating newline is read or buffer is not completely filled.
+                        if (buffer[bytesRead - 1] == (byte)'\n' || bytesRead < ChunkBufferSize)
+                        {
+                            break;
+                        }
+                    }
+
+                    string response = Encoding.UTF8.GetString(ms.ToArray()).Trim();
+                    DashboardLogger.Trace(LogSource, $"IPC exchange complete: sent {commandBytes.Length} bytes, received {ms.Length} bytes");
+                    return response;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    DashboardLogger.Info(LogSource, "IPC request cancelled by user cancellation token.");
+                    return BuildErrorJson("IPC request was cancelled by user.");
                 }
                 catch (OperationCanceledException)
                 {
-                    return BuildErrorJson("IPC request was cancelled by user.");
+                    DashboardLogger.Debug(LogSource, "Pipe connection timed out");
+                    return BuildErrorJson("Connection timed out — is the core engine running?");
+                }
+                catch (TimeoutException)
+                {
+                    DashboardLogger.Debug(LogSource, "Pipe connection timed out (TimeoutException)");
+                    return BuildErrorJson("Connection timed out — is the core engine running?");
+                }
+                catch (Exception retryEx) when (attempt < maxRetries && !ct.IsCancellationRequested && retryEx is not TimeoutException and not OperationCanceledException)
+                {
+                    attempt++;
+                    int delayMs = 100 * attempt;
+                    DashboardLogger.Debug(LogSource, $"Pipe connection attempt {attempt} failed: {retryEx.Message}. Retrying in {delayMs}ms...");
+                    try
+                    {
+                        await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return BuildErrorJson("IPC request was cancelled by user.");
+                    }
+                }
+                catch (IOException ex) when (ex.Message.Contains("pipe", StringComparison.OrdinalIgnoreCase))
+                {
+                    DashboardLogger.Warn(LogSource, $"Pipe I/O error: {ex.Message}");
+                    return BuildErrorJson($"Pipe I/O error: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    DashboardLogger.Error(LogSource, "Unexpected IPC error", ex);
+                    return BuildErrorJson(ex.Message);
                 }
             }
-            catch (IOException ex) when (ex.Message.Contains("pipe", StringComparison.OrdinalIgnoreCase))
-            {
-                DashboardLogger.Warn(LogSource, $"Pipe I/O error: {ex.Message}");
-                return BuildErrorJson($"Pipe I/O error: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                DashboardLogger.Error(LogSource, "Unexpected IPC error", ex);
-                return BuildErrorJson(ex.Message);
-            }
-        }
+        }, CancellationToken.None).ConfigureAwait(false);
     }
 
     public static string BuildErrorJson(string message)

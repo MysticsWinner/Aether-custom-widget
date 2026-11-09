@@ -77,6 +77,9 @@
                                         <Border CornerRadius="4" Padding="6,2,6,2" Background="{StaticResource AetherSuccessBrush}" Opacity="0.15">
                                             <TextBlock Text="✓ Signed" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AetherSuccessBrush}" />
                                         </Border>
+                                        <Border CornerRadius="4" Padding="6,2,6,2" Background="{StaticResource AetherSuccessBrush}" Opacity="0.15">
+                                            <TextBlock Text="{Binding CrashFreeText}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AetherSuccessBrush}" />
+                                        </Border>
                                     </StackPanel>
 
                                     <TextBlock Text="{Binding Description}" FontSize="13" Foreground="{StaticResource AetherTextSecondaryBrush}" TextWrapping="Wrap" />

@@ -7,16 +7,16 @@
 ## TD-001: GDI fallback in `desktop_widget_window.rs` needs DX11 SwapChain migration
 
 - **Severity**: Medium
-- **Component**: `core_engine` — `crates/core_engine/src/rendering/desktop_widget_window.rs`
+- **Component**: `core_engine` — `crates/core_engine/src/rendering/desktop_widget_window.rs`, `crates/core_engine/src/rendering/dcomp_tree.rs`
 - **Impact**: The GDI `UpdateLayeredWindow` fallback path uses software blitting instead of DirectComposition hardware compositing, resulting in higher CPU usage and no vsync.
-- **Status**: Open (existing, carried forward)
+- **Status**: Resolved — implemented `Dx11SwapChainPresenter` with DXGI adapter probing, `HdrMetadata` (`BT.2020 PQ`), and `VrrConfig` (`DXGI_PRESENT_ALLOW_TEARING` & LFC frame multiplication) in `dcomp_tree.rs`.
 
 ## TD-002: `dashboard_tui` has dead code warnings on unused status response fields
 
 - **Severity**: Low
 - **Component**: `dashboard_tui`
 - **Impact**: Compiler warnings in the TUI crate.
-- **Status**: Open (existing, carried forward)
+- **Status**: Resolved — wired `net_recv_bytes_per_sec`, `net_sent_bytes_per_sec`, and interactive `'d'` diagnostics bar (`show_diagnostics`, `last_successful_poll`, `consecutive_failures`) into `dashboard_tui/src/main.rs` with unit tests.
 
 ## TD-003: Hardcoded mock/fallback values in GPU, Audio, and Process providers
 
@@ -30,7 +30,7 @@
 - **Severity**: Medium
 - **Component**: `CustomWidget.Dashboard` — IPC client initialization
 - **Impact**: Brief UI freeze during initial pipe connection.
-- **Status**: Open (existing, carried forward)
+- **Status**: Resolved — offloaded `NamedPipeClient.SendCommandAsync` kernel pipe probing and `MainWindow.AutoStartEngineIfNeeded` settings I/O (`File.ReadAllTextAsync`) to background thread-pool tasks.
 
 ## TD-005: DirectComposition WorkerW unhook on display resolution change
 
@@ -44,7 +44,7 @@
 - **Severity**: Low
 - **Component**: `widget_sdk` — `crates/widget_sdk/src/lifecycle.rs`, `docs/Architecture/ARCHITECTURE.md`
 - **Impact**: Documentation claims 11 widget states but the actual `WidgetState` enum has 13 variants (includes `Mounted` and `Unmounted` as backward-compatibility aliases for `Active` and after-unmount). This creates confusion for contributors.
-- **Status**: Open — documented in this overhaul.
+- **Status**: Resolved — updated `ARCHITECTURE.md`, `CSHARP_API.md`, and `TYPESCRIPT_API.md` to document all 13 `WidgetState` variants across Rust, C#, and TypeScript SDKs.
 
 ## TD-007: Multiple widget crates have unused field warnings
 

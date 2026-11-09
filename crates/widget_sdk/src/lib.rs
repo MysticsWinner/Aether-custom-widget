@@ -3,6 +3,7 @@
 //! Standardized, multi-language API surface for 3rd-party widget development
 //! providing 6 core pillars: Lifecycle, Rendering, Settings, Events, Animations, and Resources.
 
+pub mod accessibility;
 pub mod animations;
 pub mod arena;
 pub mod benchmark;
@@ -10,6 +11,7 @@ pub mod config;
 pub mod contrast;
 pub mod display_target;
 pub mod events;
+pub mod ffi_abi;
 pub mod frame_scheduler;
 pub mod lifecycle;
 pub mod perf_budget;
@@ -22,6 +24,7 @@ pub mod resources;
 pub mod settings;
 pub mod svg_parser;
 
+pub use accessibility::{AccessibilityTree, AccessibleNode, AccessibleRole, LivePoliteness};
 pub use animations::{EasingCurve, SpringAnimation, SpringParams};
 pub use arena::FrameArena;
 pub use benchmark::SdkBenchmark;
@@ -29,8 +32,12 @@ pub use config::{ColourOverrides, DisplayOptions, SwapMode, WidgetConfig};
 pub use contrast::ContrastGuard;
 pub use display_target::{DesktopLayer, DisplayTarget};
 pub use events::{
-    DragEvent, EventSubscriber, HitTarget, HitTestTree, InputEvent, MouseButton, PointerEvent,
-    ScrollEvent, WidgetEvent,
+    DragEvent, EventSubscriber, HitTarget, HitTestTree, InputEvent, MouseButton, PenBarrelButton,
+    PenEvent, PointerEvent, ScrollEvent, TouchEvent, TouchPhase, WidgetEvent,
+};
+pub use ffi_abi::{
+    AetherPluginMetadata, AetherWidgetInitFn, AetherWidgetVTable, FfiTickContext, NativePluginHost,
+    AETHER_CDYLIB_ABI_VERSION,
 };
 pub use frame_scheduler::{FrameScheduler, WidgetFrameBudget};
 pub use lifecycle::{TickContext, WidgetLifecycle, WidgetState};

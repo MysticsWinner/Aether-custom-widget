@@ -17,6 +17,16 @@ impl VectorClock {
         *counter += 1;
     }
 
+    /// Merges another `VectorClock` into `self` by taking the pairwise maximum sequence counter per device.
+    pub fn merge(&mut self, other: &VectorClock) {
+        for (device, &other_seq) in &other.clock {
+            let entry = self.clock.entry(device.clone()).or_insert(0);
+            if other_seq > *entry {
+                *entry = other_seq;
+            }
+        }
+    }
+
     /// Determines if `self` dominates / happened-after `other`.
     pub fn dominates(&self, other: &VectorClock) -> bool {
         let mut greater_or_equal = true;

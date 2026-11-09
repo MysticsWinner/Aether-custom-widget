@@ -188,6 +188,102 @@ impl PluginSupervisor {
         Ok(())
     }
 
+    /// Derives a deterministic Windows AppContainer Package SID (`S-1-15-2-...`, 7 sub-authorities)
+    /// from the normalized plugin container name using BLAKE3 hashing.
+    pub fn derive_appcontainer_sid(plugin_id: &str) -> String {
+        let normalized = format!("aether.sandbox.{}", plugin_id.trim().to_ascii_lowercase());
+        let hash = blake3::hash(normalized.as_bytes());
+        let bytes = hash.as_bytes();
+        let mut subs = [0u32; 7];
+        for (i, slot) in subs.iter_mut().enumerate() {
+            let offset = i * 4;
+            *slot = u32::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+            ]);
+        }
+        format!(
+            "S-1-15-2-{}-{}-{}-{}-{}-{}-{}",
+            subs[0], subs[1], subs[2], subs[3], subs[4], subs[5], subs[6]
+        )
+    }
+
+    /// Configures a strict zero-trust Windows Job Object with active process count limit (`max_processes`),
+    /// process memory limit (`max_memory_bytes`), and hard CPU rate cap (`cpu_rate_pct`).
+    #[cfg(windows)]
+    pub fn configure_strict_sandbox_job_object(
+        cpu_rate_pct: u32,
+        max_memory_bytes: usize,
+        max_active_processes: u32,
+    ) -> anyhow::Result<()> {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::JobObjects::{
+            CreateJobObjectW, SetInformationJobObject, JOBOBJECT_CPU_RATE_CONTROL_INFORMATION,
+            JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_0, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+            JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
+            JOB_OBJECT_LIMIT_ACTIVE_PROCESS, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+            JOB_OBJECT_LIMIT_PROCESS_MEMORY, JobObjectCpuRateControlInformation,
+            JobObjectExtendedLimitInformation,
+        };
+
+        if cpu_rate_pct == 0 || cpu_rate_pct > 100 {
+            anyhow::bail!("CPU rate limit percentage must be in 1..=100 (got {cpu_rate_pct})");
+        }
+        if max_active_processes == 0 {
+            anyhow::bail!("max_active_processes must be >= 1");
+        }
+
+        unsafe {
+            let job = CreateJobObjectW(None, None)?;
+            let mut ext_info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+            ext_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                | JOB_OBJECT_LIMIT_ACTIVE_PROCESS;
+            ext_info.ProcessMemoryLimit = max_memory_bytes;
+            ext_info.BasicLimitInformation.ActiveProcessLimit = max_active_processes;
+
+            let mem_res = SetInformationJobObject(
+                job,
+                JobObjectExtendedLimitInformation,
+                &ext_info as *const _ as *const _,
+                std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+            );
+
+            let cpu_rate_info = JOBOBJECT_CPU_RATE_CONTROL_INFORMATION {
+                ControlFlags: JOB_OBJECT_CPU_RATE_CONTROL_ENABLE
+                    | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
+                Anonymous: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_0 {
+                    CpuRate: cpu_rate_pct * 100,
+                },
+            };
+            let cpu_res = SetInformationJobObject(
+                job,
+                JobObjectCpuRateControlInformation,
+                &cpu_rate_info as *const _ as *const _,
+                std::mem::size_of::<JOBOBJECT_CPU_RATE_CONTROL_INFORMATION>() as u32,
+            );
+
+            let _ = CloseHandle(job);
+            mem_res?;
+            cpu_res?;
+            Ok(())
+        }
+    }
+
+    #[cfg(not(windows))]
+    pub fn configure_strict_sandbox_job_object(
+        cpu_rate_pct: u32,
+        _max_memory_bytes: usize,
+        max_active_processes: u32,
+    ) -> anyhow::Result<()> {
+        if cpu_rate_pct == 0 || cpu_rate_pct > 100 || max_active_processes == 0 {
+            anyhow::bail!("Invalid sandbox job object quota parameters");
+        }
+        Ok(())
+    }
+
     /// Simulates trapping a plugin process crash (e.g. Access Violation / Null Pointer Crash / RAM Cap Breach).
     /// Critical Guarantee: Plugin crashes NEVER crash the Core Runtime!
     pub fn handle_plugin_crash(&mut self, plugin_id: &str, exit_code: i32) {
@@ -310,6 +406,17 @@ mod tests {
         // Out-of-range CPU percentage (0% or >100%) must fail validation
         assert!(PluginSupervisor::configure_job_object_limits_with_quotas(0, 32 * 1024 * 1024).is_err());
         assert!(PluginSupervisor::configure_job_object_limits_with_quotas(150, 32 * 1024 * 1024).is_err());
+
+        // Strict sandbox JobObject with active process limit = 1 and AppContainer SID derivation
+        assert!(PluginSupervisor::configure_strict_sandbox_job_object(2, 50 * 1024 * 1024, 1).is_ok());
+        assert!(PluginSupervisor::configure_strict_sandbox_job_object(2, 50 * 1024 * 1024, 0).is_err());
+
+        let sid1 = PluginSupervisor::derive_appcontainer_sid("com.aether.weather");
+        let sid2 = PluginSupervisor::derive_appcontainer_sid("com.aether.weather");
+        let sid3 = PluginSupervisor::derive_appcontainer_sid("com.aether.crypto");
+        assert!(sid1.starts_with("S-1-15-2-"));
+        assert_eq!(sid1, sid2);
+        assert_ne!(sid1, sid3);
     }
 
     #[test]

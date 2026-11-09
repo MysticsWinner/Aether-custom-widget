@@ -12,7 +12,8 @@ pub mod tick_advisor;
 
 pub use providers::{
     CpuProvider, CpuTopologyProvider, CpuTopologyTelemetry, CryptoAssetTelemetry, CryptoFinancialProvider,
-    DedicatedGpuProvider, GpuProvider, GpuTelemetry, MemoryProvider, MetricProvider, NetworkDiagnosticsProvider,
+    DedicatedGpuProvider, GpuProvider, GpuTelemetry, GpuVendor, LinuxProcfsProvider,
+    MacOsHostStatsProvider, MemoryProvider, MetricProvider, NetworkDiagnosticsProvider,
     NetworkDiagnosticsTelemetry, NetworkProvider, WasapiAudioProvider,
 };
 pub use shared_cache::{SharedTelemetryCache, TelemetrySnapshot};

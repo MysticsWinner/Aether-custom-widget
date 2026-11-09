@@ -290,6 +290,709 @@ impl ControlCommand {
             | Self::GetGarbageCollectionStats => CommandDomain::GarbageCollection,
         }
     }
+
+    /// Converts this flat `ControlCommand` into a modular domain-scoped `DomainCommand` (`FI-003` / `AC-002`).
+    pub fn into_domain_command(&self) -> DomainCommand {
+        match self.clone() {
+            Self::Ping => DomainCommand::Core(CoreCommand::Ping),
+            Self::Pong => DomainCommand::Core(CoreCommand::Pong),
+            Self::GetStatus => DomainCommand::Core(CoreCommand::GetStatus),
+            Self::GetLaunchMode => DomainCommand::Core(CoreCommand::GetLaunchMode),
+            Self::ExitSafeMode => DomainCommand::Core(CoreCommand::ExitSafeMode),
+            Self::GetSchedulerStatus => DomainCommand::Core(CoreCommand::GetSchedulerStatus),
+            Self::SetAdaptiveTickMode { enabled } => {
+                DomainCommand::Core(CoreCommand::SetAdaptiveTickMode { enabled })
+            }
+
+            Self::LoadWidget { manifest_path } => {
+                DomainCommand::Widget(WidgetCommand::LoadWidget { manifest_path })
+            }
+            Self::UnloadWidget { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::UnloadWidget { widget_id })
+            }
+            Self::ReloadAll => DomainCommand::Widget(WidgetCommand::ReloadAll),
+            Self::ToggleDesktopWidget => DomainCommand::Widget(WidgetCommand::ToggleDesktopWidget),
+            Self::SetWidgetPosition { widget_id, x, y } => {
+                DomainCommand::Widget(WidgetCommand::SetWidgetPosition { widget_id, x, y })
+            }
+            Self::SetWidgetLock { widget_id, locked } => {
+                DomainCommand::Widget(WidgetCommand::SetWidgetLock { widget_id, locked })
+            }
+            Self::ToggleWidgetLock { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::ToggleWidgetLock { widget_id })
+            }
+            Self::RollbackWidget { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::RollbackWidget { widget_id })
+            }
+            Self::HotReloadWidget { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::HotReloadWidget { widget_id })
+            }
+            Self::SetWidgetRenderConfig {
+                widget_id,
+                config_json,
+            } => DomainCommand::Widget(WidgetCommand::SetWidgetRenderConfig {
+                widget_id,
+                config_json,
+            }),
+            Self::GetWidgetRenderConfig { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::GetWidgetRenderConfig { widget_id })
+            }
+            Self::DiscoverWidgets { search_paths } => {
+                DomainCommand::Widget(WidgetCommand::DiscoverWidgets { search_paths })
+            }
+            Self::ListWidgets => DomainCommand::Widget(WidgetCommand::ListWidgets),
+            Self::UpdateWidgetDisplayOptions {
+                widget_id,
+                opacity,
+                scale,
+                locked,
+                enabled,
+            } => DomainCommand::Widget(WidgetCommand::UpdateWidgetDisplayOptions {
+                widget_id,
+                opacity,
+                scale,
+                locked,
+                enabled,
+            }),
+            Self::QuickSwapWidget {
+                from_id,
+                to_id,
+                mode,
+            } => DomainCommand::Widget(WidgetCommand::QuickSwapWidget {
+                from_id,
+                to_id,
+                mode,
+            }),
+            Self::EnableWidget { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::EnableWidget { widget_id })
+            }
+            Self::DisableWidget { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::DisableWidget { widget_id })
+            }
+            Self::SetWidgetOpacity { widget_id, opacity } => {
+                DomainCommand::Widget(WidgetCommand::SetWidgetOpacity { widget_id, opacity })
+            }
+            Self::ResetWidgetConfig { widget_id } => {
+                DomainCommand::Widget(WidgetCommand::ResetWidgetConfig { widget_id })
+            }
+
+            Self::SetThemeMode { mode } => DomainCommand::Theme(ThemeCommand::SetThemeMode { mode }),
+            Self::ResolveDesignTokens { theme_id } => {
+                DomainCommand::Theme(ThemeCommand::ResolveDesignTokens { theme_id })
+            }
+            Self::SetAccessibilityMode {
+                high_contrast,
+                reduce_motion,
+                reduce_transparency,
+                large_text,
+            } => DomainCommand::Theme(ThemeCommand::SetAccessibilityMode {
+                high_contrast,
+                reduce_motion,
+                reduce_transparency,
+                large_text,
+            }),
+
+            Self::GetSubsystemHealth => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetSubsystemHealth)
+            }
+            Self::GetDiagnostics => DomainCommand::Diagnostics(DiagnosticsCommand::GetDiagnostics),
+            Self::GetCrashHistory { widget_id } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetCrashHistory { widget_id })
+            }
+            Self::GetQuarantineList => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetQuarantineList)
+            }
+            Self::ReleaseQuarantine { widget_id } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::ReleaseQuarantine { widget_id })
+            }
+            Self::GetWidgetResourceUsage { widget_id } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetWidgetResourceUsage { widget_id })
+            }
+            Self::GetHealthReport => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetHealthReport)
+            }
+            Self::GetWatchdogStatus => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetWatchdogStatus)
+            }
+            Self::InjectChaosFailure { scenario } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::InjectChaosFailure { scenario })
+            }
+            Self::GetResourceCacheStats => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetResourceCacheStats)
+            }
+            Self::InspectWidget { widget_id } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::InspectWidget { widget_id })
+            }
+            Self::ToggleLayoutGrid { enabled } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::ToggleLayoutGrid { enabled })
+            }
+            Self::GetExtendedWidgetInspector { widget_id } => {
+                DomainCommand::Diagnostics(DiagnosticsCommand::GetExtendedWidgetInspector {
+                    widget_id,
+                })
+            }
+
+            Self::CreateSnapshot { name } => {
+                DomainCommand::Snapshot(SnapshotCommand::CreateSnapshot { name })
+            }
+            Self::ListSnapshots => DomainCommand::Snapshot(SnapshotCommand::ListSnapshots),
+            Self::RestoreSnapshot { snapshot_id } => {
+                DomainCommand::Snapshot(SnapshotCommand::RestoreSnapshot { snapshot_id })
+            }
+            Self::DeleteSnapshot { snapshot_id } => {
+                DomainCommand::Snapshot(SnapshotCommand::DeleteSnapshot { snapshot_id })
+            }
+            Self::ExportSnapshot { snapshot_id, path } => {
+                DomainCommand::Snapshot(SnapshotCommand::ExportSnapshot { snapshot_id, path })
+            }
+            Self::ImportSnapshot { path } => {
+                DomainCommand::Snapshot(SnapshotCommand::ImportSnapshot { path })
+            }
+
+            Self::RequestCapabilityToken {
+                widget_id,
+                capability,
+            } => DomainCommand::Security(SecurityCommand::RequestCapabilityToken {
+                widget_id,
+                capability,
+            }),
+            Self::RevokeCapabilityToken { token_id } => {
+                DomainCommand::Security(SecurityCommand::RevokeCapabilityToken { token_id })
+            }
+            Self::GetCapabilityGrants { widget_id } => {
+                DomainCommand::Security(SecurityCommand::GetCapabilityGrants { widget_id })
+            }
+
+            Self::StartRecording => {
+                DomainCommand::Observability(ObservabilityCommand::StartRecording)
+            }
+            Self::StopRecording => {
+                DomainCommand::Observability(ObservabilityCommand::StopRecording)
+            }
+            Self::GetRecording => DomainCommand::Observability(ObservabilityCommand::GetRecording),
+            Self::ReplayRecording { from_seq } => {
+                DomainCommand::Observability(ObservabilityCommand::ReplayRecording { from_seq })
+            }
+            Self::GetObservabilityStatus => {
+                DomainCommand::Observability(ObservabilityCommand::GetObservabilityStatus)
+            }
+            Self::GetPrometheusMetrics => {
+                DomainCommand::Observability(ObservabilityCommand::GetPrometheusMetrics)
+            }
+            Self::GenerateMinidump { reason } => {
+                DomainCommand::Observability(ObservabilityCommand::GenerateMinidump { reason })
+            }
+            Self::ListMinidumps => {
+                DomainCommand::Observability(ObservabilityCommand::ListMinidumps)
+            }
+
+            Self::SearchMarketplace { query, category } => {
+                DomainCommand::Marketplace(MarketplaceCommand::SearchMarketplace { query, category })
+            }
+
+            Self::SynthesizeWidget { prompt } => {
+                DomainCommand::Ai(AiCommand::SynthesizeWidget { prompt })
+            }
+            Self::GenerateWallpaperTheme { wallpaper_path } => {
+                DomainCommand::Ai(AiCommand::GenerateWallpaperTheme { wallpaper_path })
+            }
+            Self::GetAiPerformanceAdvice { widget_id } => {
+                DomainCommand::Ai(AiCommand::GetAiPerformanceAdvice { widget_id })
+            }
+            Self::SynthesizeDesktop { prompt } => {
+                DomainCommand::Ai(AiCommand::SynthesizeDesktop { prompt })
+            }
+
+            Self::GetEnterprisePolicy => {
+                DomainCommand::Enterprise(EnterpriseCommand::GetEnterprisePolicy)
+            }
+            Self::UpdateEnterprisePolicy { policy_json } => {
+                DomainCommand::Enterprise(EnterpriseCommand::UpdateEnterprisePolicy { policy_json })
+            }
+            Self::GetAuditLogs => DomainCommand::Enterprise(EnterpriseCommand::GetAuditLogs),
+            Self::VerifyAuditChain => {
+                DomainCommand::Enterprise(EnterpriseCommand::VerifyAuditChain)
+            }
+
+            Self::SetDesktopProfile { profile_id } => {
+                DomainCommand::Profile(ProfileCommand::SetDesktopProfile { profile_id })
+            }
+            Self::GetActiveProfile => DomainCommand::Profile(ProfileCommand::GetActiveProfile),
+            Self::ListProfiles => DomainCommand::Profile(ProfileCommand::ListProfiles),
+
+            Self::TriggerGarbageCollection {
+                aggressive,
+                trim_working_set,
+            } => DomainCommand::GarbageCollection(
+                GarbageCollectionCommand::TriggerGarbageCollection {
+                    aggressive,
+                    trim_working_set,
+                },
+            ),
+            Self::SetGarbageCollectionPolicy {
+                dev_mode,
+                aggressive,
+                interval_secs,
+            } => DomainCommand::GarbageCollection(
+                GarbageCollectionCommand::SetGarbageCollectionPolicy {
+                    dev_mode,
+                    aggressive,
+                    interval_secs,
+                },
+            ),
+            Self::GetGarbageCollectionStats => DomainCommand::GarbageCollection(
+                GarbageCollectionCommand::GetGarbageCollectionStats,
+            ),
+        }
+    }
+}
+
+/// Core daemon and scheduler domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum CoreCommand {
+    Ping,
+    Pong,
+    GetStatus,
+    GetLaunchMode,
+    ExitSafeMode,
+    GetSchedulerStatus,
+    SetAdaptiveTickMode { enabled: bool },
+}
+
+/// Widget lifecycle, positioning, and display configuration domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum WidgetCommand {
+    LoadWidget { manifest_path: String },
+    UnloadWidget { widget_id: String },
+    ReloadAll,
+    ToggleDesktopWidget,
+    SetWidgetPosition { widget_id: String, x: i32, y: i32 },
+    SetWidgetLock { widget_id: String, locked: bool },
+    ToggleWidgetLock { widget_id: String },
+    RollbackWidget { widget_id: String },
+    HotReloadWidget { widget_id: String },
+    SetWidgetRenderConfig { widget_id: String, config_json: String },
+    GetWidgetRenderConfig { widget_id: String },
+    DiscoverWidgets { search_paths: Option<Vec<String>> },
+    ListWidgets,
+    UpdateWidgetDisplayOptions {
+        widget_id: String,
+        opacity: Option<f32>,
+        scale: Option<f32>,
+        locked: Option<bool>,
+        enabled: Option<bool>,
+    },
+    QuickSwapWidget {
+        from_id: String,
+        to_id: String,
+        mode: String,
+    },
+    EnableWidget { widget_id: String },
+    DisableWidget { widget_id: String },
+    SetWidgetOpacity { widget_id: String, opacity: f32 },
+    ResetWidgetConfig { widget_id: String },
+}
+
+/// Theme, design token, and accessibility domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ThemeCommand {
+    SetThemeMode { mode: String },
+    ResolveDesignTokens { theme_id: Option<String> },
+    SetAccessibilityMode {
+        high_contrast: Option<bool>,
+        reduce_motion: Option<bool>,
+        reduce_transparency: Option<bool>,
+        large_text: Option<bool>,
+    },
+}
+
+/// Diagnostics, health, quarantine, and inspector domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DiagnosticsCommand {
+    GetSubsystemHealth,
+    GetDiagnostics,
+    GetCrashHistory { widget_id: Option<String> },
+    GetQuarantineList,
+    ReleaseQuarantine { widget_id: String },
+    GetWidgetResourceUsage { widget_id: String },
+    GetHealthReport,
+    GetWatchdogStatus,
+    InjectChaosFailure { scenario: String },
+    GetResourceCacheStats,
+    InspectWidget { widget_id: String },
+    ToggleLayoutGrid { enabled: bool },
+    GetExtendedWidgetInspector { widget_id: String },
+}
+
+/// Transactional snapshot domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SnapshotCommand {
+    CreateSnapshot { name: String },
+    ListSnapshots,
+    RestoreSnapshot { snapshot_id: String },
+    DeleteSnapshot { snapshot_id: String },
+    ExportSnapshot { snapshot_id: String, path: String },
+    ImportSnapshot { path: String },
+}
+
+/// Capability token and sandbox security domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SecurityCommand {
+    RequestCapabilityToken { widget_id: String, capability: String },
+    RevokeCapabilityToken { token_id: String },
+    GetCapabilityGrants { widget_id: Option<String> },
+}
+
+/// Event stream recording, Prometheus, and minidump observability domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ObservabilityCommand {
+    StartRecording,
+    StopRecording,
+    GetRecording,
+    ReplayRecording { from_seq: u64 },
+    GetObservabilityStatus,
+    GetPrometheusMetrics,
+    GenerateMinidump { reason: String },
+    ListMinidumps,
+}
+
+/// Marketplace search and catalog domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum MarketplaceCommand {
+    SearchMarketplace {
+        query: String,
+        category: Option<String>,
+    },
+}
+
+/// AI synthesis, wallpaper theme generation, and advisor domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum AiCommand {
+    SynthesizeWidget { prompt: String },
+    GenerateWallpaperTheme { wallpaper_path: Option<String> },
+    GetAiPerformanceAdvice { widget_id: Option<String> },
+    SynthesizeDesktop { prompt: String },
+}
+
+/// Enterprise policy and SHA-256 audit log domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum EnterpriseCommand {
+    GetEnterprisePolicy,
+    UpdateEnterprisePolicy { policy_json: String },
+    GetAuditLogs,
+    VerifyAuditChain,
+}
+
+/// Desktop activity profile domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ProfileCommand {
+    SetDesktopProfile { profile_id: String },
+    GetActiveProfile,
+    ListProfiles,
+}
+
+/// Memory reclamation and garbage collection domain commands (`FI-003` / `AC-002`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum GarbageCollectionCommand {
+    TriggerGarbageCollection {
+        aggressive: bool,
+        trim_working_set: bool,
+    },
+    SetGarbageCollectionPolicy {
+        dev_mode: bool,
+        aggressive: bool,
+        interval_secs: u64,
+    },
+    GetGarbageCollectionStats,
+}
+
+/// Hierarchical domain-grouped command wrapper (`FI-003` / `AC-002`) with lossless conversion to/from `ControlCommand`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DomainCommand {
+    Core(CoreCommand),
+    Widget(WidgetCommand),
+    Theme(ThemeCommand),
+    Diagnostics(DiagnosticsCommand),
+    Snapshot(SnapshotCommand),
+    Security(SecurityCommand),
+    Observability(ObservabilityCommand),
+    Marketplace(MarketplaceCommand),
+    Ai(AiCommand),
+    Enterprise(EnterpriseCommand),
+    Profile(ProfileCommand),
+    GarbageCollection(GarbageCollectionCommand),
+}
+
+impl DomainCommand {
+    /// Returns the `CommandDomain` discriminant for this `DomainCommand`.
+    pub fn domain(&self) -> CommandDomain {
+        match self {
+            Self::Core(_) => CommandDomain::Core,
+            Self::Widget(_) => CommandDomain::Widget,
+            Self::Theme(_) => CommandDomain::Theme,
+            Self::Diagnostics(_) => CommandDomain::Diagnostics,
+            Self::Snapshot(_) => CommandDomain::Snapshot,
+            Self::Security(_) => CommandDomain::Security,
+            Self::Observability(_) => CommandDomain::Observability,
+            Self::Marketplace(_) => CommandDomain::Marketplace,
+            Self::Ai(_) => CommandDomain::Ai,
+            Self::Enterprise(_) => CommandDomain::Enterprise,
+            Self::Profile(_) => CommandDomain::Profile,
+            Self::GarbageCollection(_) => CommandDomain::GarbageCollection,
+        }
+    }
+
+    /// Converts this modular `DomainCommand` back into the wire-compatible `ControlCommand`.
+    pub fn into_control_command(self) -> ControlCommand {
+        match self {
+            Self::Core(c) => match c {
+                CoreCommand::Ping => ControlCommand::Ping,
+                CoreCommand::Pong => ControlCommand::Pong,
+                CoreCommand::GetStatus => ControlCommand::GetStatus,
+                CoreCommand::GetLaunchMode => ControlCommand::GetLaunchMode,
+                CoreCommand::ExitSafeMode => ControlCommand::ExitSafeMode,
+                CoreCommand::GetSchedulerStatus => ControlCommand::GetSchedulerStatus,
+                CoreCommand::SetAdaptiveTickMode { enabled } => {
+                    ControlCommand::SetAdaptiveTickMode { enabled }
+                }
+            },
+            Self::Widget(w) => match w {
+                WidgetCommand::LoadWidget { manifest_path } => {
+                    ControlCommand::LoadWidget { manifest_path }
+                }
+                WidgetCommand::UnloadWidget { widget_id } => {
+                    ControlCommand::UnloadWidget { widget_id }
+                }
+                WidgetCommand::ReloadAll => ControlCommand::ReloadAll,
+                WidgetCommand::ToggleDesktopWidget => ControlCommand::ToggleDesktopWidget,
+                WidgetCommand::SetWidgetPosition { widget_id, x, y } => {
+                    ControlCommand::SetWidgetPosition { widget_id, x, y }
+                }
+                WidgetCommand::SetWidgetLock { widget_id, locked } => {
+                    ControlCommand::SetWidgetLock { widget_id, locked }
+                }
+                WidgetCommand::ToggleWidgetLock { widget_id } => {
+                    ControlCommand::ToggleWidgetLock { widget_id }
+                }
+                WidgetCommand::RollbackWidget { widget_id } => {
+                    ControlCommand::RollbackWidget { widget_id }
+                }
+                WidgetCommand::HotReloadWidget { widget_id } => {
+                    ControlCommand::HotReloadWidget { widget_id }
+                }
+                WidgetCommand::SetWidgetRenderConfig {
+                    widget_id,
+                    config_json,
+                } => ControlCommand::SetWidgetRenderConfig {
+                    widget_id,
+                    config_json,
+                },
+                WidgetCommand::GetWidgetRenderConfig { widget_id } => {
+                    ControlCommand::GetWidgetRenderConfig { widget_id }
+                }
+                WidgetCommand::DiscoverWidgets { search_paths } => {
+                    ControlCommand::DiscoverWidgets { search_paths }
+                }
+                WidgetCommand::ListWidgets => ControlCommand::ListWidgets,
+                WidgetCommand::UpdateWidgetDisplayOptions {
+                    widget_id,
+                    opacity,
+                    scale,
+                    locked,
+                    enabled,
+                } => ControlCommand::UpdateWidgetDisplayOptions {
+                    widget_id,
+                    opacity,
+                    scale,
+                    locked,
+                    enabled,
+                },
+                WidgetCommand::QuickSwapWidget {
+                    from_id,
+                    to_id,
+                    mode,
+                } => ControlCommand::QuickSwapWidget {
+                    from_id,
+                    to_id,
+                    mode,
+                },
+                WidgetCommand::EnableWidget { widget_id } => {
+                    ControlCommand::EnableWidget { widget_id }
+                }
+                WidgetCommand::DisableWidget { widget_id } => {
+                    ControlCommand::DisableWidget { widget_id }
+                }
+                WidgetCommand::SetWidgetOpacity { widget_id, opacity } => {
+                    ControlCommand::SetWidgetOpacity { widget_id, opacity }
+                }
+                WidgetCommand::ResetWidgetConfig { widget_id } => {
+                    ControlCommand::ResetWidgetConfig { widget_id }
+                }
+            },
+            Self::Theme(t) => match t {
+                ThemeCommand::SetThemeMode { mode } => ControlCommand::SetThemeMode { mode },
+                ThemeCommand::ResolveDesignTokens { theme_id } => {
+                    ControlCommand::ResolveDesignTokens { theme_id }
+                }
+                ThemeCommand::SetAccessibilityMode {
+                    high_contrast,
+                    reduce_motion,
+                    reduce_transparency,
+                    large_text,
+                } => ControlCommand::SetAccessibilityMode {
+                    high_contrast,
+                    reduce_motion,
+                    reduce_transparency,
+                    large_text,
+                },
+            },
+            Self::Diagnostics(d) => match d {
+                DiagnosticsCommand::GetSubsystemHealth => ControlCommand::GetSubsystemHealth,
+                DiagnosticsCommand::GetDiagnostics => ControlCommand::GetDiagnostics,
+                DiagnosticsCommand::GetCrashHistory { widget_id } => {
+                    ControlCommand::GetCrashHistory { widget_id }
+                }
+                DiagnosticsCommand::GetQuarantineList => ControlCommand::GetQuarantineList,
+                DiagnosticsCommand::ReleaseQuarantine { widget_id } => {
+                    ControlCommand::ReleaseQuarantine { widget_id }
+                }
+                DiagnosticsCommand::GetWidgetResourceUsage { widget_id } => {
+                    ControlCommand::GetWidgetResourceUsage { widget_id }
+                }
+                DiagnosticsCommand::GetHealthReport => ControlCommand::GetHealthReport,
+                DiagnosticsCommand::GetWatchdogStatus => ControlCommand::GetWatchdogStatus,
+                DiagnosticsCommand::InjectChaosFailure { scenario } => {
+                    ControlCommand::InjectChaosFailure { scenario }
+                }
+                DiagnosticsCommand::GetResourceCacheStats => ControlCommand::GetResourceCacheStats,
+                DiagnosticsCommand::InspectWidget { widget_id } => {
+                    ControlCommand::InspectWidget { widget_id }
+                }
+                DiagnosticsCommand::ToggleLayoutGrid { enabled } => {
+                    ControlCommand::ToggleLayoutGrid { enabled }
+                }
+                DiagnosticsCommand::GetExtendedWidgetInspector { widget_id } => {
+                    ControlCommand::GetExtendedWidgetInspector { widget_id }
+                }
+            },
+            Self::Snapshot(s) => match s {
+                SnapshotCommand::CreateSnapshot { name } => {
+                    ControlCommand::CreateSnapshot { name }
+                }
+                SnapshotCommand::ListSnapshots => ControlCommand::ListSnapshots,
+                SnapshotCommand::RestoreSnapshot { snapshot_id } => {
+                    ControlCommand::RestoreSnapshot { snapshot_id }
+                }
+                SnapshotCommand::DeleteSnapshot { snapshot_id } => {
+                    ControlCommand::DeleteSnapshot { snapshot_id }
+                }
+                SnapshotCommand::ExportSnapshot { snapshot_id, path } => {
+                    ControlCommand::ExportSnapshot { snapshot_id, path }
+                }
+                SnapshotCommand::ImportSnapshot { path } => {
+                    ControlCommand::ImportSnapshot { path }
+                }
+            },
+            Self::Security(s) => match s {
+                SecurityCommand::RequestCapabilityToken {
+                    widget_id,
+                    capability,
+                } => ControlCommand::RequestCapabilityToken {
+                    widget_id,
+                    capability,
+                },
+                SecurityCommand::RevokeCapabilityToken { token_id } => {
+                    ControlCommand::RevokeCapabilityToken { token_id }
+                }
+                SecurityCommand::GetCapabilityGrants { widget_id } => {
+                    ControlCommand::GetCapabilityGrants { widget_id }
+                }
+            },
+            Self::Observability(o) => match o {
+                ObservabilityCommand::StartRecording => ControlCommand::StartRecording,
+                ObservabilityCommand::StopRecording => ControlCommand::StopRecording,
+                ObservabilityCommand::GetRecording => ControlCommand::GetRecording,
+                ObservabilityCommand::ReplayRecording { from_seq } => {
+                    ControlCommand::ReplayRecording { from_seq }
+                }
+                ObservabilityCommand::GetObservabilityStatus => {
+                    ControlCommand::GetObservabilityStatus
+                }
+                ObservabilityCommand::GetPrometheusMetrics => ControlCommand::GetPrometheusMetrics,
+                ObservabilityCommand::GenerateMinidump { reason } => {
+                    ControlCommand::GenerateMinidump { reason }
+                }
+                ObservabilityCommand::ListMinidumps => ControlCommand::ListMinidumps,
+            },
+            Self::Marketplace(m) => match m {
+                MarketplaceCommand::SearchMarketplace { query, category } => {
+                    ControlCommand::SearchMarketplace { query, category }
+                }
+            },
+            Self::Ai(a) => match a {
+                AiCommand::SynthesizeWidget { prompt } => {
+                    ControlCommand::SynthesizeWidget { prompt }
+                }
+                AiCommand::GenerateWallpaperTheme { wallpaper_path } => {
+                    ControlCommand::GenerateWallpaperTheme { wallpaper_path }
+                }
+                AiCommand::GetAiPerformanceAdvice { widget_id } => {
+                    ControlCommand::GetAiPerformanceAdvice { widget_id }
+                }
+                AiCommand::SynthesizeDesktop { prompt } => {
+                    ControlCommand::SynthesizeDesktop { prompt }
+                }
+            },
+            Self::Enterprise(e) => match e {
+                EnterpriseCommand::GetEnterprisePolicy => ControlCommand::GetEnterprisePolicy,
+                EnterpriseCommand::UpdateEnterprisePolicy { policy_json } => {
+                    ControlCommand::UpdateEnterprisePolicy { policy_json }
+                }
+                EnterpriseCommand::GetAuditLogs => ControlCommand::GetAuditLogs,
+                EnterpriseCommand::VerifyAuditChain => ControlCommand::VerifyAuditChain,
+            },
+            Self::Profile(p) => match p {
+                ProfileCommand::SetDesktopProfile { profile_id } => {
+                    ControlCommand::SetDesktopProfile { profile_id }
+                }
+                ProfileCommand::GetActiveProfile => ControlCommand::GetActiveProfile,
+                ProfileCommand::ListProfiles => ControlCommand::ListProfiles,
+            },
+            Self::GarbageCollection(gc) => match gc {
+                GarbageCollectionCommand::TriggerGarbageCollection {
+                    aggressive,
+                    trim_working_set,
+                } => ControlCommand::TriggerGarbageCollection {
+                    aggressive,
+                    trim_working_set,
+                },
+                GarbageCollectionCommand::SetGarbageCollectionPolicy {
+                    dev_mode,
+                    aggressive,
+                    interval_secs,
+                } => ControlCommand::SetGarbageCollectionPolicy {
+                    dev_mode,
+                    aggressive,
+                    interval_secs,
+                },
+                GarbageCollectionCommand::GetGarbageCollectionStats => {
+                    ControlCommand::GetGarbageCollectionStats
+                }
+            },
+        }
+    }
+}
+
+impl From<ControlCommand> for DomainCommand {
+    fn from(cmd: ControlCommand) -> Self {
+        cmd.into_domain_command()
+    }
+}
+
+impl From<DomainCommand> for ControlCommand {
+    fn from(cmd: DomainCommand) -> Self {
+        cmd.into_control_command()
+    }
 }
 
 /// Structured report of runtime garbage collection and memory reclamation state.
@@ -649,6 +1352,51 @@ mod tests {
         let json_rep = serde_json::to_string(&report).unwrap();
         let decoded_rep: GarbageCollectionReport = serde_json::from_str(&json_rep).unwrap();
         assert_eq!(decoded_rep, report);
+    }
+
+    #[test]
+    fn test_domain_command_sub_enums_roundtrip_all_domains() {
+        let samples = vec![
+            ControlCommand::Ping,
+            ControlCommand::SetAdaptiveTickMode { enabled: true },
+            ControlCommand::LoadWidget {
+                manifest_path: "crates/perf_monitor_widget/widget.toml".to_string(),
+            },
+            ControlCommand::SetThemeMode {
+                mode: "dark".to_string(),
+            },
+            ControlCommand::GetDiagnostics,
+            ControlCommand::CreateSnapshot {
+                name: "Pre-Upgrade".to_string(),
+            },
+            ControlCommand::RequestCapabilityToken {
+                widget_id: "net_monitor".to_string(),
+                capability: "network.http".to_string(),
+            },
+            ControlCommand::GetPrometheusMetrics,
+            ControlCommand::SearchMarketplace {
+                query: "audio".to_string(),
+                category: Some("media".to_string()),
+            },
+            ControlCommand::SynthesizeWidget {
+                prompt: "CPU core heatmap".to_string(),
+            },
+            ControlCommand::VerifyAuditChain,
+            ControlCommand::SetDesktopProfile {
+                profile_id: "Gaming".to_string(),
+            },
+            ControlCommand::TriggerGarbageCollection {
+                aggressive: true,
+                trim_working_set: true,
+            },
+        ];
+
+        for cmd in samples {
+            let domain_cmd = cmd.into_domain_command();
+            assert_eq!(domain_cmd.domain(), cmd.domain());
+            let roundtripped = domain_cmd.into_control_command();
+            assert_eq!(roundtripped, cmd);
+        }
     }
 }
 

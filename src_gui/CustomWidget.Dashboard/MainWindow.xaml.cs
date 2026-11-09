@@ -122,28 +122,32 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// B11 Fix: Added structured logging to AutoStartEngineIfNeeded instead of silent catch.
+    /// B11 & TD-004 Fix: Added structured logging and fully asynchronous background I/O
+    /// to AutoStartEngineIfNeeded so startup never blocks the WinUI 3 UI thread.
     /// </summary>
     private async void AutoStartEngineIfNeeded()
     {
         try
         {
-            string settingsFile = System.IO.Path.Combine(AppContext.BaseDirectory, "settings.json");
-            if (System.IO.File.Exists(settingsFile))
+            await System.Threading.Tasks.Task.Run(async () =>
             {
-                string json = System.IO.File.ReadAllText(settingsFile);
-                var dict = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(json);
-                if (dict != null && dict.TryGetValue("AutoStartEngine", out var autoStr) && bool.TryParse(autoStr, out var autoVal) && autoVal)
+                string settingsFile = System.IO.Path.Combine(AppContext.BaseDirectory, "settings.json");
+                if (System.IO.File.Exists(settingsFile))
                 {
-                    DashboardLogger.Info(LogSource, "AutoStartEngine is true in settings — launching core engine...");
-                    var pm = App.Services.GetRequiredService<IProcessManagerService>();
-                    await pm.StartEngineAsync();
+                    string json = await System.IO.File.ReadAllTextAsync(settingsFile).ConfigureAwait(false);
+                    var dict = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(json);
+                    if (dict != null && dict.TryGetValue("AutoStartEngine", out var autoStr) && bool.TryParse(autoStr, out var autoVal) && autoVal)
+                    {
+                        DashboardLogger.Info(LogSource, "AutoStartEngine is true in settings — launching core engine...");
+                        var pm = App.Services.GetRequiredService<IProcessManagerService>();
+                        await pm.StartEngineAsync().ConfigureAwait(false);
+                    }
                 }
-            }
-            else
-            {
-                DashboardLogger.Debug(LogSource, "settings.json not present — skipping engine autostart");
-            }
+                else
+                {
+                    DashboardLogger.Debug(LogSource, "settings.json not present — skipping engine autostart");
+                }
+            }).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

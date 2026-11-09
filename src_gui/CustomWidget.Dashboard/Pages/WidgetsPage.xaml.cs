@@ -27,6 +27,7 @@ public sealed partial class WidgetsPage : Page
 
         DiscoveredList.ItemsSource = _vm.DiscoveredWidgets;
         RunningList.ItemsSource = _vm.Widgets;
+        CanvasBoxList.ItemsSource = _vm.CanvasBoxes;
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _refreshTimer.Tick += RefreshUI;
@@ -210,6 +211,47 @@ public sealed partial class WidgetsPage : Page
             };
 
             await dialog.ShowAsync();
+        }
+    }
+
+    private void SnapGridToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch ts)
+        {
+            _vm.SnapToGridEnabled = ts.IsOn;
+        }
+    }
+
+    private void CanvasNudgeLeft_Click(object sender, RoutedEventArgs e) => NudgeCanvasBox(sender, -16, 0);
+    private void CanvasNudgeRight_Click(object sender, RoutedEventArgs e) => NudgeCanvasBox(sender, 16, 0);
+    private void CanvasNudgeUp_Click(object sender, RoutedEventArgs e) => NudgeCanvasBox(sender, 0, -16);
+    private void CanvasNudgeDown_Click(object sender, RoutedEventArgs e) => NudgeCanvasBox(sender, 0, 16);
+
+    private void NudgeCanvasBox(object sender, int dx, int dy)
+    {
+        if (sender is Button btn && btn.Tag is string widgetId)
+        {
+            var box = _vm.CanvasBoxes.FirstOrDefault(b => b.WidgetId == widgetId);
+            if (box is not null)
+            {
+                _ = _vm.MoveCanvasWidgetAsync((widgetId, box.X + dx, box.Y + dy));
+            }
+        }
+    }
+
+    private void CanvasExpand_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string widgetId)
+        {
+            _ = _vm.ResizeCanvasWidgetAsync((widgetId, ResizeHandle.BottomRight, 32, 32));
+        }
+    }
+
+    private void CanvasShrink_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string widgetId)
+        {
+            _ = _vm.ResizeCanvasWidgetAsync((widgetId, ResizeHandle.BottomRight, -32, -32));
         }
     }
 }

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <PackageId>Aether.CustomWidget.SDK</PackageId>
+    <Version>0.7.0</Version>
+    <Authors>Aether Platform Team</Authors>
+    <Description>Official .NET 8 C# Widget Plugin SDK for the Aether Desktop Customization Platform.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>
+

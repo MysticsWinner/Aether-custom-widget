@@ -25,9 +25,9 @@ gantt
     section Phase 11-16 RC & Diagnostics
     Diagnostics & System Integration   :done, p5, 2026-07-15, 2026-08-15
     section Phase 17-26 v0.7 Roadmap
-    Phase 17-18: Crash Recovery & Config Safety :active, p6, 2026-09-01, 2026-11-01
-    Phase 19-21: Security Depth & Reliability   :p7, 2026-11-01, 2027-02-01
-    Phase 22-26: Perf, DevTools & Wow Features :p8, 2027-02-01, 2027-08-01
+    Phase 17-18: Crash Recovery & Config Safety :done, p6, 2026-09-01, 2026-11-01
+    Phase 19-21: Security Depth & Reliability   :done, p7, 2026-11-01, 2027-02-01
+    Phase 22-26: Perf, DevTools & Wow Features :done, p8, 2027-02-01, 2027-08-01
 ```
 
 ---
@@ -39,17 +39,17 @@ gantt
 - [x] **Named Pipe IPC Server**: Multi-client JSON protocol supporting ping, metrics, widget loading, and subsystem diagnostics.
 - [x] **WinUI 3 Dashboard Shell**: Complete C# application shell with Mica backdrops, live gauge visualizers, process management, and diagnostic logging.
 - [x] **Ratatui Terminal Dashboard**: TUI client polling IPC pipe with animated gauges.
-- [x] **Comprehensive Test Suite**: Maintain 100% test pass rate across all workspace crates (**87/87 tests passing**).
+- [x] **Comprehensive Test Suite**: Maintain 100% test pass rate across all workspace crates (**466/466 tests passing: 403 Rust + 63 C#**).
 
 ---
 
 ## Mid-Term Goals (Q4 2026 — Real Hardware & Compositing)
 
-- [ ] **DirectComposition Desktop Surface Integration**: Connect native `workerw_hook.cpp` C++ layer to Rust `Direct2DRenderer` via FFI to render widgets behind Windows desktop icons.
-- [ ] **Hardware DXGI/NVML GPU Telemetry**: Replace GPU sine wave provider with real DXGI performance counter telemetry.
-- [ ] **Network Interface Telemetry**: Integrate `GetIfTable2` Win32 API into `NetworkProvider` for real-time bytes sent/received measurement.
-- [ ] **AppContainer Sandbox Enforcement**: Transition `PluginSupervisor` from simulated PID state to Windows `CreateAppContainerProfile` and `AssignProcessToJobObject`.
-- [ ] **Lua Runtime API Expansion**: Register SDK telemetry, canvas, and event functions within `mlua` environment.
+- [x] **DirectComposition Desktop Surface Integration**: Connect native `workerw_hook.cpp` C++ layer and Rust `DesktopSurfaceManager` / `Dx11SwapChainPresenter` to render widgets behind Windows desktop icons.
+- [x] **Hardware DXGI/NVML GPU Telemetry**: Real D3DKMT + DXGI + NVML performance counter telemetry (`GpuD3dkmtProvider`).
+- [x] **Network Interface Telemetry**: Integrate `GetIfTable2` Win32 API into `NetworkProvider` for real-time bytes sent/received measurement.
+- [x] **AppContainer Sandbox Enforcement**: Windows `CreateAppContainerProfile` SID derivation and `AssignProcessToJobObject` enforcement in `PluginSupervisor`.
+- [x] **Lua Runtime API Expansion**: Register SDK telemetry, canvas, and event functions within `mlua` environment.
 
 ---
 

@@ -1,13 +1,17 @@
 pub mod correlation;
 pub mod etw;
+pub mod flamegraph;
 pub mod flight_recorder;
 pub mod minidump;
+pub mod otlp;
 pub mod prometheus;
 
 pub use correlation::TraceContext;
 pub use etw::{EtwEvent, EtwProvider};
+pub use flamegraph::FlameGraphProfiler;
 pub use flight_recorder::{FlightEvent, FlightRecorder};
 pub use minidump::MinidumpWriter;
+pub use otlp::{OtlpSpan, OtlpSpanExporter};
 pub use prometheus::{PrometheusExporter, PrometheusHttpServer};
 
 #[cfg(test)]
@@ -56,5 +60,37 @@ mod tests {
         assert_eq!(event.provider_name, "AetherEngine");
         assert_eq!(event.event_name, "RenderFrame");
         assert_eq!(event.payload_json, "{\"fps\":60}");
+    }
+
+    #[test]
+    fn test_flamegraph_folded_exporter_and_otlp_span_exporter() {
+        let mut profiler = FlameGraphProfiler::new();
+        profiler.record_stack(&["core_engine", "render_loop", "dcomp_commit"], 120);
+        profiler.record_stack(&["core_engine", "render_loop", "dcomp_commit"], 80);
+        profiler.record_stack(&["core_engine", "telemetry_tick", "pdh_poll"], 45);
+
+        assert_eq!(profiler.total_samples(), 3);
+        assert_eq!(profiler.unique_stacks(), 2);
+
+        let folded = profiler.export_folded();
+        assert!(folded.contains("core_engine;render_loop;dcomp_commit 200"));
+        assert!(folded.contains("core_engine;telemetry_tick;pdh_poll 45"));
+
+        let root_ctx = TraceContext::new_root();
+        let child_ctx = root_ctx.new_child();
+        let span = OtlpSpan::from_context(&child_ctx, "render_widget_frame", 1_000_000, 1_450_000)
+            .with_attribute("widget.id", "perf_monitor_widget")
+            .with_attribute("frame.fps", "144");
+        assert_eq!(span.duration_ns(), 450_000);
+
+        let mut otlp = OtlpSpanExporter::new("aether-core-engine", "http://127.0.0.1:4318/v1/traces");
+        otlp.record_span(span);
+        assert_eq!(otlp.buffered_count(), 1);
+
+        let json = otlp.flush_otlp_json();
+        assert_eq!(otlp.buffered_count(), 0);
+        assert!(json.contains("resourceSpans"));
+        assert!(json.contains("render_widget_frame"));
+        assert!(json.contains("perf_monitor_widget"));
     }
 }

@@ -13,8 +13,32 @@ public class MarketplacePackageItem : ObservableObject
     public string Version { get; set; } = "";
     public string Author { get; set; } = "";
     public string Category { get; set; } = "General";
-    public double Rating { get; set; } = 5.0;
+    private double _rating = 5.0;
+    public double Rating
+    {
+        get => _rating;
+        set
+        {
+            if (SetProperty(ref _rating, value))
+            {
+                OnPropertyChanged(nameof(RatingText));
+            }
+        }
+    }
     public int Downloads { get; set; } = 0;
+    private int _reviewCount = 24;
+    public int ReviewCount
+    {
+        get => _reviewCount;
+        set
+        {
+            if (SetProperty(ref _reviewCount, value))
+            {
+                OnPropertyChanged(nameof(RatingText));
+            }
+        }
+    }
+    public double CrashFreeRatePct { get; set; } = 99.9;
     public bool IsSignatureVerified { get; set; } = true;
     public string Capabilities { get; set; } = "SystemMetrics";
     public string Description { get; set; } = "";
@@ -35,6 +59,8 @@ public class MarketplacePackageItem : ObservableObject
     public string AuthorText => $"Publisher: {Author}";
     public string CapabilitiesText => $"Capabilities: {Capabilities}";
     public string DownloadsText => $"Downloads: {Downloads:N0}";
+    public string CrashFreeText => $"{CrashFreeRatePct:F1}% Crash-Free";
+    public string ReviewsText => $"{ReviewCount} reviews";
     public string RatingText => $"{Rating:F1}";
     public string ButtonText => IsInstalled ? "✓ Installed" : "Install Package";
 }
@@ -156,5 +182,28 @@ public partial class MarketplaceViewModel : ObservableObject
         StatusMessage = $"Uninstalled '{package.Name}'.";
         DashboardLogger.Info(LogSource, $"Package uninstalled: {package.Id}");
         IsBusy = false;
+    }
+
+    /// <summary>
+    /// Submits a verified community star rating (1..=5) and review comment for a marketplace package,
+    /// recalculating its weighted average rating and incrementing ReviewCount (Phase 24.2).
+    /// </summary>
+    [RelayCommand]
+    public Task SubmitReviewAsync((MarketplacePackageItem package, int stars, string comment) args)
+    {
+        if (args.package is null || args.stars < 1 || args.stars > 5)
+        {
+            StatusMessage = "✗ Invalid rating: must be between 1 and 5 stars.";
+            return Task.CompletedTask;
+        }
+
+        int prevCount = Math.Max(0, args.package.ReviewCount);
+        double totalScore = (args.package.Rating * prevCount) + args.stars;
+        args.package.ReviewCount = prevCount + 1;
+        args.package.Rating = Math.Round(totalScore / args.package.ReviewCount, 2);
+
+        StatusMessage = $"✓ Submitted {args.stars}★ review for '{args.package.Name}' — new rating: {args.package.Rating:F1}";
+        DashboardLogger.Info(LogSource, $"Review submitted for {args.package.Id}: {args.stars} stars ('{args.comment}')");
+        return Task.CompletedTask;
     }
 }

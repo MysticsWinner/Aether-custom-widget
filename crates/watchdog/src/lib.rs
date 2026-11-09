@@ -1,7 +1,11 @@
 pub mod heartbeat;
+pub mod service;
 pub mod supervisor;
 
 pub use heartbeat::{HeartbeatPayload, WatchdogHeartbeat};
+pub use service::{
+    ServiceControlCode, WindowsServiceConfig, WindowsServiceRunner, WindowsServiceState,
+};
 pub use supervisor::{WatchdogStatus, WatchdogSupervisor};
 
 #[cfg(test)]

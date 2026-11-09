@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "aether_installer"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "thiserror",
@@ -38,7 +38,7 @@ dependencies = [
 
 [[package]]
 name = "ai_engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -59,7 +59,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "animation_engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "tracing",
 ]
@@ -101,7 +101,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "audio_visualizer_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -183,7 +183,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "capability_broker"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -229,7 +229,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "cloud_sync"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "config_manager"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -308,7 +308,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "core_engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ai_engine",
  "animation_engine",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "crypto_stocks_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -472,7 +472,7 @@ dependencies = [
 
 [[package]]
 name = "dashboard_tui"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "crossterm",
@@ -497,7 +497,7 @@ dependencies = [
 
 [[package]]
 name = "dev_tools"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -534,7 +534,7 @@ dependencies = [
 
 [[package]]
 name = "dock_launcher_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "animation_engine",
  "anyhow",
@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "enterprise"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -626,7 +626,7 @@ dependencies = [
 
 [[package]]
 name = "event_recorder"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -801,7 +801,7 @@ dependencies = [
 
 [[package]]
 name = "hardware_pro_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "ipc_protocol"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1137,7 +1137,7 @@ dependencies = [
 
 [[package]]
 name = "layout_engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -1215,7 +1215,7 @@ dependencies = [
 
 [[package]]
 name = "lua_runtime"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ipc_protocol",
  "layout_engine",
@@ -1345,7 +1345,7 @@ dependencies = [
 
 [[package]]
 name = "observability"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -1411,7 +1411,7 @@ dependencies = [
 
 [[package]]
 name = "package_manager"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ed25519-dalek",
@@ -1461,7 +1461,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "perf_monitor_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -1496,7 +1496,7 @@ checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
 name = "plugin_runtime"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1539,7 +1539,7 @@ dependencies = [
 
 [[package]]
 name = "production_engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "package_manager",
@@ -1622,7 +1622,7 @@ dependencies = [
 
 [[package]]
 name = "recovery_manager"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -2130,7 +2130,7 @@ dependencies = [
 
 [[package]]
 name = "system_providers"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -2169,7 +2169,7 @@ dependencies = [
 
 [[package]]
 name = "tests_suite"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ai_assistant_widget",
  "ai_engine",
@@ -2209,7 +2209,7 @@ dependencies = [
 
 [[package]]
 name = "theme_engine"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -2635,7 +2635,7 @@ dependencies = [
 
 [[package]]
 name = "watchdog"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",
@@ -2649,7 +2649,7 @@ dependencies = [
 
 [[package]]
 name = "weather_particles_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "core_engine",
@@ -2698,7 +2698,7 @@ dependencies = [
 
 [[package]]
 name = "widget_parser"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "serde",
  "thiserror",
@@ -2708,7 +2708,7 @@ dependencies = [
 
 [[package]]
 name = "widget_sdk"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "ipc_protocol",

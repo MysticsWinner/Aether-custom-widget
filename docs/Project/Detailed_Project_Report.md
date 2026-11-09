@@ -12,7 +12,7 @@
 
 Aether is an enterprise-class, hardware-accelerated, zero-trust desktop customization platform engineered specifically for **Windows 11 (`x86_64` & `ARM64`)**. The platform spans **33 Rust workspace crates**, a **WinUI 3 C# management app (`CustomWidget.Dashboard`)**, **Ratatui TUI dashboard (`dashboard_tui`)**, **C++ Win32 WorkerW desktop hook DLLs**, multi-language SDKs (**Rust**, **C# .NET 8**, **TypeScript**, **Lua 5.4**, **WebAssembly**), and a **14-domain documentation system**.
 
-The workspace compiles with 0 compilation errors and 0 warnings across all crates and C# projects. The workspace test harness verifies **440 out of 440 automated tests passing** (381 Rust tests + 59 C# GUI tests) with 100% success rate.
+The workspace compiles with 0 compilation errors and 0 warnings across all crates and C# projects. The workspace test harness verifies **455 out of 455 automated tests passing** (394 Rust tests + 61 C# GUI & SDK tests) with 100% success rate.
 
 Aether enforces the core architecture principle: **"Collect Once, Publish Everywhere"**. Hardware metrics are sampled once per 10ms cycle by `system_providers` and cached in lock-free `SharedTelemetryCache`. Widgets emit `DrawCommand` batches rendered via DirectComposition and Direct2D onto transparent layered desktop windows without repeated Windows API calls.
 

@@ -4,12 +4,17 @@
 //! powered by CRDT / Vector Clock Conflict Resolution and an Offline-First Local Cache Architecture.
 
 pub mod benchmark;
+pub mod collaborative;
 pub mod crdt;
 pub mod entities;
 pub mod manager;
 pub mod offline_queue;
 
 pub use benchmark::CloudSyncBenchmark;
+pub use collaborative::{
+    CollaborativeDelta, CollaborativeRelayHub, CollaborativeSession, CollaborativeWsFrame,
+    PeerPresence,
+};
 pub use crdt::{CrdtItem, CrdtResolver, VectorClock};
 pub use entities::{
     AccountEntity, DeviceEntity, LayoutEntity, PluginEntity, SettingsEntity, SyncEntity,

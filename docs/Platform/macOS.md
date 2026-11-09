@@ -17,10 +17,10 @@ Attach transparent widget windows to `kCGDesktopWindowLevel` using `NSWindow` an
 ---
 
 ## Future Work
-- Implement `macos_providers` crate using `host_statistics` and `IOKit` hardware samplers.
+- Expand `MacOsHostStatsProvider` (`crates/system_providers/src/providers/cross_platform.rs`) and `MacOsQuartzDesktopSurface` (`crates/core_engine/src/rendering/surface_trait.rs`) with live `objc2` / `Metal` window bindings.
 
 ## Known Issues
-- Not currently implemented in v0.7.0.
+- Core trait (`DesktopSurface` at `kCGDesktopWindowLevel`) and Mach `vm_statistics64` + `host_cpu_load_info` calculators (`MacOsHostStatsProvider`) are implemented and unit-tested in v0.7.0.
 
 ## References
 - [Detailed_Project_Report.md](../Project/Detailed_Project_Report.md)

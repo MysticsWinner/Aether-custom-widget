@@ -21,16 +21,24 @@ pub mod desktop_widget_window;
 pub mod dirty_rect;
 pub mod glassmorphism;
 pub mod particles;
+pub mod surface_trait;
 pub mod virtual_desktops;
 pub mod workerw;
 
 pub use benchmark::{RainmeterBenchmark, RenderBenchmarkResult};
 pub use d2d_renderer::Direct2DRenderer;
-pub use dcomp_tree::{CompositionVisualNode, DCompVisualTreeManager, SwapchainColorFormat};
+pub use dcomp_tree::{
+    CompositionVisualNode, DCompVisualTreeManager, Dx11SwapChainPresenter, HdrMetadata,
+    SwapchainColorFormat, VrrConfig,
+};
 pub use desktop_widget_window::DesktopWidgetWindow;
 pub use dirty_rect::{DirtyRegionTracker, InvalidationCause, InvalidatedRegion};
 pub use glassmorphism::{GlassEffectType, GlassmorphismPipeline};
 pub use particles::{Particle, ParticleEmitter, ParticleFieldConfig, ParticlePhysicsEngine, ParticleType};
+pub use surface_trait::{
+    DesktopSurface, LinuxWaylandLayerSurface, MacOsQuartzDesktopSurface, SurfaceBackendKind,
+    WaylandLayer, Win32WorkerWSurface,
+};
 pub use virtual_desktops::{
     DesktopTopology, DipRect, DpiMonitorScale, MonitorInfo, PhysicalRect, VirtualDesktopManager,
     VirtualDesktopPinning,

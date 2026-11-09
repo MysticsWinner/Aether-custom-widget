@@ -11,6 +11,8 @@ pub mod security;
 
 pub use benchmark::PackageManagerBenchmark;
 pub use installer::PackageManager;
-pub use marketplace::MarketplaceCatalog;
+pub use marketplace::{
+    AuthorAnalytics, IpfsContentStore, IpfsPackageRef, MarketplaceCatalog, PackageReview,
+};
 pub use package::WidgetPackage;
 pub use security::Ed25519Verifier;
