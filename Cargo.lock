@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "ai_assistant_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "config_manager",
@@ -1314,7 +1314,7 @@ dependencies = [
 
 [[package]]
 name = "network_monitor_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -2663,7 +2663,7 @@ dependencies = [
 
 [[package]]
 name = "weather_widget"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "serde",
