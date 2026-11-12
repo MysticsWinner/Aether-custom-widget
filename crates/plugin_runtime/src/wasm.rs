@@ -1,8 +1,14 @@
 //! WebAssembly (Wasm) Plugin Runtime & Memory Sandbox
 //!
-//! Provides memory-isolated WebAssembly bytecode execution for widget plugins.
-//! Enforces linear memory limits (64KB Wasm pages), zero host crash risk,
-//! and fast host function invocation (`aether_*` ABI).
+//! Provides memory-isolated WebAssembly bytecode execution and verification for widget plugins.
+//! - **Binary Verification**: Performs real WebAssembly v1 binary header checks (`\0asm\x01\0\0\0`) and
+//!   unsigned LEB128 binary section decoding (`Type`, `Import`, `Function`, `Memory`, `Export`, `Code`).
+//! - **Memory Sandboxing**: Enforces linear memory limits (64KB Wasm pages up to 256 pages / 16MB),
+//!   guaranteeing zero host crash risk.
+//! - **Fuel Metering**: Tracks deterministic instruction execution budgets, cleanly trapping runaway loops.
+//! - **Host ABI Linker**: Provides sandboxed WASI and `aether_env` host function linkage (`draw_rect`, `get_metric`, etc.).
+//! - **Execution Architecture**: Native verification, parsing, fuel enforcement, and ABI dispatch are handled
+//!   directly in-engine; full JIT machine code compilation is designed for modular integration with external runtime backends.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

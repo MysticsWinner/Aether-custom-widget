@@ -174,3 +174,37 @@ Why are all 11 states strictly necessary? Each state serves an irreplaceable rol
    - **`Error`**: Transient failures (e.g. GPU device loss, network timeout, single unhandled Lua exception). Eligible for automatic exponential-backoff restarts.
    - **`Quarantined`**: Permanent isolation triggered by crash loops (> 3 crashes in 60s) or security sandbox policy violations (e.g. unauthorized disk access attempt, path traversal evasion). Quarantined widgets are forbidden from auto-restarting to protect system stability and require explicit user intervention.
 
+---
+
+## 4. Authentic Windows APIs & Network Protocols
+
+In accordance with system design principles, Aether enforces genuine Windows OS subsystem APIs and network-level protocols across all enterprise and platform services:
+
+### 4.1 Windows Hello Biometrics & PIN (`enterprise::AuthGate`)
+Hardware-backed user consent verification is driven by the native WinRT `windows::Security::Credentials::UI::UserConsentVerifier` API:
+- Calls `RequestVerificationAsync` with an asynchronous polling loop.
+- Supports native facial recognition, fingerprint biometric scanners, and PIN fallbacks.
+- Test suites leverage an explicit `AuthGate::set_test_mode(true)` gate to ensure automated CI pipelines never trigger interactive OS blocking dialogs.
+
+### 4.2 Windows Registry Group Policy (`enterprise::PolicyEngine`)
+Enterprise configuration policies are read directly from the native Windows Registry:
+- Queries `HKLM\SOFTWARE\Policies\Aether` using Win32 `RegOpenKeyExW` and `RegQueryValueExW`.
+- Enforces corporate settings: `AllowCloudSync`, `AllowAiSynthesis`, `TelemetryUploadPolicy`, and `MaxLinearMemoryPages`.
+- Gracefully defaults to standard secure policies on unmanaged non-domain workstations.
+
+### 4.3 Standard IPFS CIDv1 Packaging (`package_manager::marketplace`)
+Decentralized widget distributions generate authentic IPFS CIDv1 multihashes:
+- Computes SHA-256 binary digest (`0x12` + 32-byte digest) prefixed with multicodec raw binary (`0x55`).
+- Encodes output with RFC 4648 Base32 lowercase, yielding canonical `bafkrei...` Content Identifiers compatible with public IPFS gateways and Kubo nodes.
+
+### 4.4 Live OTLP HTTP Span Streaming (`observability::otlp`)
+Direct telemetry export connects to standard OpenTelemetry collectors:
+- Establishes asynchronous `tokio::net::TcpStream` sockets to remote OTLP collector endpoints (e.g. `127.0.0.1:4318/v1/traces`).
+- Formats and flushes RFC-compliant OTLP JSON HTTP POST span batches.
+
+### 4.5 Collaborative CRDT Network Transport (`cloud_sync::collaborative`)
+Multi-workstation desktop layout synchronization supports both in-memory routing and live TCP streaming:
+- Features `CollaborativeRelayHub::bind_listener` and `send_frame_stream`/`recv_frame_stream` over `tokio::net::TcpStream`.
+- Frames binary payloads with 4-byte big-endian length prefixing, ensuring robust socket delivery across local workstations.
+
+

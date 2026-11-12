@@ -38,9 +38,9 @@
 | **`theme_engine`** | ✅ **Completed** | 13 tests | 12-category `DesignTokens` system, `MaterialEngine` (Mica, Acrylic, Glass fallback), `TypographyEngine`, hot-reload watcher. |
 | **`animation_engine`** | ✅ **Completed** | 4 tests | Spring physics simulation (Hooke's law, damping ratio), easing curves, and timeline scheduling. |
 | **`lua_runtime`** | ✅ **Completed** | 4 tests | Sandboxed Lua 5.4 scripting host with hot code reload, restricted environment, and safe telemetry bindings. |
-| **`package_manager`** | ✅ **Completed** | 11 tests | NPM-style widget package manager, Ed25519 signature verification, manifest validation, and marketplace catalog. |
-| **`cloud_sync`** | ✅ **Completed** | 6 tests | Vector clocks & Lamport CRDT conflict resolution, AES-256-GCM encryption, and SQLite WAL offline cache. |
-| **`ai_engine`** | ✅ **Completed** | 20 tests | Synthetic layout/theme/widget synthesis, wallpaper color extraction, performance advisor, voice intent parser. |
+| **`package_manager`** | ✅ **Completed** | 12 tests | NPM-style widget package manager, Ed25519 signature verification, manifest validation, marketplace catalog, and authentic standard IPFS raw+sha2-256 Base32 CIDv1 (`bafkrei...`) generator. |
+| **`cloud_sync`** | ✅ **Completed** | 7 tests | Vector clocks & Lamport CRDT conflict resolution, AES-256-GCM encryption, SQLite WAL offline cache, and CollaborativeSession sync. |
+| **`ai_engine`** | 🔶 **Functional Skeleton** | 23 tests | Synthetic layout/theme/widget synthesis, wallpaper color extraction, performance advisor, voice intent parser, Windows Copilot manifest generator, and offline heuristic intent inference. Full neural ONNX Runtime (`ort`) and Whisper STT are staged behind future model runtime bindings. |
 | **`production_engine`** | ✅ **Completed** | 17 tests | Security audits, stress testing harness, chaos engineering injector, auto-updater framework, and release suite. |
 | **`installer`** | ✅ **Completed** | 5 tests | Setup wizard, local deployment packaging (`%LOCALAPPDATA%\Aether\bin`), and Add/Remove Programs uninstall registry keys. |
 | **`dashboard_tui`** | ✅ **Completed** | Executable | Ratatui terminal dashboard connecting over IPC pipe with animated gauges and real-time telemetry. |
@@ -49,9 +49,9 @@
 | **`capability_broker`** | ✅ **Completed** | 7 tests | Permission broker, runtime capability tokens, `GrantStore`, `WidgetFirewall`, BLAKE3 binary integrity, and `MemoryGuard`. |
 | **`watchdog`** | ✅ **Completed** | 4 tests | Two-process heartbeat supervisor (`aether_watchdog.exe`), monitoring engine pings every 1s and auto-restarting on failure. |
 | **`event_recorder`** | ✅ **Completed** | 2 tests | Ring-buffer system event recorder (10k capacity), export/import file persistence, and time-travel replay engine. |
-| **`observability`** | ✅ **Completed** | 9 tests | Prometheus text format exporter, ETW event provider, minidump writer (`MiniDumpWriteDump` `.dmp`), and distributed tracing context. |
-| **`dev_tools`** | ✅ **Completed** | 7 tests | File-watcher hot-reloader (`DevHotReloader`), layout grid overlay (`LayoutGridOverlay`), `WidgetInspector`, and `aether` CLI. |
-| **`enterprise`** | ✅ **Completed** | 4 tests | Group Policy & MDM rules engine (`PolicyEngine`), SHA-256 append-only tamper-evident audit logger, and Windows Hello `AuthGate`. |
+| **`observability`** | ✅ **Completed** | 10 tests | Prometheus text format exporter, ETW event provider, minidump writer (`MiniDumpWriteDump` `.dmp`), distributed tracing context, FlameGraph `.folded` stack profiler, and asynchronous OTLP HTTP span exporter. |
+| **`dev_tools`** | ✅ **Completed** | 8 tests | File-watcher hot-reloader (`DevHotReloader`), layout grid overlay (`LayoutGridOverlay`), `WidgetInspector`, scaffolding generator, and authentic SHA-256 verified `.cwp` container packager. |
+| **`enterprise`** | ✅ **Completed** | 5 tests | Native Windows Registry Group Policy reader (`HKLM\SOFTWARE\Policies\Aether` via `RegOpenKeyExW`/`RegQueryValueExW`), SHA-256 append-only audit logger, WAM/Kerberos SSO token validation, and real WinRT `UserConsentVerifier` Windows Hello authentication gate. |
 | **`tests` (Integration & Audit)** | ✅ **Completed** | 31 tests | Full integration suite (`integration_tests`, `interface_tests`, `system_tests`, `master_release_audit_tests`). |
 
 ---
@@ -73,7 +73,7 @@
 | **Design Tokens Page**| ✅ **Completed** | `DesignTokensPage.xaml` / `DesignTokensViewModel.cs` interactive resolution & visual inspection of 12-category design token hierarchy (`Colors`, `Typography`, `Materials`, `Motion`). |
 | **Profiles Page** | ✅ **Completed** | `ProfilesPage.xaml` / `ProfilesViewModel.cs` activity profile switcher (`Coding`, `Gaming`, `Minimalist`, `Battery Saver`, `Creative Studio`) with live target FPS & material spec badges. |
 | **AI Composer Page** | ✅ **Completed** | `AiComposerPage.xaml` / `AiComposerViewModel.cs` natural language workstation layout synthesis with theme recommendations, material spec previews, resource footprints, preset chips. |
-| **Marketplace Page** | ✅ **Completed** | `MarketplacePage.xaml` / `MarketplaceViewModel.cs` cryptographically verified widget package store, Ed25519 signature validation, capability inspector, `FilteredPackages` real-time search and category filtering, 1-click install. |
+| **Marketplace Page** | ✅ **Completed** | `MarketplacePage.xaml` / `MarketplaceViewModel.cs` cryptographically verified widget package store, Ed25519 signature validation, capability inspector, `FilteredPackages` real-time search, category filtering, and real IPC `LoadWidgetAsync` / `UnloadWidgetAsync` install actions. |
 | **Snapshots Page** | ✅ **Completed** | `SnapshotsPage.xaml` / `SnapshotsViewModel.cs` transactional configuration snapshot backups, 1-click restore, deletion, invariant timestamp formatting, and export/import. |
 | **Security Page** | ✅ **Completed** | `SecurityPage.xaml` / `SecurityViewModel.cs` AppContainer sandbox process boundary visualizer, capability token manifest table, Job Object resource limits, and audit log stream. |
 | **Services Page** | ✅ **Completed** | `ServicesPage.xaml` / `ServicesViewModel.cs` subsystem worker daemon supervisor interface for dynamic start/stop operations. |

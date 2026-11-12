@@ -130,7 +130,7 @@ fn test_ipc_dispatch_get_status_returns_json() { ... }
 - **Phase**: 16 (Production Release Candidate — Diagnostics & Integration)
 - **Root**: `d:\Code\Aether-custom-widget\`
 - **Workspace manifest**: `Cargo.toml` at repo root (33 member crates)
-- **Current test count**: 403 Rust + 63 C# GUI (466 total) -- run `cargo test --workspace` & `dotnet test src_gui/CustomWidget.Dashboard.Tests` to verify. This number is subjected to change but only expected to increase over time.
+- **Current test count**: 405 Rust + 63 C# GUI (468 total) -- run `cargo test --workspace` & `dotnet test src_gui/CustomWidget.Dashboard.Tests` to verify. This number is subjected to change but only expected to increase over time.
 
 
 ### Core Architecture Principle -- "Collect Once, Publish Everywhere"

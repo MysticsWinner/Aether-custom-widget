@@ -50,6 +50,12 @@ impl Default for OnnxModelSpec {
     }
 }
 
+/// Abstract intent classifier interface for offline local inference and external neural runtimes.
+pub trait IntentClassifier: Send + Sync {
+    fn infer_intent(&self, features: &[f32]) -> Result<(usize, f32, Vec<f32>), String>;
+    fn spec(&self) -> &OnnxModelSpec;
+}
+
 /// Deterministic local ONNX neural inference session for offline intent classification.
 #[derive(Debug, Clone)]
 pub struct OnnxSessionEngine {
@@ -138,6 +144,16 @@ impl OnnxSessionEngine {
     }
 }
 
+impl IntentClassifier for OnnxSessionEngine {
+    fn infer_intent(&self, features: &[f32]) -> Result<(usize, f32, Vec<f32>), String> {
+        self.infer_intent(features)
+    }
+
+    fn spec(&self) -> &OnnxModelSpec {
+        &self.spec
+    }
+}
+
 /// Offline Whisper Speech-to-Text (STT) & Voice Activity Detection (VAD) processor.
 #[derive(Debug, Clone)]
 pub struct WhisperSttEngine {
@@ -191,7 +207,7 @@ impl WhisperSttEngine {
     pub fn transcribe_and_authorize(
         &self,
         pcm16_samples: &[i16],
-        onnx_session: &OnnxSessionEngine,
+        onnx_session: &(impl IntentClassifier + ?Sized),
         audio_embedding: &[f32],
         security_gate: &AiSecurityGate,
         user_confirmed: bool,

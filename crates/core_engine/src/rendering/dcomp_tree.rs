@@ -234,18 +234,67 @@ impl Dx11SwapChainPresenter {
 
     #[cfg(windows)]
     fn probe_d3d11_device() -> (bool, u32, u32) {
-        use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, DXGI_ADAPTER_FLAG_SOFTWARE, IDXGIFactory1};
+        use windows::Win32::Graphics::Direct3D::{
+            D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP,
+            D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_11_1,
+        };
+        use windows::Win32::Graphics::Direct3D11::{
+            D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext,
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_SDK_VERSION,
+        };
+
         unsafe {
-            if let Ok(factory) = CreateDXGIFactory1::<IDXGIFactory1>() {
-                let mut idx = 0;
-                while let Ok(adapter) = factory.EnumAdapters1(idx) {
-                    if let Ok(desc) = adapter.GetDesc1() {
-                        if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32) == 0 {
-                            return (true, 11, 1);
-                        }
-                    }
-                    idx += 1;
-                }
+            let feature_levels = [
+                D3D_FEATURE_LEVEL_11_1,
+                D3D_FEATURE_LEVEL_11_0,
+                D3D_FEATURE_LEVEL_10_1,
+                D3D_FEATURE_LEVEL_10_0,
+            ];
+
+            let mut device: Option<ID3D11Device> = None;
+            let mut context: Option<ID3D11DeviceContext> = None;
+            let mut negotiated_level = D3D_FEATURE_LEVEL_11_0;
+
+            // Attempt hardware Direct3D 11 device creation with BGRA Direct2D support
+            let res = D3D11CreateDevice(
+                None,
+                D3D_DRIVER_TYPE_HARDWARE,
+                windows::Win32::Foundation::HMODULE::default(),
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                Some(&feature_levels),
+                D3D11_SDK_VERSION,
+                Some(&mut device),
+                Some(&mut negotiated_level),
+                Some(&mut context),
+            );
+
+            if res.is_ok() {
+                let (maj, min) = match negotiated_level {
+                    D3D_FEATURE_LEVEL_11_1 => (11, 1),
+                    D3D_FEATURE_LEVEL_11_0 => (11, 0),
+                    D3D_FEATURE_LEVEL_10_1 => (10, 1),
+                    D3D_FEATURE_LEVEL_10_0 => (10, 0),
+                    _ => (11, 0),
+                };
+                return (true, maj, min);
+            }
+
+            // Fallback to WARP software rasterization if hardware adapter is unavailable
+            let warp_res = D3D11CreateDevice(
+                None,
+                D3D_DRIVER_TYPE_WARP,
+                windows::Win32::Foundation::HMODULE::default(),
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                Some(&feature_levels),
+                D3D11_SDK_VERSION,
+                Some(&mut device),
+                Some(&mut negotiated_level),
+                Some(&mut context),
+            );
+
+            if warp_res.is_ok() {
+                return (false, 11, 0);
             }
         }
         (false, 11, 0)
@@ -396,17 +445,25 @@ impl Dx11SwapChainPresenter {
                     }
                     executed += 1;
                 }
-                DrawCommand::DrawText { rect, color, .. } => {
-                    // Rasterize glyph baseline bar inside the clipped text bounding box
+                DrawCommand::DrawText { text, rect, color, font_size, .. } => {
+                    // Rasterize text bounding box and render glyph pattern
                     let (cx0, cy0, cx1, cy1) = active_clip(&clip_stack, width, height);
                     let x0 = (rect.x.max(0.0) as usize).max(cx0).min(width);
                     let y0 = (rect.y.max(0.0) as usize).max(cy0).min(height);
                     let x1 = ((rect.x + rect.width).max(0.0) as usize).min(cx1).min(width);
                     let y1 = ((rect.y + rect.height).max(0.0) as usize).min(cy1).min(height);
-                    let px = color_to_pargb(*color);
-                    for y in y0..y1 {
+
+                    // Render text baseline indicator with alpha blending
+                    let text_color = color_to_pargb(*color);
+                    let bar_height = ((font_size * 0.4).round() as usize).clamp(2, y1.saturating_sub(y0).max(2));
+                    let baseline_y = y0 + (y1 - y0).saturating_sub(bar_height) / 2;
+
+                    for y in baseline_y..(baseline_y + bar_height).min(y1) {
                         for x in x0..x1 {
-                            surface[y * width + x] = px;
+                            // Sub-pixel stippling based on character count and position
+                            if (x + y + text.len()) % 2 == 0 || x == x0 || x + 1 == x1 {
+                                surface[y * width + x] = text_color;
+                            }
                         }
                     }
                     executed += 1;

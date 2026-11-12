@@ -84,6 +84,98 @@ impl PolicyEngine {
     /// Canonical Windows Registry Group Policy path (`HKLM\SOFTWARE\Policies\Aether`).
     pub const REGISTRY_GPO_PATH: &'static str = r"HKLM\SOFTWARE\Policies\Aether";
 
+    /// Reads live Enterprise Group Policy / MDM rules directly from the Windows Registry key
+    /// `HKLM\SOFTWARE\Policies\Aether` using native Win32 `RegOpenKeyExW` / `RegQueryValueExW` APIs.
+    /// If the key does not exist or access is restricted, returns the current policy unchanged.
+    pub fn sync_from_windows_registry(&mut self) -> anyhow::Result<()> {
+        #[cfg(windows)]
+        {
+            use windows::core::w;
+            use windows::Win32::Foundation::WIN32_ERROR;
+            use windows::Win32::System::Registry::{
+                RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_LOCAL_MACHINE,
+                KEY_READ, REG_DWORD, REG_SZ, REG_VALUE_TYPE,
+            };
+
+            let mut hkey = HKEY::default();
+            let subkey = w!(r"SOFTWARE\Policies\Aether");
+
+            unsafe {
+                let status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &mut hkey);
+                if status != WIN32_ERROR(0) {
+                    // Group Policy subkey not present on this machine (standard non-domain setup)
+                    return Ok(());
+                }
+
+                let mut gpo_map = HashMap::new();
+
+                let read_dword = |key: HKEY, value_name: &windows::core::PCWSTR| -> Option<u32> {
+                    let mut data = 0u32;
+                    let mut data_len = std::mem::size_of::<u32>() as u32;
+                    let mut val_type = REG_VALUE_TYPE::default();
+                    let res = RegQueryValueExW(
+                        key,
+                        *value_name,
+                        None,
+                        Some(&mut val_type),
+                        Some(&mut data as *mut u32 as *mut u8),
+                        Some(&mut data_len),
+                    );
+                    if res == WIN32_ERROR(0) && val_type == REG_DWORD {
+                        Some(data)
+                    } else {
+                        None
+                    }
+                };
+
+                let read_string = |key: HKEY, value_name: &windows::core::PCWSTR| -> Option<String> {
+                    let mut buf = vec![0u16; 512];
+                    let mut data_len = (buf.len() * 2) as u32;
+                    let mut val_type = REG_VALUE_TYPE::default();
+                    let res = RegQueryValueExW(
+                        key,
+                        *value_name,
+                        None,
+                        Some(&mut val_type),
+                        Some(buf.as_mut_ptr() as *mut u8),
+                        Some(&mut data_len),
+                    );
+                    if res == WIN32_ERROR(0) && val_type == REG_SZ {
+                        let len_chars = (data_len as usize / 2).saturating_sub(1);
+                        Some(String::from_utf16_lossy(&buf[..len_chars]))
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(dw) = read_dword(hkey, &w!("AllowMarketplace")) {
+                    gpo_map.insert("AllowMarketplace".to_string(), dw.to_string());
+                }
+                if let Some(dw) = read_dword(hkey, &w!("ForceSafeMode")) {
+                    gpo_map.insert("ForceSafeMode".to_string(), dw.to_string());
+                }
+                if let Some(dw) = read_dword(hkey, &w!("RequireSignedPlugins")) {
+                    gpo_map.insert("RequireSignedPlugins".to_string(), dw.to_string());
+                }
+                if let Some(s) = read_string(hkey, &w!("BlockedWidgets")) {
+                    gpo_map.insert("BlockedWidgets".to_string(), s);
+                }
+                if let Some(s) = read_string(hkey, &w!("AllowedCapabilities")) {
+                    gpo_map.insert("AllowedCapabilities".to_string(), s);
+                }
+
+                let _ = RegCloseKey(hkey);
+
+                if !gpo_map.is_empty() {
+                    info!("Successfully loaded {} GPO settings from HKLM registry", gpo_map.len());
+                    return self.sync_from_ad_gpo_registry_values(&gpo_map);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Synchronizes Active Directory Group Policy (GPO) / MDM registry key-value pairs into the active
     /// `EnterprisePolicy` and persists the merged policy to disk.
     pub fn sync_from_ad_gpo_registry_values(

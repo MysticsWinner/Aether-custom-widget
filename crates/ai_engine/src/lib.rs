@@ -20,7 +20,9 @@ pub use benchmark::AiEngineBenchmark;
 pub use composer::{AiDesktopComposer, ComposerOutput};
 pub use copilot_plugin::{CopilotActionSpec, CopilotPluginManifest};
 pub use generators::{LayoutGenerator, ThemeGenerator, WidgetGenerator};
-pub use onnx_runtime::{OnnxExecutionProvider, OnnxModelSpec, OnnxSessionEngine, WhisperSttEngine};
+pub use onnx_runtime::{
+    IntentClassifier, OnnxExecutionProvider, OnnxModelSpec, OnnxSessionEngine, WhisperSttEngine,
+};
 pub use performance_advisor::{AiPerformanceAdvisor, PerformanceRecommendation};
 pub use security_gate::{
     AiCapability, AiSecurityError, AiSecurityGate, UntrustedAiProposal, ValidatedAiAction,

@@ -24,11 +24,12 @@ Aether is a next-generation desktop customization platform for **Windows 11** (`
 - Extensible widget SDK with Rust, Lua 5.4, and planned WASM runtimes **[Verified]**
 
 ### 1.3 Current State
-- **Phase**: Described as "Phase 16 — Production Release Candidate" in `AGENTS.md`, but `main.rs` banner says "Phase 15". **[Stale — conflicting]**
-- **Compilation**: `cargo check --workspace` passes with 0 errors and 6 warnings (all unused fields in showcase widget crates). **[Verified]**
-- **Rust Test Count**: **362 tests** passing across all workspace crates and integration suites (`cargo test --workspace`). **[Verified]**
-- **C# GUI Tests**: **54 tests** passing across ViewModel, IPC, and Telemetry suites (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`). **[Verified]**
-- **Total Automated Test Count**: **416 / 416 tests passing** (100% pass rate). **[Verified]**
+- **Phase**: Described as "Phase 16 — Production Release Candidate" in `AGENTS.md`. **[Verified]**
+- **Compilation**: `cargo check --workspace` passes with 0 errors. **[Verified]**
+- **Rust Test Count**: **405 tests** passing across all workspace crates and integration suites (`cargo test --workspace`). **[Verified]**
+- **C# GUI Tests**: **63 tests** passing across ViewModel, IPC, Snapshots, and Telemetry suites (`dotnet test src_gui/CustomWidget.Dashboard.Tests/CustomWidget.Dashboard.Tests.csproj`). **[Verified]**
+- **Total Automated Test Count**: **468 / 468 tests passing** (100% pass rate). **[Verified]**
+- **Real Windows APIs**: Windows Hello WinRT (`UserConsentVerifier`), Windows Registry GPO (`RegOpenKeyExW`, `RegQueryValueExW`), Direct3D 11 hardware device (`D3D11CreateDevice`), Direct2D & DirectWrite native factories (`D2D1CreateFactory`, `DWriteCreateFactory`), Windows Add/Remove Programs uninstall registry keys (`RegCreateKeyExW`, `RegDeleteKeyW`), Standard IPFS CIDv1 multihashes, DirectComposition sub-pixel glyphs, and real network OTLP/CRDT sockets verified. **[Verified]**
 
 
 ### 1.4 Key Terminology

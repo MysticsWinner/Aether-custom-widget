@@ -8,6 +8,8 @@ use crate::crdt::{CrdtItem, CrdtResolver, VectorClock};
 use crate::entities::LayoutEntity;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 
 /// Real-time cursor and widget selection state of a remote collaborator.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -192,6 +194,45 @@ impl CollaborativeRelayHub {
     pub fn relayed_frame_count(&self) -> usize {
         self.frame_log.len()
     }
+
+    /// Binds a live TCP listener for real-time collaborative sync traffic (e.g. `127.0.0.1:8765`).
+    pub async fn bind_listener(addr: &str) -> std::io::Result<TcpListener> {
+        TcpListener::bind(addr).await
+    }
+
+    /// Transmits a length-prefixed `CollaborativeWsFrame` over a live network TCP stream.
+    pub async fn send_frame_stream(
+        stream: &mut TcpStream,
+        frame: &CollaborativeWsFrame,
+    ) -> std::io::Result<()> {
+        let json_bytes = serde_json::to_vec(frame)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let len = json_bytes.len() as u32;
+        stream.write_all(&len.to_be_bytes()).await?;
+        stream.write_all(&json_bytes).await?;
+        stream.flush().await?;
+        Ok(())
+    }
+
+    /// Reads and deserializes a length-prefixed `CollaborativeWsFrame` from a live network TCP stream.
+    pub async fn recv_frame_stream(stream: &mut TcpStream) -> std::io::Result<CollaborativeWsFrame> {
+        let mut len_buf = [0u8; 4];
+        stream.read_exact(&mut len_buf).await?;
+        let len = u32::from_be_bytes(len_buf) as usize;
+
+        if len > 10 * 1024 * 1024 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Frame exceeds maximum permitted collaborative payload size (10 MB)",
+            ));
+        }
+
+        let mut body_buf = vec![0u8; len];
+        stream.read_exact(&mut body_buf).await?;
+        let frame = serde_json::from_slice(&body_buf)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        Ok(frame)
+    }
 }
 
 #[cfg(test)]
@@ -289,6 +330,49 @@ mod tests {
             ws_client2.get_layout("weather_widget").unwrap().bounds_y,
             180.0
         );
+    }
+
+    #[tokio::test]
+    async fn test_collaborative_relay_hub_tcp_network_transport() {
+        let listener = CollaborativeRelayHub::bind_listener("127.0.0.1:0")
+            .await
+            .expect("Must bind ephemeral TCP port");
+        let local_addr = listener.local_addr().expect("Must have local addr");
+
+        let send_frame = CollaborativeWsFrame {
+            session_id: "tcp-test-session".to_string(),
+            sender_peer_id: "peer_net_a".to_string(),
+            sequence_no: 42,
+            delta: CollaborativeDelta::PresenceUpdated(PeerPresence {
+                peer_id: "peer_net_a".to_string(),
+                display_name: "Network Peer A".to_string(),
+                cursor_x: 250.0,
+                cursor_y: 180.0,
+                selected_widget_id: Some("dock_launcher".to_string()),
+                last_heartbeat_ms: 123456,
+            }),
+        };
+
+        let frame_clone = send_frame.clone();
+        let server_task = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("Accept must succeed");
+            let received = CollaborativeRelayHub::recv_frame_stream(&mut socket)
+                .await
+                .expect("Recv frame must succeed");
+            received
+        });
+
+        let mut client_stream = TcpStream::connect(local_addr)
+            .await
+            .expect("Connect to listener must succeed");
+        CollaborativeRelayHub::send_frame_stream(&mut client_stream, &frame_clone)
+            .await
+            .expect("Send frame must succeed");
+
+        let received_frame = server_task.await.expect("Server task should complete");
+        assert_eq!(received_frame, send_frame);
+        assert_eq!(received_frame.sender_peer_id, "peer_net_a");
+        assert_eq!(received_frame.sequence_no, 42);
     }
 }
 

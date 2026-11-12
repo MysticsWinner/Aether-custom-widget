@@ -51,6 +51,7 @@ windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_Graphics_Direct2D",
     "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_Direct3D",
     "Win32_Graphics_Direct3D11",
     "Win32_Graphics_DirectComposition",
     "Win32_Graphics_DirectWrite",
@@ -78,6 +79,8 @@ windows = { version = "0.58", features = [
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_Ndis",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Registry",
+    "Security_Credentials_UI",
 ] }
 
 # Async & Networking

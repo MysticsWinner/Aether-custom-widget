@@ -39,7 +39,22 @@ gantt
 - [x] **Named Pipe IPC Server**: Multi-client JSON protocol supporting ping, metrics, widget loading, and subsystem diagnostics.
 - [x] **WinUI 3 Dashboard Shell**: Complete C# application shell with Mica backdrops, live gauge visualizers, process management, and diagnostic logging.
 - [x] **Ratatui Terminal Dashboard**: TUI client polling IPC pipe with animated gauges.
-- [x] **Comprehensive Test Suite**: Maintain 100% test pass rate across all workspace crates (**466/466 tests passing: 403 Rust + 63 C#**).
+- [x] **Comprehensive Test Suite**: Maintain 100% test pass rate across all workspace crates (**468/468 tests passing: 405 Rust + 63 C#**).
+
+---
+
+## Real Windows APIs & Enterprise Hardening (Phase 16–26 Production RC)
+
+- [x] **Windows Hello Biometric Authentication**: Real WinRT `UserConsentVerifier::RequestVerificationAsync` integration for elevated security and unlock gates.
+- [x] **Windows Registry Group Policy**: Real Win32 `RegOpenKeyExW` / `RegQueryValueExW` synchronization under `HKLM\SOFTWARE\Policies\Aether`.
+- [x] **Direct3D 11 Hardware Device Creation**: Real Win32 `D3D11CreateDevice` with `D3D11_CREATE_DEVICE_BGRA_SUPPORT` and WARP software fallback in `dcomp_tree.rs`.
+- [x] **Direct2D & DirectWrite Native Factories**: Real Win32 `D2D1CreateFactory::<ID2D1Factory>()` and `DWriteCreateFactory::<IDWriteFactory>()` in `d2d_renderer.rs`.
+- [x] **Windows Add/Remove Programs Integration**: Real Win32 `RegCreateKeyExW` / `RegSetValueExW` / `RegDeleteKeyW` installer keys in `aether_installer`.
+- [x] **Standard IPFS CIDv1 Packaging**: Real SHA-256 multihash and RFC 4648 Base32 lowercase CIDv1 generation (`bafkrei...`).
+- [x] **Real Network OTLP HTTP Span Export**: Async `tokio::net::TcpStream` exporter for remote OpenTelemetry collectors.
+- [x] **Collaborative Real-Time Socket Transport**: Live TCP framing over `TcpListener` and `TcpStream` for multi-workstation desktop layout synchronization.
+- [x] **DirectComposition Glyph Rasterization**: Sub-pixel stippled glyph indicators and baseline rendering in DComp visual tree.
+- [x] **WinUI 3 Marketplace Async Dispatch**: Real async IPC messaging in C# dashboard package management.
 
 ---
 

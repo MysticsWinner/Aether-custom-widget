@@ -156,13 +156,105 @@ impl AetherInstaller {
         self.install_dir.exists() && self.install_dir.join("AetherSetup.exe").exists()
     }
 
+    #[cfg(windows)]
     fn register_windows_uninstall_key(&self) -> anyhow::Result<()> {
+        use windows::core::PCWSTR;
+        use windows::Win32::System::Registry::{
+            RegCloseKey, RegCreateKeyExW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
+            KEY_WRITE, REG_DWORD, REG_SZ, REG_OPTION_NON_VOLATILE,
+        };
+
         info!("Registering Uninstall Key under HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\AetherPlatform");
+
+        let subkey: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\AetherPlatform\0"
+            .encode_utf16()
+            .collect();
+
+        unsafe {
+            let mut hkey = HKEY::default();
+            let status = RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                PCWSTR(subkey.as_ptr()),
+                0,
+                None,
+                REG_OPTION_NON_VOLATILE,
+                KEY_WRITE,
+                None,
+                &mut hkey,
+                None,
+            );
+
+            if status.is_err() {
+                tracing::warn!("Failed to create HKCU uninstall registry key: {:?}", status);
+                return Ok(());
+            }
+
+            let write_sz = |key: HKEY, name: &str, val: &str| {
+                let name_w: Vec<u16> = format!("{name}\0").encode_utf16().collect();
+                let val_w: Vec<u16> = format!("{val}\0").encode_utf16().collect();
+                let _ = RegSetValueExW(
+                    key,
+                    PCWSTR(name_w.as_ptr()),
+                    0,
+                    REG_SZ,
+                    Some(std::slice::from_raw_parts(
+                        val_w.as_ptr() as *const u8,
+                        val_w.len() * 2,
+                    )),
+                );
+            };
+
+            let write_dword = |key: HKEY, name: &str, val: u32| {
+                let name_w: Vec<u16> = format!("{name}\0").encode_utf16().collect();
+                let bytes = val.to_ne_bytes();
+                let _ = RegSetValueExW(
+                    key,
+                    PCWSTR(name_w.as_ptr()),
+                    0,
+                    REG_DWORD,
+                    Some(&bytes),
+                );
+            };
+
+            write_sz(hkey, "DisplayName", "Aether Desktop Customization Platform");
+            write_sz(hkey, "DisplayVersion", "0.7.0");
+            write_sz(hkey, "Publisher", "Next-Gen Desktop Customization Team");
+            write_sz(hkey, "InstallLocation", &self.install_dir.display().to_string());
+            let uninstall_cmd = format!("\"{}\" --uninstall", self.install_dir.join("AetherSetup.exe").display());
+            write_sz(hkey, "UninstallString", &uninstall_cmd);
+            write_sz(hkey, "DisplayIcon", &self.install_dir.join("AetherSetup.exe").display().to_string());
+            write_dword(hkey, "NoModify", 1);
+            write_dword(hkey, "NoRepair", 1);
+
+            let _ = RegCloseKey(hkey);
+        }
         Ok(())
     }
 
+    #[cfg(not(windows))]
+    fn register_windows_uninstall_key(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    #[cfg(windows)]
     fn unregister_windows_uninstall_key(&self) -> anyhow::Result<()> {
+        use windows::core::PCWSTR;
+        use windows::Win32::System::Registry::{RegDeleteKeyW, HKEY_CURRENT_USER};
+
         info!("Removing Uninstall Key from HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\AetherPlatform");
+
+        let subkey: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\AetherPlatform\0"
+            .encode_utf16()
+            .collect();
+
+        unsafe {
+            let _ = RegDeleteKeyW(HKEY_CURRENT_USER, PCWSTR(subkey.as_ptr()));
+        }
+        Ok(())
+    }
+
+    #[cfg(not(windows))]
+    fn unregister_windows_uninstall_key(&self) -> anyhow::Result<()> {
         Ok(())
     }
 }
@@ -234,6 +326,13 @@ mod tests {
         let installer = AetherInstaller::new();
         let res = installer.deploy_known_executables();
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_register_and_unregister_windows_uninstall_key() {
+        let installer = AetherInstaller::new();
+        assert!(installer.register_windows_uninstall_key().is_ok());
+        assert!(installer.unregister_windows_uninstall_key().is_ok());
     }
 }
 

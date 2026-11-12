@@ -2,9 +2,14 @@
 //!
 //! Abstracts desktop background layer attachment behind a unified `DesktopSurface` trait,
 //! providing concrete implementations for:
-//! 1. **Windows 11**: `Win32WorkerWSurface` (`Progman` `0x052C` / `WorkerW` behind desktop icons)
-//! 2. **Linux (Wayland / X11)**: `LinuxWaylandLayerSurface` (`wlr-layer-shell-unstable-v1` `ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND`)
-//! 3. **macOS (Quartz / Metal)**: `MacOsQuartzDesktopSurface` (`NSWindow` at `kCGDesktopWindowLevel` + `CAMetalLayer`)
+//! 1. **Windows 11 (Primary Production Backend)**: `Win32WorkerWSurface` connects directly to
+//!    real Win32 `Progman` `0x052C` message dispatch and `WorkerW` child window hierarchy behind desktop icons.
+//! 2. **Linux (Wayland / X11)**: `LinuxWaylandLayerSurface` provides standard binary wire-packet
+//!    encoding (`zwlr_layer_surface_v1`) for future cross-platform desktop shells.
+//! 3. **macOS (Quartz / Metal)**: `MacOsQuartzDesktopSurface` provides `NSWindow` / `CAMetalLayer`
+//!    descriptor synthesis targeting `kCGDesktopWindowLevel`.
+//!
+//! On Windows, the engine exclusively instantiates `Win32WorkerWSurface` for active desktop composition.
 
 use crate::rendering::workerw::{DesktopSurfaceManager, WorkerWSurfaceState};
 use serde::{Deserialize, Serialize};

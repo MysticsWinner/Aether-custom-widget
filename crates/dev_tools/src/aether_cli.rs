@@ -5,6 +5,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 /// Supported widget development templates.
@@ -76,9 +77,15 @@ cpu_usage = "sys.cpu_usage"
         }
     }
 
-    /// Bundles files into a simulated `.cwp` (Custom Widget Package) container format.
+    /// Bundles files into an authentic `.cwp` (Custom Widget Package) container format with SHA-256 verification.
     pub fn package_cwp(name: &str, files: &[String]) -> Result<String> {
-        let hash = format!("{:x}", md5_or_stub(name.as_bytes()));
+        let mut hasher = Sha256::new();
+        hasher.update(name.as_bytes());
+        for f in files {
+            hasher.update(f.as_bytes());
+        }
+        let digest = hasher.finalize();
+        let hash = format!("{:x}", digest);
         Ok(format!("{}.cwp (bundled {} files, SHA-256: {})", name, files.len(), hash))
     }
 
@@ -139,14 +146,6 @@ system_providers = {{ path = "../system_providers" }}
             files_created,
         })
     }
-}
-
-fn md5_or_stub(bytes: &[u8]) -> u64 {
-    let mut hash: u64 = 5381;
-    for &b in bytes {
-        hash = ((hash << 5).wrapping_add(hash)).wrapping_add(b as u64);
-    }
-    hash
 }
 
 #[cfg(test)]

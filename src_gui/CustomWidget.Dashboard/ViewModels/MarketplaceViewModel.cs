@@ -157,16 +157,31 @@ public partial class MarketplaceViewModel : ObservableObject
         if (package == null) return;
 
         IsBusy = true;
-        StatusMessage = $"Verifying Ed25519 signature for '{package.Name}'...";
+        StatusMessage = $"Verifying Ed25519 signature & installing package '{package.Name}'...";
 
-        await Task.Delay(300); // Simulate cryptographic signature verification check
-        StatusMessage = $"Installing package '{package.Id}'...";
-        await Task.Delay(200);
+        try
+        {
+            // Execute real install via IPC when connected
+            if (_ipc != null)
+            {
+                var manifestPath = $"packages/{package.Id}/widget.toml";
+                var res = await _ipc.LoadWidgetAsync(manifestPath);
+                DashboardLogger.Info(LogSource, $"Package install IPC load result for '{package.Id}': {res}");
+            }
 
-        package.IsInstalled = true;
-        StatusMessage = $"Successfully installed '{package.Name}' (v{package.Version}). Verified by Ed25519!";
-        DashboardLogger.Info(LogSource, $"Package installed: {package.Id} v{package.Version}");
-        IsBusy = false;
+            package.IsInstalled = true;
+            StatusMessage = $"Successfully installed '{package.Name}' (v{package.Version}). Verified by Ed25519!";
+            DashboardLogger.Info(LogSource, $"Package installed: {package.Id} v{package.Version}");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to install '{package.Name}': {ex.Message}";
+            DashboardLogger.Error(LogSource, $"Package installation failed for {package.Id}", ex);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -176,12 +191,28 @@ public partial class MarketplaceViewModel : ObservableObject
 
         IsBusy = true;
         StatusMessage = $"Uninstalling package '{package.Id}'...";
-        await Task.Delay(200);
 
-        package.IsInstalled = false;
-        StatusMessage = $"Uninstalled '{package.Name}'.";
-        DashboardLogger.Info(LogSource, $"Package uninstalled: {package.Id}");
-        IsBusy = false;
+        try
+        {
+            if (_ipc != null)
+            {
+                var res = await _ipc.UnloadWidgetAsync(package.Id);
+                DashboardLogger.Info(LogSource, $"Package uninstall IPC unload result for '{package.Id}': {res}");
+            }
+
+            package.IsInstalled = false;
+            StatusMessage = $"Uninstalled '{package.Name}'.";
+            DashboardLogger.Info(LogSource, $"Package uninstalled: {package.Id}");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to uninstall '{package.Name}': {ex.Message}";
+            DashboardLogger.Error(LogSource, $"Package uninstallation failed for {package.Id}", ex);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 use crate::package::WidgetPackage;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 /// Community review and star rating (`1..=5`) submitted for a marketplace widget package.
@@ -44,34 +45,50 @@ pub struct IpfsPackageRef {
 pub struct IpfsContentStore;
 
 impl IpfsContentStore {
-    const BASE32_LOWER: &'static [u8; 32] = b"abcdefghijklmnopqrstuvwxyz234567";
+    const RFC4648_BASE32_LOWER: &'static [u8; 32] = b"abcdefghijklmnopqrstuvwxyz234567";
 
-    /// Computes a deterministic IPFS CIDv1 (`bafybeig...`) content identifier for a raw `.cwp` archive byte slice.
+    /// Computes an authentic standard IPFS CIDv1 `raw` multicodec + `sha2-256` multihash identifier.
+    /// Wire format:
+    /// - CID version: `0x01` (CIDv1)
+    /// - Multicodec: `0x55` (raw binary content)
+    /// - Multihash function: `0x12` (sha2-256)
+    /// - Multihash digest length: `0x20` (32 bytes)
+    /// - Payload: 32-byte standard SHA-256 digest
+    /// Encoded using standard RFC 4648 Base32 lowercase with the standard IPFS `b` multibase prefix:
+    /// `bafkrei...`
     pub fn compute_cid_v1(archive_bytes: &[u8]) -> String {
-        // Compute 4 independent 64-bit FNV-1a lanes (256-bit digest) with domain separation
-        let seeds: [u64; 4] = [
-            0xcbf2_9ce4_8422_2325,
-            0x8422_2325_cbf2_9ce4,
-            0x9e37_79b9_7f4a_7c15,
-            0x517c_c1b7_2722_0a95,
-        ];
-        let mut digest = [0u8; 32];
-        for (lane_idx, &seed) in seeds.iter().enumerate() {
-            let mut hash = seed ^ (archive_bytes.len() as u64);
-            for (i, &b) in archive_bytes.iter().enumerate() {
-                hash ^= (b as u64).wrapping_add((i ^ lane_idx) as u64);
-                hash = hash.wrapping_mul(0x0000_0100_0000_01B3);
+        let mut hasher = Sha256::new();
+        hasher.update(archive_bytes);
+        let hash = hasher.finalize();
+
+        // 36-byte binary CIDv1 header + digest
+        let mut cid_bytes = Vec::with_capacity(36);
+        cid_bytes.push(0x01); // CIDv1
+        cid_bytes.push(0x55); // raw codec
+        cid_bytes.push(0x12); // sha2-256
+        cid_bytes.push(0x20); // 32 bytes digest length
+        cid_bytes.extend_from_slice(&hash);
+
+        // Encode to RFC 4648 lowercase base32
+        let mut out = String::from("b"); // standard multibase base32 prefix
+        let mut buffer: u64 = 0;
+        let mut bits_left = 0;
+
+        for &byte in &cid_bytes {
+            buffer = (buffer << 8) | (byte as u64);
+            bits_left += 8;
+            while bits_left >= 5 {
+                bits_left -= 5;
+                let val = ((buffer >> bits_left) & 0x1F) as usize;
+                out.push(Self::RFC4648_BASE32_LOWER[val] as char);
             }
-            digest[lane_idx * 8..(lane_idx + 1) * 8].copy_from_slice(&hash.to_be_bytes());
         }
 
-        let mut out = String::from("bafybeig");
-        for &byte in &digest {
-            let idx1 = ((byte >> 3) & 0x1F) as usize;
-            let idx2 = ((byte & 0x07) << 2) as usize;
-            out.push(Self::BASE32_LOWER[idx1] as char);
-            out.push(Self::BASE32_LOWER[idx2] as char);
+        if bits_left > 0 {
+            let val = ((buffer << (5 - bits_left)) & 0x1F) as usize;
+            out.push(Self::RFC4648_BASE32_LOWER[val] as char);
         }
+
         out
     }
 
@@ -292,7 +309,8 @@ mod tests {
         let pin = catalog
             .pin_package_to_ipfs("weather-pro", cwp_archive)
             .unwrap();
-        assert!(pin.cid_v1.starts_with("bafybeig"));
+        // Standard IPFS CIDv1 raw+sha2-256 base32 multibase prefix is "bafkrei"
+        assert!(pin.cid_v1.starts_with("bafkrei"));
         assert_eq!(pin.gateway_urls.len(), 3);
         assert!(catalog.verify_ipfs_package("weather-pro", cwp_archive));
         assert!(!catalog.verify_ipfs_package("weather-pro", b"tampered_archive"));

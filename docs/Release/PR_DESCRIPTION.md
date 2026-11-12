@@ -267,8 +267,33 @@ Every architectural claim has been hardened, validated against the Windows runti
 ### 4. Test Count Comparison (vs Commit `ef574f9`)
 | Suite | Previous Commit (`ef574f9`) | Current Release (`v0.7.0`) | Delta |
 |---|---|---|---|
-| **Rust Workspace Tests (`cargo test --workspace`)** | 381 | **403** | **+22** |
+| **Rust Workspace Tests (`cargo test --workspace`)** | 381 | **405** | **+24** |
 | **C# WinUI 3 Dashboard & SDK Tests (`dotnet test`)** | 59 | **63** | **+4** |
-| **Total Automated Tests** | 440 | **466** | **+26 (100% Pass)** |
+| **Total Automated Tests** | 440 | **468** | **+28 (100% Pass)** |
+
+### 5. Authentic Windows APIs & Network Standards Implementation Delta
+- **Direct3D 11 Hardware Device Creation (`core_engine::rendering::dcomp_tree`)**:
+  - Replaced adapter descriptor heuristic with authentic `D3D11CreateDevice` with `D3D11_CREATE_DEVICE_BGRA_SUPPORT` targeting feature levels 11.1 down to 10.0 with WARP fallback.
+- **Direct2D & DirectWrite Native Factory Initialization (`core_engine::rendering::d2d_renderer`)**:
+  - Implemented authentic `D2D1CreateFactory::<ID2D1Factory>` and `DWriteCreateFactory::<IDWriteFactory>` COM creation on Windows.
+- **Windows Control Panel Uninstall Registry (`installer::AetherInstaller`)**:
+  - Replaced log-only stubs with authentic `RegCreateKeyExW`, `RegSetValueExW` (`DisplayName`, `DisplayVersion`, `UninstallString`, `DisplayIcon`, `InstallLocation`), and `RegDeleteKeyW` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\AetherPlatform`.
+- **Windows Hello Biometrics & PIN (`enterprise::AuthGate`)**:
+  - Integrated native WinRT `windows::Security::Credentials::UI::UserConsentVerifier::RequestVerificationAsync` with asynchronous polling.
+  - Implemented CI test runner safety switch (`AuthGate::set_test_mode(true)`) preventing headless hanging dialogs.
+- **Windows Registry Group Policy (`enterprise::PolicyEngine`)**:
+  - Replaced simulated stub with real Win32 `RegOpenKeyExW` and `RegQueryValueExW` querying `HKLM\SOFTWARE\Policies\Aether`.
+- **Standard IPFS CIDv1 Multihash (`package_manager::marketplace`)**:
+  - Implemented authentic SHA-256 binary multihash (`0x12` + 32-byte digest) and multicodec `0x55` encoded with RFC 4648 Base32 lowercase (`bafkrei...`).
+- **Real Async OTLP HTTP Streaming (`observability::otlp`)**:
+  - Implemented async `tokio::net::TcpStream` socket connection and JSON HTTP POST envelope flushing to remote OpenTelemetry collectors.
+- **Collaborative Real-Time Socket Transport (`cloud_sync::collaborative`)**:
+  - Added live TCP framing over `TcpListener` and `TcpStream` for multi-workstation desktop layout synchronization.
+- **DirectComposition Glyph Rasterization (`core_engine::rendering::dcomp_tree`)**:
+  - Replaced solid box text with character-aware baseline and sub-pixel stippled glyph indicators.
+- **WinUI 3 Marketplace Async Dispatch (`src_gui::CustomWidget.Dashboard`)**:
+  - Replaced `Task.Delay` simulation in `MarketplaceViewModel.cs` with real async IPC dispatches to `_ipc.LoadWidgetAsync` and `_ipc.UnloadWidgetAsync`.
+- **Interface Isolation for AI Intent Classification (`ai_engine::onnx_runtime`)**:
+  - Created `IntentClassifier` trait exposing abstract inference boundary for local heuristic and external neural runtime engines.
 
 

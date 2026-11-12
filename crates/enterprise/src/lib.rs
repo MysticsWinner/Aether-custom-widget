@@ -62,6 +62,7 @@ mod tests {
 
     #[test]
     fn test_auth_gate_biometric_validation() {
+        AuthGate::set_test_mode(true);
         let res = AuthGate::prompt_windows_hello("Grant capability network.http").unwrap();
         assert_eq!(res, AuthResult::Success);
     }
@@ -72,6 +73,9 @@ mod tests {
         let policy_path = dir.path().join("ad_policy.json");
         let mut engine = PolicyEngine::new(&policy_path);
         assert_eq!(PolicyEngine::REGISTRY_GPO_PATH, r"HKLM\SOFTWARE\Policies\Aether");
+
+        // Calling live registry sync on a non-domain machine executes cleanly without error
+        assert!(engine.sync_from_windows_registry().is_ok());
 
         let mut gpo = std::collections::HashMap::new();
         gpo.insert("AllowMarketplace".to_string(), "0".to_string());

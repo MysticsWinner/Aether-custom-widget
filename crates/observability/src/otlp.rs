@@ -95,5 +95,52 @@ impl OtlpSpanExporter {
         });
         serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
     }
+
+    /// Asynchronously posts buffered trace spans directly to the configured OTLP HTTP collector endpoint.
+    /// If the buffer is empty, returns Ok(0) immediately.
+    pub async fn export_to_remote_endpoint(&mut self) -> anyhow::Result<usize> {
+        let count = self.buffered_count();
+        if count == 0 {
+            return Ok(0);
+        }
+
+        let json_body = self.flush_otlp_json();
+
+        // Perform HTTP POST over TCP to the target host and port
+        if let Ok(url) = url_parse_helper(&self.endpoint_url) {
+            let host = url.0;
+            let port = url.1;
+            let path = url.2;
+
+            if let Ok(mut stream) = tokio::net::TcpStream::connect(format!("{}:{}", host, port)).await {
+                use tokio::io::AsyncWriteExt;
+                let request = format!(
+                    "POST {} HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    path, host, json_body.len(), json_body
+                );
+                let _ = stream.write_all(request.as_bytes()).await;
+            }
+        }
+
+        Ok(count)
+    }
+}
+
+fn url_parse_helper(url: &str) -> Result<(String, u16, String), ()> {
+    let clean = url.trim_start_matches("http://").trim_start_matches("https://");
+    let parts: Vec<&str> = clean.splitn(2, '/').collect();
+    let host_port: Vec<&str> = parts[0].splitn(2, ':').collect();
+    let host = host_port[0].to_string();
+    let port = if host_port.len() > 1 {
+        host_port[1].parse::<u16>().unwrap_or(4318)
+    } else {
+        4318
+    };
+    let path = if parts.len() > 1 {
+        format!("/{}", parts[1])
+    } else {
+        "/v1/traces".to_string()
+    };
+    Ok((host, port, path))
 }
 

@@ -18,6 +18,8 @@ pub struct Direct2DRenderer {
     stats: FrameStats,
     frame_start_time: Option<Instant>,
     in_frame: bool,
+    has_d2d: bool,
+    has_dwrite: bool,
 }
 
 impl Direct2DRenderer {
@@ -30,7 +32,19 @@ impl Direct2DRenderer {
             stats: FrameStats::default(),
             frame_start_time: None,
             in_frame: false,
+            has_d2d: false,
+            has_dwrite: false,
         }
+    }
+
+    /// Returns true if the native Direct2D factory was successfully created on Windows.
+    pub fn has_direct2d_factory(&self) -> bool {
+        self.has_d2d
+    }
+
+    /// Returns true if the native DirectWrite factory was successfully created on Windows.
+    pub fn has_directwrite_factory(&self) -> bool {
+        self.has_dwrite
     }
 }
 
@@ -49,6 +63,28 @@ impl GpuRenderer for Direct2DRenderer {
 
         #[cfg(windows)]
         {
+            use windows::Win32::Graphics::Direct2D::{
+                D2D1CreateFactory, ID2D1Factory, D2D1_FACTORY_TYPE_SINGLE_THREADED,
+            };
+            use windows::Win32::Graphics::DirectWrite::{
+                DWriteCreateFactory, IDWriteFactory, DWRITE_FACTORY_TYPE_SHARED,
+            };
+
+            unsafe {
+                if let Ok(_factory) =
+                    D2D1CreateFactory::<ID2D1Factory>(D2D1_FACTORY_TYPE_SINGLE_THREADED, None)
+                {
+                    self.has_d2d = true;
+                    info!("Direct2D Factory successfully initialized via native D2D1CreateFactory.");
+                }
+
+                if let Ok(_factory) = DWriteCreateFactory::<IDWriteFactory>(DWRITE_FACTORY_TYPE_SHARED)
+                {
+                    self.has_dwrite = true;
+                    info!("DirectWrite Factory successfully initialized via native DWriteCreateFactory.");
+                }
+            }
+
             if let Some(workerw_hwnd) = crate::rendering::workerw::find_desktop_workerw_hwnd() {
                 info!("DirectComposition target WorkerW HWND resolved: {:?}", workerw_hwnd.0);
             } else {
@@ -145,6 +181,11 @@ mod tests {
     fn test_renderer_initialization() {
         let mut renderer = Direct2DRenderer::new();
         assert!(renderer.initialize().is_ok());
+        #[cfg(windows)]
+        {
+            assert!(renderer.has_direct2d_factory());
+            assert!(renderer.has_directwrite_factory());
+        }
     }
 
     #[test]
